@@ -1,0 +1,8 @@
+*.o
+*.a
+samtools-hybrid
+maq2sam-long
+maq2sam-short
+md5fa
+md5sum-lite
+wgsim
