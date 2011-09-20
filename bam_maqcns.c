@@ -111,6 +111,8 @@ bam_maqcns_t *bam_maqcns_init()
 	bm->n_hap = 2;
 	bm->eta = 0.03;
 	bm->cap_mapQ = 60;
+        // Default min_baseQ is 0 (all base qualities allowed)
+        bm->min_baseQ = 0;
 	return bm;
 }
 
@@ -148,6 +150,9 @@ glf1_t *bam_maqcns_glfgen(int _n, const bam_pileup1_t *pl, uint8_t ref_base, bam
 		uint32_t q, x = 0, qq;
 		if (p->is_del || (p->b->core.flag&BAM_FUNMAP)) continue;
 		q = (uint32_t)bam1_qual(p->b)[p->qpos];
+                // Check if the base quality is less than the minimum, if so
+                // continue to the next one.
+                if(q < bm->min_baseQ) continue;
 		x |= (uint32_t)bam1_strand(p->b) << 18 | q << 8 | p->b->core.qual;
 		if (p->b->core.qual < q) q = p->b->core.qual;
 		x |= q << 24;

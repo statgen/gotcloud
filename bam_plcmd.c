@@ -301,9 +301,10 @@ int bam_pileup(int argc, char *argv[])
 	d->tid = -1; d->mask = BAM_DEF_MASK;
 	d->c = bam_maqcns_init();
 	d->ido = bam_maqindel_opt_init();
-	while ((c = getopt(argc, argv, "st:f:cT:N:r:l:im:gI:G:vM:S2a")) >= 0) {
+	while ((c = getopt(argc, argv, "st:f:cT:N:r:l:im:gIQ::G:vM:S2a")) >= 0) {
 		switch (c) {
-		case 'a': d->c->is_soap = 1; break;
+                case 'Q': d->c->min_baseQ = atoi(optarg); break;
+                case 'a': d->c->is_soap = 1; break;
 		case 's': d->format |= BAM_PLF_SIMPLE; break;
 		case 't': fn_list = strdup(optarg); break;
 		case 'l': fn_pos = strdup(optarg); break;
@@ -333,6 +334,7 @@ int bam_pileup(int argc, char *argv[])
 		fprintf(stderr, "        -a        use the SOAPsnp model for SNP calling\n");
 		fprintf(stderr, "        -2        output the 2nd best call and quality\n");
 		fprintf(stderr, "        -i        only show lines/consensus with indels\n");
+                fprintf(stderr, "        -Q INT    min base quality (possibly capped by BAQ) [%d]\n", d->c->min_baseQ);
 		fprintf(stderr, "        -m INT    filtering reads with bits in INT [%d]\n", d->mask);
 		fprintf(stderr, "        -M INT    cap mapping quality at INT [%d]\n", d->c->cap_mapQ);
 		fprintf(stderr, "        -t FILE   list of reference sequences (force -S)\n");
