@@ -36,7 +36,7 @@ libbam.a:$(LOBJS)
 		$(AR) -cru $@ $(LOBJS)
 
 $(PROG):lib $(AOBJS)
-		$(CC) $(CFLAGS) -o $@ $(AOBJS) -lm $(LIBPATH) $(LIBCURSES) -lz -L. -lbam
+		$(CC) $(CFLAGS) -o $@ $(AOBJS) -lm $(LIBPATH) $(LIBCURSES) -L. -lbam -lz
 
 razip:razip.o razf.o knetfile.o
 		$(CC) $(CFLAGS) -o $@ razf.o razip.o knetfile.o -lz
