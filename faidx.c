@@ -339,7 +339,7 @@ char *fai_fetch(const faidx_t *fai, const char *str, int *len)
 	} else iter = kh_get(s, h, str);
         if(iter == kh_end(h))
         {
-            fprintf(stderr,"ERROR: Chromosome not found in the fai file.\n");
+            fprintf(stderr,"ERROR: Chromosome, %s, not found in the fai file.\n", str);
         }
 	val = kh_value(h, iter);
 	// parse the interval
