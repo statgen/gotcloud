@@ -1,0 +1,13 @@
+Source: gotcloud-bin
+Section: main
+Priority: optional
+Maintainer: Mary Kate Trost <mktrost@umich.edu>
+Build-Depends: debhelper (>= 8.0.0)
+Homepage: http://genome.sph.umich.edu/wiki/GotCloud
+
+Package: gotcloud-bin
+Architecture: amd64
+#Depends: gotcloud-bin
+Recommends: make,libssl0.9.8,biopipe-umake-test
+Description: gotcloud-bin
+ GotCloud is a set of software to MKT FINISH THIS

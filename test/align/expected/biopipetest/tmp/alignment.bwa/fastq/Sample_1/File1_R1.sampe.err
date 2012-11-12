@@ -1,0 +1,17 @@
+[bwa_read_seq] 20.5% bases are trimmed.
+[bwa_read_seq] 21.8% bases are trimmed.
+[bwa_sai2sam_pe_core] convert to sequence coordinate... 
+[infer_isize] (25, 50, 75) percentile: (121, 184, 277)
+[infer_isize] low and high boundaries: 48 and 589 for estimating avg and std
+[infer_isize] inferred external isize from 731 pairs: 229.778 +/- 146.229
+[infer_isize] skewness: 1.078; kurtosis: 0.139; ap_prior: 1.00e-05
+[infer_isize] inferred maximum insert size: 1147 (6.27 sigma)
+[bwa_sai2sam_pe_core] time elapses: 0.11 sec
+[bwa_sai2sam_pe_core] changing coordinates of 54 alignments.
+[bwa_sai2sam_pe_core] align unmapped mate...
+[bwa_paired_sw] 377 out of 705 Q17 singletons are mated.
+[bwa_paired_sw] 18 out of 46 Q17 discordant pairs are fixed.
+[bwa_sai2sam_pe_core] time elapses: 0.16 sec
+[bwa_sai2sam_pe_core] refine gapped alignments... 0.01 sec
+[bwa_sai2sam_pe_core] print alignments... 0.01 sec
+[bwa_sai2sam_pe_core] 2500 sequences have been processed.

@@ -1,0 +1,53 @@
+#======================================================================
+#   GotCloud README
+#======================================================================
+To test the GotCloud aligner, run:
+
+  bin/gen_biopipeline.pl --test ~/testalign
+
+  This will create/clear the output directory ~/testalign.
+  Test results and a log file are put in this directory.
+  Results are self-checked and if errors should occur, it will be obvious.
+
+
+To test the GotCloud umake, run:
+
+  bin/umake.pl --test ~/testumake
+
+  This will create/clear the output directory ~/testumake.
+  Test results and a log file are put in this directory.
+  Results are self-checked and if errors should occur, it will be obvious.
+
+
+
+General Help for UMAKE:
+
+UMAKE requires three types of input files:
+  (1) a set of BAM files
+      For high quality SNP calls BAM files should already be:
+      * duplicate-marked 
+      * base-quality recalibrated
+  (2) index file
+      Each line contains at least 3 space-separated columns representing a single individual:
+      [SAMPLE_ID] [COMMA SEPARATED POPULATION LABELS] [BAM_FILE1] [BAM_FILE2] ...
+      1 or more BAMs are allowed per individual
+  (3) configuration file
+      Contains run-time options & command line arguments.  
+      A default configuration is provided.
+      User must specify:
+      * CHR = #space separated list of chromosomes
+      * BAM_INDEX =   # the path/name of the index file
+      Refer to the default configuration for more information on other settings.
+
+      Optional specifications...
+      * INPUT_ROOT
+      * OUT_DIR
+
+Optional input files:
+   * Pedigree files (PED format) (to specify gender information in chrX calling)
+   * Target information (UCSC's BED format) in targeted or whole exome capture sequencing
+
+Once these files are configured, to run umake and process the data:
+   {path}/umake/bin/umake.pl --conf {conf_file} --snpcall \
+      --outdir {output_directory} --numJobs {# of threads to use for processing}
+

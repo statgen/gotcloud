@@ -1,0 +1,13 @@
+Source: gotcloud-test
+Section: main
+Priority: optional
+Maintainer: Mary Kate Trost <mktrost@umich.edu>
+Build-Depends: debhelper (>= 8.0.0)
+Homepage: http://genome.sph.umich.edu/wiki/GotCloud
+
+Package: gotcloud-test
+Architecture: amd64
+Depends: gotcloud-bin
+#Recommends: make,libssl0.9.8,biopipe-umake-test
+Description: gotcloud-test
+ Test package for gotcloud-bin

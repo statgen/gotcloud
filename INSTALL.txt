@@ -1,0 +1,48 @@
+                            Installing  GotCloud
+
+The complete installation consists of these packages
+
+  gotcloud-test      - test files
+  hs37-db132.tar.gz  - reference files of possible interest
+  gotcloud-bin       - aligner and umake executables
+
+Packages exist for Ubuntu (lucid and precise compatible) and in time
+packages will be made available for Redhat/CentOS. These packages 
+require root authority to install everything in /usr/local/gotcloud.
+In time a large compressed tar file will be provided so non-root
+users can install GotCloud in their HOME directories.
+
+
+
+You may find it convenient to provide a symlink for your users so the keys scripts
+are in the normal user's PATH.  E.g.
+
+ ln -s /usr/local/gotcloud/bin/gen_biopipeline.pl /usr/local/bin/gen_biopipeline.pl
+ ln -s /usr/local/gotcloud/bin/umake.pl /usr/local/bin/umake.pl
+
+
+
+These tools have been developed and tested extensively on Ubuntu
+installations, although we expect they will run on other Unix distributions 
+as long as the binaries are compiled for the target system.
+
+
+Dependencies - not forced by the packages, but actually required for a successful run.
+
+  Ubuntu Lucid or Precise
+    java-common default-jre make libssl0.9.8
+
+  RedHat / CentOS
+    to be provided
+
+
+
+A complete test is available and you are encouraged to run it once,
+just to prove everything is correct. Run the test case with
+
+  /usr/local/gotcloud/bin/gen_biopipeline.pl --test /your/testdir/path
+  /usr/local/gotcloud/bin/umake.pl           --test /your/testdir/path
+
+The first will take about 2 minutes, the second about 15 minutes. Both
+are self checking. Errors will be reported and it will be obvious that
+the test failed or was successful.

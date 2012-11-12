@@ -1,0 +1,15 @@
+Analysis started on Thu Nov  1 17:21:20 2012
+
+The following filters are in effect:
+dp30 : DP >= 30.00
+DP1200 : DP <= 1200.00
+STR20 : STR <= 0.20
+str-20 : STR >= -0.20
+stz-5 : STZ >= -5.00
+STZ5 : STZ <= 5.00
+AOI5 : AOI <= 5.00
+INDEL5 : INDEL >= 5 bp with /net/wonderland/home/mktrost/umake/test//ref/indels/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf
+
+Writing to VCF file /net/wonderland/home/mktrost/umake/test/NEWTEST/vcfs/chr20/chr20.filtered.sites.vcf
+Analysis finished on Thu Nov  1 17:21:20 2012
+

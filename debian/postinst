@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+#   Run just after installing the package
+#   Debian environment varibales of possible interest:
+#       DPKG_MAINTSCRIPT_ARCH=amd64
+#       DPKG_RUNNING_VERSION=1.15.5.6ubuntu2
+#       DPKG_MAINTSCRIPT_PACKAGE=biopipe-align
+#
+#set -e
+banner="#============================================================"
+TOP=/usr/local/gotcloud
+BIN=$TOP/bin
+
+f=/usr/share/doc/gotcloud*bin*/README
+if [ -r $f.gz ]; then
+  gunzip -c $f.gz
+else
+  cat $f
+fi
+exit

@@ -1,0 +1,7 @@
+gotcloud-test (1.0) unstable; urgency=low
+
+  * Sep 17, 2012  - initial packaging from tools developed by the CSG, University of Michigan
+  * Oct 15, 2012  - improve packaging
+  * Nov  4, 2012  - We findally got a name, consolidate into one package
+
+ -- Mary Kate Trost <mktrost@umich.edu>  Mon, 4 Nov 2012 13:06:14 +0500

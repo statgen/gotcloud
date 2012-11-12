@@ -1,0 +1,37 @@
+#!/usr/bin/make -f
+PFX=usr/local/gotcloud
+PACKAGE=gotcloud-bin
+PACKVER=1.0
+PKG=${PACKAGE}_${PACKVER}
+INSTALLDIR=${PFX}
+#PREPOSTLIST=debian/postinst debian/postrm debian/preinst debian/prerm
+PREPOSTLIST=debian/postinst
+DIRLIST=bin scripts ${RPMDIR}
+
+binary-indep:
+binary-arch:	
+build:
+	echo "Generate package: cd ${PACKAGE}; dpkg-buildpackage -b -us -uc -rfakeroot"
+
+clean:
+	rm -rf files substvars tmp debian/errs
+
+binary:
+	rm -rf debian/tmp debian/errs
+	install -d debian/tmp/DEBIAN
+	cp debian/control ${PREPOSTLIST} debian/tmp/DEBIAN
+	install -d debian/tmp/usr/share/doc/${PKG}
+	cp debian/changelog debian/tmp/usr/share/doc/${PKG}
+	cp README    debian/tmp/usr/share/doc/${PKG}/README
+	gzip -9      debian/tmp/usr/share/doc/${PKG}/*
+	cp debian/copyright debian/tmp/usr/share/doc/${PKG}
+	mkdir -p debian/tmp/${INSTALLDIR}
+	cp -rp ${DIRLIST} debian/tmp/${INSTALLDIR}
+	test -z "${RPMDIR}" || mv debian/tmp/${INSTALLDIR}/rpmbin/* debian/tmp/${INSTALLDIR}/bin
+	test -z "${RPMDIR}" || rm -rf debian/tmp/${INSTALLDIR}/rpmbin
+	chmod 755 debian/tmp/${INSTALLDIR}/bin/* debian/tmp/${INSTALLDIR}/scripts/*
+	dpkg-gencontrol -isp
+	chown -R root.root debian/tmp
+	chmod -R o-s,go=u,go-ws debian/tmp
+	dpkg --build debian/tmp .
+	rm -rf tmp

@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+#   Run just after installing the package
+#   Debian environment varibales of possible interest:
+#       DPKG_MAINTSCRIPT_ARCH=amd64
+#       DPKG_RUNNING_VERSION=1.15.5.6ubuntu2
+#       DPKG_MAINTSCRIPT_PACKAGE=biopipe-align
+#
+#set -e
+banner="#============================================================"
+TOP=/usr/local/gotcloud
+BIN=$TOP/bin
+SCRIPTS=$TOP/scripts
+
+#================================================================
+#   Check if we have what is needed
+#================================================================
+if [ -x $TOP/scripts/check_requirements.sh ]; then
+  $TOP/scripts/check_requirements.sh $top
+fi
+
+#================================================================
+#   The only real work for this package
+#================================================================
+for x in gen_biopipeline.pl umake.pl; do
+  ln -sf $BIN/$x /usr/local/bin/$x
+  if [ "$?" = "0" ]; then
+    echo "Created symlink '/usr/local/bin/$x' to make execution easier."
+  else
+    echo $banner
+    echo "#   Failed to create symlink '/usr/local/bin/$x'"
+    echo "#   You might find it useful to fix this so '$x' is in your PATH"
+    echo $banner
+  fi
+done
+
+exit

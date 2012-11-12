@@ -1,0 +1,5 @@
+MERGE_NAME	FASTQ1	FASTQ2	RGID	SAMPLE	LIBRARY	CENTER	PLATFORM
+Sample1	fastq/Sample_1/File1_R1.fastq.gz	fastq/Sample_1/File1_R2.fastq.gz	RGID1	SampleID1	Lib1	UM	ILLUMINA
+Sample1	fastq/Sample_1/File2_R1.fastq.gz	fastq/Sample_1/File2_R2.fastq.gz	RGID1a	SampleID1	Lib1	UM	ILLUMINA
+Sample2	fastq/Sample_2/File1_R1.fastq.gz	fastq/Sample_2/File1_R2.fastq.gz	RGID2	SampleID2	Lib2	UM	ILLUMINA
+Sample2	fastq/Sample_2/File2_R1.fastq.gz	fastq/Sample_2/File2_R2.fastq.gz	RGID2	SampleID2	Lib2	UM	ILLUMINA
