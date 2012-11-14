@@ -8,6 +8,7 @@
 #
 #   install_dir defaults to /usr/local/gotcloud
 #
+banner="#============================================================"
 TOP=/usr/local/gotcloud
 if [ -r /gotcloud/bin/umake.pl ]; then
   TOP=/gotcloud
@@ -42,6 +43,14 @@ inst='sudo apt-get install'
 pinst='sudo dpkg -i'
 
 #   Sanity checks
+t=`which java`
+if [ "$t" = "" ]; then
+  echo $banner
+  echo "#   'java' is not installed, do '$inst java-common default-jre'"
+  echo $banner
+else
+  echo "Good, you appear to have 'java' installed"
+fi
 t=`which make`
 if [ "$t" = "" ]; then
   echo $banner

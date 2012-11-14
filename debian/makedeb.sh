@@ -35,6 +35,8 @@ rm -f ../${pkg}*.changes debian/files
 for f in $tempfiles; do         # Remove files we created above
   rm -f debian/$f
 done
+rm -rf /tmp/errs debian/tmp
+
 echo "Package file now in `pwd`"
 ls -la ${pkg}*.deb || exit 1
 
