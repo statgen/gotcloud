@@ -512,6 +512,9 @@ while ($line = <IN>)
   }
 }
 
+
+my $mkcmds = "";
+
 # done reading the index file, now process each merge file separately.
 foreach my $tmpmerge (keys %mergeToFq1)
 {
@@ -666,21 +669,24 @@ print MAK "\tmkdir -p \$(\@D)\n";
 
   close MAK;
 
-  print STDERR "--------------------------------------------------------------------\n";
   print STDERR "Finished creating makefile $makef\n";
 
-  my $mkcmd = "make -f $makef > $makef.log 2>1";
+  $mkcmds .= "make -f $makef";
   if($opts{numjobs})
   {
-    $mkcmd .= " -j ".$opts{numjobs};
+    $mkcmds .= " -j ".$opts{numjobs};
     #  system($cmd) &&
     #    die "Makefile, $makef failed d=$cmd\n";
   }
-
-  print STDOUT "$mkcmd\n";
+  $mkcmds .= " > $makef.log\n";
 }
 
 print STDERR "--------------------------------------------------------------------\n";
+
+print STDOUT "Run the following commands:\n\n";
+
+print STDOUT "$mkcmds\n";
+
 exit;
 
 
