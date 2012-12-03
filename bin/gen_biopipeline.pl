@@ -130,6 +130,7 @@ sub getMosixCmd {
     }
 }
 
+
 #############################################################################
 ## Global Variables
 ############################################################################
@@ -151,16 +152,50 @@ my $polFiles = "";
 my $dedupFiles = "";
 my $recalFiles = "";
 
+my $keepLog = "0";
+
+#############################################################################
+## Subroutine for catching & logging failures
+############################################################################
+sub logCatchFailure
+{
+  my $commandName = shift;
+  my $command = shift;
+  my $log = shift;
+
+  my $makeCmd = "\t\@echo \"$command\"\n";
+  $makeCmd .= "\t\@$command || ";
+  # print what caused the failure.
+  $makeCmd .= "(echo \"`grep -i -e abort -e error -e failed $log`\" >&2; ";
+  # print the failed step.
+  $makeCmd .= "echo \"\\nFailed $commandName step\" >&2; ";
+  # Copy the log to the failed logs directory.
+  $makeCmd .= "mkdir -p \$(OUT_DIR)/failLogs; cp $log \$(OUT_DIR)/failLogs/\$(notdir $log); ";
+  # Print the log name to look at.
+  $makeCmd .= "echo \"See \$(OUT_DIR)/failLogs/\$\(notdir $log\) for more details\" >&2; ";
+  # exit on failure.
+  $makeCmd .= "exit 1;)\n";
+  if($keepLog eq "0")
+  {
+    # On success, remove the log.
+    $makeCmd .= "\trm -f $log\n";
+  }
+  
+  return $makeCmd;
+}
+
+
 #############################################################################
 ## Alignment Subroutine
 ############################################################################
 sub align {
   my $fastq = shift;
   my $sai = shift;
+  my $alnCmd = "\$(BWA_EXE) aln \$(BWA_QUAL) \$(BWA_THREADS) \$(FA_REF) $fastq -f \$(basename \$\@) 2> \$(basename \$\@).log";
 
   my $cmd = "\$(SAI_TMP)/".$sai.".done:\n";
   $cmd .= "\tmkdir -p \$(\@D)\n";
-  $cmd .= "\t\$(BWA_EXE) aln \$(BWA_QUAL) \$(BWA_THREADS) \$(FA_REF) $fastq -f \$(basename \$\@)\n";
+  $cmd .= logCatchFailure("aln", $alnCmd, "\$(basename \$\@).log");
   $cmd .= "\ttouch \$\@\n\n";
   return $cmd;
 }
@@ -197,8 +232,10 @@ sub pair_cmds
 
   $allSteps .= "\$(POL_TMP)/$bam.done: \$(ALN_TMP)/$bam.done\n";
   $allSteps .= "\tmkdir -p \$(\@D)\n";
-  $allSteps .= "\t\$(BAM_EXE) polishBam -v -f \$(FA_REF) --AS \$(AS) --UR file:\$(FA_REF) ";
-  $allSteps .= "--checkSQ -i \$(basename \$^) -o \$(basename \$\@) -l \$(basename \$\@).log\n";
+
+  my $polishCmd = "\$(BAM_EXE) polishBam -f \$(FA_REF) --AS \$(AS) --UR file:\$(FA_REF) ";
+  $polishCmd .= "--checkSQ -i \$(basename \$^) -o \$(basename \$\@) -l \$(basename \$\@).log";
+  $allSteps .= logCatchFailure("polishBam", $polishCmd, "\$(basename \$\@).log");
   $allSteps .= "\ttouch \$\@\n\n";
 
   $allSteps .= "\$(ALN_TMP)/".$bam.".done: $saiDone\n";
@@ -211,13 +248,15 @@ sub pair_cmds
   {
     my $tmpFastq2 = &getConf("FASTQ") . $fastq2;
     $absFastq2 = getAbsolutePath($tmpFastq2);
-    $allSteps .= "\t\$(BWA_EXE) sampe $rgCommand \$(FA_REF) \$(basename \$^) $absFastq1 $absFastq2 2> \$(basename \$(basename \$\@)).sampe.err | \$(SAMTOOLS_EXE) view -uhS - | \$(SAMTOOLS_EXE) sort -m \$(BWA_MAX_MEM) - \$(basename \$(basename \$\@))\n";
-    $allSteps .= "\t\@if [ `grep -l -i abort \$(basename \$(basename \$\@)).sampe.err` ]; then echo \"Failed sampe step: `grep -i abort \$(basename \$(basename \$\@)).sampe.err`\"; exit 1; fi\n";
+    my $sampeLog = "\$(basename \$(basename \$\@)).sampe.log";
+    $allSteps .= "\t(\$(BWA_EXE) sampe $rgCommand \$(FA_REF) \$(basename \$^) $absFastq1 $absFastq2 | \$(SAMTOOLS_EXE) view -uhS - | \$(SAMTOOLS_EXE) sort -m \$(BWA_MAX_MEM) - \$(basename \$(basename \$\@))) 2> $sampeLog\n";
+    $allSteps .= logCatchFailure("sampe", "(grep -q -v -i -e abort -e error -e failed $sampeLog || exit 1)", $sampeLog);
   }
   else
   {
-    $allSteps .= "\t\$(BWA_EXE) samse $rgCommand \$(FA_REF) \$(basename \$^) $absFastq1 2> \$(basename \$(basename \$\@)).samse.err | \$(SAMTOOLS_EXE) view -uhS - | \$(SAMTOOLS_EXE) sort -m \$(BWA_MAX_MEM) - \$(basename \$(basename \$\@))\n";
-    $allSteps .= "\t\@if [ `grep -l -i abort \$(basename \$(basename \$\@)).samse.err` ]; then echo \"Failed samse step: `grep -i abort \$(basename \$(basename \$\@)).samse.err`\"; exit 1; fi\n";
+    my $samseLog = "\$(basename \$(basename \$\@)).samse.log";
+    $allSteps .= "\t(\$(BWA_EXE) samse $rgCommand \$(FA_REF) \$(basename \$^) $absFastq1 | \$(SAMTOOLS_EXE) view -uhS - | \$(SAMTOOLS_EXE) sort -m \$(BWA_MAX_MEM) - \$(basename \$(basename \$\@))) 2> $samseLog\n";
+    $allSteps .= logCatchFailure("samse", "(grep -q -v -i -e abort -e error -e failed $samseLog || exit 1)", $samseLog);
   }
   $allSteps .= "\ttouch \$\@\n\n";
 
@@ -254,6 +293,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     ref_dir=s
     fastq=s
     keepTmp
+    keepLog
     numjobs=i
 )) || die "Failed to parse options\n";
 
@@ -324,6 +364,13 @@ if($opts{keepTmp})
 }
 setConf("KEEP_TMP", $keepTmp);
 
+$keepLog = "0";
+if($opts{keepLog})
+{
+  $keepLog = "1";
+}
+setConf("KEEP_LOG", $keepLog);
+
 # Load the user specified configuration if there was one.
 if ($opts{conf})
 {
@@ -368,6 +415,7 @@ setConf("INDEX_FILE", $index_file);
 &loadConf($scriptPath."/pipelineDefaults.conf");
 
 $keepTmp = &getConf("KEEP_TMP");
+$keepLog = &getConf("KEEP_LOG");
 
 
 ####################################################
@@ -561,7 +609,8 @@ foreach my $tmpmerge (keys %mergeToFq1)
     # Verify Bam ID
     print MAK "\$(QC_DIR)/$mergeName.genoCheck.done: \$(RECAL_DIR)/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
-    print MAK "\t\$(VERIFY_BAM_ID_EXE) --reference \$(FA_REF) -v -m 10 -g 5e-3 --selfonly -d 50 -b \$(PLINK) --in \$(basename \$^) --out \$(basename \$\@)\n";
+    my $verifyCommand = "\$(VERIFY_BAM_ID_EXE) --reference \$(FA_REF) -v -m 10 -g 5e-3 --selfonly -d 50 -b \$(PLINK) --in \$(basename \$^) --out \$(basename \$\@) 2> \$(basename \$\@).log";
+    print MAK logCatchFailure("VerifyBamID", $verifyCommand, "\$(basename \$\@).log");
     print MAK "\ttouch \$\@\n\n";
   }
 
@@ -571,7 +620,8 @@ foreach my $tmpmerge (keys %mergeToFq1)
     # qplot
     print MAK "\$(QC_DIR)/$mergeName.qplot.done: \$(RECAL_DIR)/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
-    print MAK "\t\$(QPLOT_EXE) --reference \$(FA_REF) --dbsnp \$(DBSNP_VCF) --gccontent \$(FA_REF).GCcontent --stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel $mergeName"."_recal,$mergeName"."_dedup \$(basename \$^) \$(DEDUP_TMP)/$mergeName.dedup.bam\n";
+    my $qplotCommand = "\$(QPLOT_EXE) --reference \$(FA_REF) --dbsnp \$(DBSNP_VCF) --gccontent \$(FA_REF).GCcontent --stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel $mergeName"."_recal,$mergeName"."_dedup \$(basename \$^) \$(DEDUP_TMP)/$mergeName.dedup.bam 2> \$(basename \$\@).log";
+    print MAK logCatchFailure("QPLOT", $qplotCommand, "\$(basename \$\@).log");
     print MAK "\ttouch \$\@\n\n";
   }
 
@@ -581,7 +631,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
   print MAK "\tmkdir -p \$(RECAL_TMP)\n";
   if ( !defined($hConf{ALT_RECAB}))
   {
-    print MAK "\t\$(BAM_EXE) recab --refFile \$(FA_REF) --dbsnp \$(DBSNP_VCF) --storeQualTag OQ --in \$(basename \$^) --out \$(RECAL_TMP)/$mergeName.recal.bam \$(MORE_RECAB_PARAMS)\n";
+    print MAK logCatchFailure("Recalibration", "\$(BAM_EXE) recab --refFile \$(FA_REF) --dbsnp \$(DBSNP_VCF) --storeQualTag OQ --in \$(basename \$^) --out \$(RECAL_TMP)/$mergeName.recal.bam \$(MORE_RECAB_PARAMS) 2> \$(basename \$\@).log", "\$(basename \$\@).log");
   }
   else
   {
@@ -599,7 +649,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
 print MAK "\tmkdir -p \$(\@D)\n";
   if ( !defined($hConf{ALT_DEDUP}))
   {
-    print MAK "\t\$(BAM_EXE) dedup --in \$(basename \$^) --out \$(basename \$\@) --log \$(basename \$\@).metrics\n";
+    print MAK logCatchFailure("Deduping", "\$(BAM_EXE) dedup --in \$(basename \$^) --out \$(basename \$\@) --log \$(basename \$\@).metrics 2> \$(basename \$\@).err", "\$(basename \$\@).err");
   }
   else
   {
@@ -665,7 +715,7 @@ print MAK "\tmkdir -p \$(\@D)\n";
   print MAK "ALN_FILES = $alnFiles\n\n";
   print MAK "POL_FILES = $polFiles\n\n";
   print MAK "DEDUP_FILES = $dedupFiles\n\n";
-  print MAK "RECAL_FILES = $recalFiles\n\n";
+  print MAK "RECAL_FILES = $recalFiles\n";
 
   close MAK;
 
