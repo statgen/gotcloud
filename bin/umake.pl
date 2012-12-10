@@ -1301,7 +1301,7 @@ print STDERR "Finished creating makefile $makef\n\n";
 
 if($numjobs != 0) {
   print STDERR "Running $makef\n\n";
-  my $cmd = "make -f $makef";
+  my $cmd = "make -f $makef -j $numjobs";
   system($cmd) &&
     die "Makefile, $makef failed d=$cmd\n";
 }
