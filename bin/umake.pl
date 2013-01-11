@@ -19,30 +19,25 @@ my %hConf = ();
 my $nSM;
 
 #############################################################################
-## loadConf() : load configuration file and build hash table for configuration
-############################################################################
-sub loadConf {
-    my $conf = shift;
+## loadLine() : parses a line of text from a conf file and builds a hash table for configuration (moved from loadConf())
+#############################################################################
 
-    my $curPath = getcwd();
-
-    open(IN,$conf) || die "Cannot open $conf file for reading, from $curPath";
-    while(<IN>) {
-	next if ( /^#/ );  # if the line starts with #, regard them as comment line
+sub loadLine{
+	return if ( /^#/ );  # if the line starts with #, regard them as comment line
 	s/#.*$//;          # trim in-line comment lines starting with #
 	my ($key,$val);
 	if ( /^([^=]+)=(.+)$/ ) {
 	    ($key,$val) = ($1,$2);
 	}
 	else {
-	    die "Cannot parse line $_ at line $. in $conf\n";
+	    die "Cannot parse line $_ at line $.\n"; # removed "in $conf"
 	}
 
 	$key =~ s/^\s+//;  # remove leading whitespaces
 	$key =~ s/\s+$//;  # remove trailing whitespaces
 
         # Skip if the key has already been defined.
-        next if ( defined($hConf{$key}) );
+        return if ( defined($hConf{$key}) );
 
 	if ( !defined($val) ) {
 	    $val = "";     # if value is undefined, set it as empty string
@@ -58,7 +53,7 @@ sub loadConf {
 	    my $subval = &getConf($subkey);
 	    if ($subval eq "") {
 #              if ($subkey ne "UMAKE_ROOT") {
-		die "Cannot parse configuration value $val at line $. of $conf, $subkey not previously defined\n";
+		die "Cannot parse configuration value $val at line $., $subkey not previously defined\n"; # removed "of $conf"
 #              }
 #              else {
 #               $subval = "\${UMAKE_ROOT}"
@@ -80,8 +75,33 @@ sub loadConf {
 	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
 	    $hConf{"FILTER_MIN_TOTAL_DP"} = $nSM * $val;
 	}
+}
+
+
+#############################################################################
+## loadConf() : load configuration file and build hash table for configuration
+############################################################################
+sub loadConf {
+    my $conf = shift;
+
+    my $curPath = getcwd();
+
+    open(IN,$conf) || die "Cannot open $conf file for reading, from $curPath";
+    while(<IN>) {
+	&loadLine($_);
     }
     close IN;
+}
+
+#############################################################################
+## loadOverride() : load configuration file and build hash table for configuration
+############################################################################
+sub loadOverride {
+my $commands = shift;
+my @commlist = split(";",$commands);
+foreach (@commlist) {
+ &loadLine($_);
+ }
 }
 
 #############################################################################
@@ -173,6 +193,8 @@ my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
 my $out = "";
+my $override = "";
+my $localdefaults = "";
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -183,7 +205,9 @@ my $optResult = GetOptions("help",\$help,
 			   "extract",\$extractOpt,
 			   "beagle",\$beagleOpt,
 			   "thunder",\$thunderOpt,
-			   "out=s",\$out
+			   "out=s",\$out,
+			   "override=s",\$override,
+			   "localdefaults=s",\$localdefaults
     );
 
 my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
@@ -215,8 +239,11 @@ if($testdir ne "") {
   exit 1;
 }
 
+&loadOverride($override);
 &loadConf($conf);
-
+if($localdefaults ne "") {
+ &loadConf($localdefaults);
+ }
 &loadConf($scriptPath."/defaults.conf");
 
 if ( $out ne "" ) {
