@@ -1,0 +1,84 @@
+# Your Makefile should include this Makefile after defining:
+#   EXE - the executable name
+#   TOOLBASE - the base filename for files with .h & .cpp versions
+#   SRCONLY - any cpp files without headers.
+#   HDRONLY - any header files without cpp
+#   COMPILE_ANY_CHANGE - any files that should be compiled if any of the
+#                        files change.  These files MUST also be
+#                        included in TOOLBASE or SRCONLY.  Here they are
+#                        just the base name without the extension.
+#   VERSION - if not 0.0.1
+#   BIN_DIR if it is not bin
+#   USER_INCLUDES if any additional directories need to be included to pick up
+#                 header files (example: USER_INCLUDES=-ImyDir1 -ImyDir2)
+#   INSTALLDIR if not /usr/local/bin
+EXE ?=
+COMPILE_ANY_CHANGE ?= 
+BIN_DIR ?= .
+
+MAKEFILES_PATH := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(MAKEFILES_PATH)Makefile.common
+
+LIBRARY = $(USER_LIBS) $(REQ_LIBS$(VARIABLE_EXT))
+ALWAYS_COMP_OBJ = $(patsubst %,$(OBJDIR_PARAM)/%,$(COMPILE_ANY_CHANGE:=.o))
+
+RELEASE_FILE?=$(DIR_NAME).$(VERSION).tgz
+
+BIN_DIR_OPT = $(BIN_DIR)
+BIN_DIR_DEBUG = $(BIN_DIR)$(SUBDIR_DEBUG)
+BIN_DIR_PROFILE = $(BIN_DIR)$(SUBDIR_PROFILE)
+
+BIN_DIR_SRC = $(BIN_DIR$(VARIABLE_EXT))
+
+PROG = $(BIN_DIR_SRC)/$(EXE)
+
+ADDITIONAL_HELP= @echo "make install      Install binaries in $(INSTALLDIR)";\
+	echo "make install INSTALLDIR=directory_for_binaries";\
+	echo "                  Install binaries in directory_for_binaries"
+
+
+.PHONY: all test clean debug profile param install specific_clean
+
+
+# make everything
+param : $(PROG)
+
+# dependencies for executables
+$(PROG) : $(BIN_DIR_SRC) $(LIBRARY) $(OBJECTS)
+	ar -cr $(PROG) $(OBJECTS)
+
+# Build the statgen lib if necessary
+$(STAT_GEN_LIB) : 
+	$(MAKE) -C $(@D) OPTFLAG="$(OPTFLAG_OPT)" --no-print-directory
+
+$(BIN_DIR_SRC) : 
+	mkdir -p $(BIN_DIR_SRC)
+
+specific_clean :
+	-rm $(BIN_DIR_OPT)/$(EXE)
+	-rm -rf $(BIN_DIR_DEBUG)
+	-rm -rf $(BIN_DIR_PROFILE)
+
+install : all $(INSTALLDIR)
+	@echo " "
+	@echo Installing to directory $(INSTALLDIR)
+	@echo To select a different directory, run
+	@echo " "
+	@echo make install INSTALLDIR=your_preferred_dir
+	@echo " "
+	cp $(PROG) $(INSTALLDIR)
+
+$(INSTALLDIR) :
+	@echo " "
+	@echo Creating directory $(INSTALLDIR)
+	@echo " "
+	@mkdir -p $(INSTALLDIR)
+
+$(ALWAYS_COMP_OBJ):  $(COMPILE_ANY_CHANGE:=.cpp)  $(filter-out $(ALWAYS_COMP_OBJ),$(OBJECTS))
+	$(CXX) $(CFLAGS) -o $@ -c  $(*F).cpp -DVERSION="\"$(VERSION)\""
+
+package : 
+# the touch gets rid of a tar warning
+#	echo directory name = $(DIR_NAME)
+	touch $(RELEASE_FILE)
+	tar cvz --exclude="*~" --exclude=$(RELEASE_FILE) --exclude='obj/*' --exclude='*.a'  --exclude='include/*' --exclude='bin/*' --exclude='test/results/*' --exclude-vcs --exclude-backups -f $(RELEASE_FILE) --transform 's,^,$(DIR_NAME)_$(VERSION)/,' * --show-transformed-names 

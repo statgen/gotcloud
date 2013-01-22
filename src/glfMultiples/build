@@ -1,0 +1,3 @@
+g++ -O2 -o glfMultiples -I../core  *.cpp -D_FILE_OFFSET_BITS=64 $1  \
+    ../core/gra-`uname -srm | awk '{print $1 "-" $2 "-" $3}'`-64.a -lm -lz
+
