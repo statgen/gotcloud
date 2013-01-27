@@ -2,13 +2,15 @@ EXE=vcfPileup
 TOOLBASE = PileupElementBaseQual
 SRCONLY = Main.cpp
 USER_INCLUDES = -I../include/
+OBJDIR=obj
+BINDIR=.
 
 VERSION=1.0.0
 DATE=$(shell date)
 USER=$(shell whoami)
-USER_COMPILE_VARS = -DDATE="\"${DATE}\"" -DVERSION="\"${VERSION}\"" -DUSER="\"${USER}\"" -lcrypto
+USER_COMPILE_VARS = -DDATE="\"${DATE}\"" -DVERSION="\"${VERSION}\"" -DUSER="\"${USER}\""
 
-COMPILE_ANY_CHANGE = $(EXE)
+#COMPILE_ANY_CHANGE = $(EXE)
 
 LIB_PATH_GENERAL ?=../libStatGen
 LIB_PATH_BAM_UTIL ?= $(LIB_PATH_GENERAL)

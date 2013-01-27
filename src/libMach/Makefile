@@ -2,17 +2,19 @@ EXE=libMach.a
 TOOLBASE = CostCalculator DosageCalculator ErrorRate HaplotypeKey HaplotypeLoader Haplotyper Manners MathStats OutputHandlers MergeHaplotypes
 SRCONLY = AssociationAnalysis.cpp
 USER_INCLUDES = -I../include/
+OBJDIR=obj
+BINDIR=.
 
 VERSION=1.0.0
 DATE=$(shell date)
 USER=$(shell whoami)
-USER_COMPILE_VARS = -DDATE="\"${DATE}\"" -DVERSION="\"${VERSION}\"" -DUSER="\"${USER}\"" -lcrypto
+USER_COMPILE_VARS = -DDATE="\"${DATE}\"" -DVERSION="\"${VERSION}\"" -DUSER="\"${USER}\""
 
-COMPILE_ANY_CHANGE = $(LIB)
+#COMPILE_ANY_CHANGE = $(LIB)
 
 LIB_PATH_GENERAL ?=../libStatGen
 LIB_PATH_BAM_UTIL ?= $(LIB_PATH_GENERAL)
-include $(LIB_PATH_BAM_UTIL)/Makefiles/Makefile.libsrc
+include $(LIB_PATH_BAM_UTIL)/Makefiles/Makefile.extlib
 
 $(LIB_PATH_BAM_UTIL)/Makefiles/Makefile.src:
 	@echo Unable to locate: $(LIB_PATH_BAM_UTIL)/Makefiles/Makefile.src
