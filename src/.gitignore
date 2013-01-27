@@ -1,0 +1,11 @@
+bin/
+lib/
+obj/
+glfMerge/glfMerge
+glfMultiples/glfMultiples
+infoCollector/infoCollector
+libMach/libMach.a
+libVcf/libVcf.a
+thunderVCF/thunderVCF
+vcfCooker/vcfCooker
+vcfPileup/vcfPileup
