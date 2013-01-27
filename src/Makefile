@@ -1,6 +1,7 @@
 include Makefiles/Makefile.include
 
-EXES = samtools-hybrid glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF
+STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF
+EXES = samtools-hybrid $(STAT_GEN_EXES)
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)
 #SUBDIRS=glfMerge glfMultiples libStatGen vcfPileup samtools-hybrid infoCollector vcfCooker
@@ -22,6 +23,7 @@ profile: TARGET = profile
 test: TARGET = test
 clean: TARGET = clean
 install: TARGET = install
+samtools-hybrid: TARGET = all
 
 all test opt debug profile: $(SUBDIRS)
 
@@ -54,7 +56,7 @@ clean: $(SUBDIRS)
 	rm -rf lib
 
 # binaries depends on libStatGen
-$(EXES): libStatGen
+$(STAT_GEN_EXES): libStatGen
 
 vcfCooker thunderVCF infoCollector: libVcf
 
@@ -64,6 +66,7 @@ $(EXES):
 	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
 	mkdir --p bin/
 	cd bin/; ln -s ../$@/bin/$@ $@; cd ..
+
 
 $(LIBS): 
 	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
