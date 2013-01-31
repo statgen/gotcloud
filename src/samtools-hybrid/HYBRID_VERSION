@@ -1,0 +1,58 @@
+
+This hybrid version of samtools is essentially samtools version 
+0.1.7a (r510), except the 0.1.7a bgzf logic and "calmd" functionality 
+have been replaced with the bgzf and "calmd" from samtools revision r983. 
+It was originally version 0.1.12a (r862), but has since been upgraded
+to r983 to bring in the enhanced BAQ logic.
+
+The purpose is to provide in one executable Heng Li's BAQ base 
+call quality score adjustment functionality from "calmd", as well 
+as to output valid .glf format when using 'samtools pileup -g'.  
+This hybrid version does not provide the samtools "mpileup" SNP 
+calling capability, nor the "idxstats" and "reheader" capabilities 
+that are present in the full version 0.1.12a and later.
+
+Updated files:
+   bamtk.c        - updated PACKAGE_VERSION to read "0.1.7-hybrid (r510 + r983)"
+                    updated the description for calmd
+   bam_md.c       - replaced with the version from r983
+                    and added -C to calmd usage note
+                    but hand modified to remove the definition of 
+                    bam_nt16_nt4_table since in this version it is defined in
+                    bam_maqcns.c
+   kprobaln.h     - added the version from r983
+   kprobaln.c     - added the version from r983
+   Makefile       - updated to:
+                       include kprobaln.o
+                       name the executable samtools-hybrid instead of samtools
+   ChangeLog      - replaced with the version from r983
+   NEWS           - replaced with the version from r983
+   HYBRID_VERSION - new file describing the changes for this version.
+   
+Additional Updates:
+   faidx.c        - updated to the version from r983
+                   (the old version failed to compile due to an
+                    include that was removed from khash.h)
+   
+
+A previous purpose of this hybrid version was to include the latest version of
+the logic used in the StatGen library, while still supporting 'pileup -g'.
+
+The StatGen Library used bgzf from samtools for reading and writing files 
+in that format.  The bgzf logic uses the following files:
+   bgzf.h         - updated to the version from r983
+   bgzf.c         - updated to the version from r983
+   khash.h        - updated to the version from  r983
+   knetfile.h     - has not changed between 0.1.7a and r983
+   knetfile.c     - updated to the version from r983
+These files should be kept up to date with the latest version of samtools 
+so the latest set of updates are included by the StatGen library.
+
+The StatGen Library also used bam_reg2bin from bam.h.  Since the method 
+was not changed between 0.1.7a and 0.1.12a, no updates were made to the 
+0.1.7a version of bam.h.
+   bam.h   bam_reg2bin
+
+Mary Kate Trost
+March 9, 2011
+University of Michigan
