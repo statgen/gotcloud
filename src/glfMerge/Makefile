@@ -3,7 +3,7 @@ TOOLBASE =
 SRCONLY = Main.cpp
 USER_INCLUDES = -I../include/
 OBJDIR = obj
-BINDIR=.
+BINDIR=bin
 
 VERSION=1.0.0
 DATE=$(shell date)

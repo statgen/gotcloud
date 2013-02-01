@@ -146,15 +146,27 @@ void GenotypeLikelihood::GetFemalePriors(double * priors, double freq)
    }
 
 double GenotypeLikelihood::OptimizeFrequency()
-   {
-   a = 0.00001; fa = f(a);
-   b = 0.4; fb = f(b);
-   c = 0.99999; fc = f(c);
+{
+    if ( n < 1000 )
+    {
+        a = 0.000001; fa = f(a);
+        b = 0.4; fb = f(b);
+        c = 0.99999; fc = f(c);
 
-   Brent(0.0001);
-
-   return min;
+        Brent(0.0001);
     }
+    else
+    {
+        a = 0.001/n; fa = f(a);
+        b = 0.4; fb = f(b);
+        c = 0.99999; fc = f(c);
+        
+        Brent(0.01/n);
+    }
+
+    return min;
+}
+
 
 FilterLikelihood::FilterLikelihood(int count, glfHandler * glfPointers) :
          GenotypeLikelihood(count, glfPointers)

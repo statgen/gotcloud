@@ -42,6 +42,7 @@ int main(int argc, char ** argv)
    bool bRecipesSubset = false;
 
    bool bFiltOnlySubset = false;
+   bool bMonoSubset = false;
 
    String sInputVcf, sInputBfile, sInputBed, sInputBim, sInputFam, sInputSubset;
    String sFasta("/data/local/ref/karma.ref/human.g1k.v37.fa");
@@ -50,6 +51,8 @@ int main(int argc, char ** argv)
 
    int nMinGQ = 0;
    int nMinGD = 0;
+   int qGeno = 0;
+   int nPrintUnit = 10000;
 
    //bool bMergeGeno = false;
    //int nMergeWay = 0;
@@ -78,15 +81,28 @@ int main(int argc, char ** argv)
    int nMinRBZ = INT_MIN;
    int nMaxCBR = 100;
    int nMinCBR = -100;
+   int nMaxQBR = 100;
+   int nMinQBR = -100;
    int nMaxCBZ = INT_MAX;
    int nMaxCSR = 100;
    int nMinCSR = -100;
    int nMaxIOZ = INT_MAX;
+   int nMinIOR = INT_MIN;
    int nMaxIOR = INT_MAX;
    int nMaxAOZ = INT_MAX;
    int nMaxAOI = INT_MAX;
    int nMaxMQ0 = 100;
+   int nMaxMQ10 = 100;
    int nMaxMQ20 = 100;
+   int nMinFIC = INT_MIN;
+   int nMinABE = -100;
+   int nMaxABE = 100;
+   int nMinMBR = -100;
+   int nMaxMBR = 100;
+   int nMaxLQR = 100;
+   int nMinABZ = INT_MIN;
+   int nMaxABZ = INT_MAX;
+   int nMaxBCS = INT_MAX;
 
    String sIndelVcf;
 
@@ -121,10 +137,13 @@ int main(int argc, char ** argv)
 
      LONG_PARAMETER_GROUP("Subsetting options")
      LONG_STRINGPARAMETER("in-subset",&sInputSubset)
+     LONG_PARAMETER("mono-subset",&bMonoSubset)
      LONG_PARAMETER("filt-only-subset",&bFiltOnlySubset)
 
      LONG_PARAMETER_GROUP("Output Options")
      LONG_STRINGPARAMETER("out",&sOut)
+     LONG_INTPARAMETER("qGeno",&qGeno)
+     LONG_INTPARAMETER("print-every",&nPrintUnit)
 
      LONG_PARAMETER_GROUP("Output compression Options")
      EXCLUSIVE_PARAMETER("plain",&bOutPlain)
@@ -147,7 +166,7 @@ int main(int argc, char ** argv)
      LONG_INTPARAMETER("minMQ",&nMinMQ)
      LONG_INTPARAMETER("maxDP",&nMaxDP)
      LONG_INTPARAMETER("minDP",&nMinDP)
-     LONG_INTPARAMETER("maxAB",&nMaxAB)
+     LONG_INTPARAMETER("maxABL",&nMaxAB)
      LONG_INTPARAMETER("winFFRQ",&nWinFFRQ)
      LONG_INTPARAMETER("maxFFRQ",&nMaxFFRQ)
      LONG_INTPARAMETER("minNS",&nMinNS)
@@ -160,6 +179,8 @@ int main(int argc, char ** argv)
      LONG_INTPARAMETER("minSTZ",&nMinSTZ)
      LONG_INTPARAMETER("maxCBR",&nMaxCBR)
      LONG_INTPARAMETER("minCBR",&nMinCBR)
+     LONG_INTPARAMETER("maxQBR",&nMaxQBR)
+     LONG_INTPARAMETER("minQBR",&nMinQBR)
      LONG_INTPARAMETER("maxCBZ",&nMaxCBZ)
      LONG_INTPARAMETER("maxCSR",&nMaxCSR)
      LONG_INTPARAMETER("minCSR",&nMinCSR)
@@ -168,11 +189,22 @@ int main(int argc, char ** argv)
      LONG_INTPARAMETER("maxRBZ",&nMaxRBZ)
      LONG_INTPARAMETER("minRBZ",&nMinRBZ)
      LONG_INTPARAMETER("maxIOZ",&nMaxIOZ)
+     LONG_INTPARAMETER("minIOR",&nMinIOR)
      LONG_INTPARAMETER("maxIOR",&nMaxIOR)
      LONG_INTPARAMETER("maxAOZ",&nMaxAOZ)
      LONG_INTPARAMETER("maxAOI",&nMaxAOI)
      LONG_INTPARAMETER("maxMQ0",&nMaxMQ0)
+     LONG_INTPARAMETER("maxMQ10",&nMaxMQ10)
      LONG_INTPARAMETER("maxMQ20",&nMaxMQ20)
+     LONG_INTPARAMETER("minFIC",&nMinFIC)
+     LONG_INTPARAMETER("minABE",&nMinABE)
+     LONG_INTPARAMETER("maxABE",&nMaxABE)
+     LONG_INTPARAMETER("maxLQR",&nMaxLQR)
+     LONG_INTPARAMETER("minMBR",&nMinMBR)
+     LONG_INTPARAMETER("maxMBR",&nMaxMBR)
+     LONG_INTPARAMETER("minABZ",&nMinABZ)
+     LONG_INTPARAMETER("maxABZ",&nMaxABZ)
+     LONG_INTPARAMETER("maxBCS",&nMaxBCS)
      LONG_PARAMETER("keepFilter",&bKeepFilter)
    END_LONG_PARAMETERS();
 
@@ -432,6 +464,18 @@ int main(int argc, char ** argv)
 	 filterThres.push_back(static_cast<double>(nMinCBR)/100.);
 	 filterNames.Add(String("cbr")+nMinCBR);
        }
+       if ( nMaxQBR < 100 ) {
+	 filterKeys.Add("QBR");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxQBR)/100.);
+	 filterNames.Add(String("QBR")+nMaxQBR);
+       }
+       if ( nMinQBR > -100 ) {
+	 filterKeys.Add("QBR");
+	 filterMinMax.push_back(true);
+	 filterThres.push_back(static_cast<double>(nMinQBR)/100.);
+	 filterNames.Add(String("qbr")+nMinQBR);
+       }
        if ( nMaxCSR < 100 ) {
 	 filterKeys.Add("CSR");
 	 filterMinMax.push_back(false);
@@ -449,6 +493,12 @@ int main(int argc, char ** argv)
 	 filterMinMax.push_back(false);
 	 filterThres.push_back(static_cast<double>(nMaxIOZ));
 	 filterNames.Add(String("IOZ")+nMaxIOZ);
+       }
+       if ( nMinIOR > INT_MIN ) {
+	 filterKeys.Add("IOR");
+	 filterMinMax.push_back(true);
+	 filterThres.push_back(static_cast<double>(nMinIOR)/100.);
+	 filterNames.Add(String("ior")+nMinIOR);
        }
        if ( nMaxIOR < INT_MAX ) {
 	 filterKeys.Add("IOR");
@@ -468,17 +518,77 @@ int main(int argc, char ** argv)
 	 filterThres.push_back(static_cast<double>(nMaxAOI));
 	 filterNames.Add(String("AOI")+nMaxAOI);
        }
-       if ( nMaxAOI < INT_MAX ) {
+       if ( nMaxMQ0 < 100 ) {
 	 filterKeys.Add("MQ0");
 	 filterMinMax.push_back(false);
-	 filterThres.push_back(static_cast<double>(nMaxMQ0));
-	 filterNames.Add(String("MQ0")+nMaxMQ0);
+	 filterThres.push_back(static_cast<double>(nMaxMQ0)/100.);
+	 filterNames.Add(String("MQ0_")+nMaxMQ0);
        }
-       if ( nMaxAOI < INT_MAX ) {
+       if ( nMaxMQ10 < 100 ) {
+	 filterKeys.Add("MQ10");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxMQ10)/100.);
+	 filterNames.Add(String("MQ10_")+nMaxMQ10);
+       }
+       if ( nMaxMQ20 < 100 ) {
 	 filterKeys.Add("MQ20");
 	 filterMinMax.push_back(false);
-	 filterThres.push_back(static_cast<double>(nMaxMQ20));
-	 filterNames.Add(String("MQ20")+nMaxMQ20);
+	 filterThres.push_back(static_cast<double>(nMaxMQ20)/100.);
+	 filterNames.Add(String("MQ20_")+nMaxMQ20);
+       }
+       if ( nMinFIC > INT_MIN ) {
+	 filterKeys.Add("FIC");
+	 filterMinMax.push_back(true);
+	 filterThres.push_back(static_cast<double>(nMinFIC)/100.);
+	 filterNames.Add(String("fic")+nMinFIC);
+       }
+       if ( nMaxLQR < 100 ) {
+	 filterKeys.Add("LQR");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxLQR)/100.);
+	 filterNames.Add(String("LQR")+nMaxLQR);
+       }
+       if ( nMaxABE < 100 ) {
+	 filterKeys.Add("ABE");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxABE)/100.);
+	 filterNames.Add(String("ABE")+nMaxABE);
+       }
+       if ( nMinABE > -100 ) {
+	 filterKeys.Add("ABE");
+	 filterMinMax.push_back(true);
+	 filterThres.push_back(static_cast<double>(nMinABE)/100.);
+	 filterNames.Add(String("abe")+nMinABE);
+       }
+       if ( nMaxMBR < 100 ) {
+	 filterKeys.Add("MBR");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxMBR)/100.);
+	 filterNames.Add(String("MBR")+nMaxMBR);
+       }
+       if ( nMinMBR > -100 ) {
+	 filterKeys.Add("MBR");
+	 filterMinMax.push_back(true);
+	 filterThres.push_back(static_cast<double>(nMinMBR)/100.);
+	 filterNames.Add(String("mbr")+nMinMBR);
+       }
+       if ( nMaxABZ < INT_MAX ) {
+	 filterKeys.Add("ABZ");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxABZ));
+	 filterNames.Add(String("ABZ")+nMaxABZ);
+       }
+       if ( nMinABZ > INT_MIN ) {
+	 filterKeys.Add("ABZ");
+	 filterMinMax.push_back(true);
+	 filterThres.push_back(static_cast<double>(nMinABZ));
+	 filterNames.Add(String("abz")+nMinABZ);
+       }
+       if ( nMaxBCS < INT_MAX ) {
+	 filterKeys.Add("BCS");
+	 filterMinMax.push_back(false);
+	 filterThres.push_back(static_cast<double>(nMaxBCS));
+	 filterNames.Add(String("BCS")+nMaxBCS);
        }
        if ( ! sIndelVcf.IsEmpty() ) {
 	 pIndelVcf = new VcfFile();
@@ -616,7 +726,7 @@ int main(int argc, char ** argv)
 
 	   // check if sample exists in the VCF
 	   if ( name2SampleInd.find(ind) == name2SampleInd.end() ) {
-	     Logger::gLogger->error("Cannot recognize individual ID %s",ind.c_str());
+	     Logger::gLogger->warning("Cannot recognize individual ID %s. Skipping..",ind.c_str());
 	   }
 
 	   // iterate thru subset names
@@ -681,7 +791,9 @@ int main(int argc, char ** argv)
        for( int cnt = 0; pVcf->iterateMarker(); ++cnt ) {
 	 VcfMarker* pMarker = pVcf->getLastMarker();
 
-	 //Logger::gLogger->writeLog("%s:%d",pMarker->sChrom.c_str(),pMarker->nPos);
+	 if ( ( nPrintUnit > 0 ) && ( (cnt+1) % nPrintUnit == 0 ) ) {
+	   Logger::gLogger->writeLog("Processing %d markers at %s:%d",cnt+1,pMarker->sChrom.c_str(),pMarker->nPos);
+	 }
 
 	 // Apply filters
 	 if ( bRecipesFilter ) {
@@ -695,7 +807,7 @@ int main(int argc, char ** argv)
 	   }
 
 	   // QUAL filter
-	   if ( pMarker->fQual < nMinQUAL ) {
+	   if ( ( nMinQUAL > 0 ) && ( pMarker->fQual < nMinQUAL ) ) {
 	     pMarker->asFilters.Add(String("q")+nMinQUAL);
 	   }
 
@@ -760,7 +872,7 @@ int main(int argc, char ** argv)
 	 }
 
 	 if ( bRecipesWriteVcf ) {
-	   pMarker->printVCFMarker(oFile,false);
+	   pMarker->printVCFMarker(oFile,false,qGeno);
 	 }
 	 else if ( bRecipesWriteBed ) {
 	   pMarker->printBEDMarker(oFile,oBimFile,false);
@@ -776,7 +888,7 @@ int main(int argc, char ** argv)
 
 	   if ( filterPass ) {
 	     for(int i=0; i < (int)subsetNames.size(); ++i) {
-	       pMarker->printVCFMarkerSubset(subsetOutFiles[i],subsetIndices[i]);
+	       pMarker->printVCFMarkerSubset(subsetOutFiles[i],subsetIndices[i],bMonoSubset);
 	     }
 	   }
 	 }

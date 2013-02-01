@@ -608,7 +608,16 @@ int main(int argc, char ** argv)
          {
          if (glf[i].isStub) continue;
 
-         glf[i].NextSection();
+         if ( !glf[i].NextSection() ) {
+	   warning("GLF file '%s' appears empty ...\n",
+		   //"    File '%s' section %s with %d entries ...\n",
+                ped.count ? (const char *) ped[i].strings[0] : argv[i],
+                ped.count ? (const char *) ped[i].strings[0] : argv[i],
+		    (const char *) glf[i].label, glf[i].maxPosition);
+	   glf[i].isStub = true;
+	   glf[i].position = glf[i].maxPosition = glf[firstGlf].maxPosition;
+	   continue;
+	 }
 
          if (glf[firstGlf].maxPosition != glf[i].maxPosition || glf[firstGlf].label != glf[i].label)
             {

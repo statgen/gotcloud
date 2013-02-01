@@ -138,15 +138,15 @@ class VcfMarker {
   void setAlts(const String& s);
   void setQual(const String& s);
   void setFilters(const String& s);
-  void setInfo(const String& s, bool upgrade);
+  void setInfo(const String& s, bool upgrade, bool updateAC);
   void setFormat(const String& s, bool upgrade);
   void setSampleSize(int newsize, bool parseGenotypes, bool parseDosages, bool parseValue);
   void setDosage(int sampleIndex, float dosage);
   void setGenotype(int sampleIndex, unsigned short genotype);
   void setSample(int sampleIndex, const String& sampleValue, bool parseGenotypes, bool parseDosages, bool parseValues, int minGD, int minGQ);
   // print the marker info in VCF or BED format
-  void printVCFMarker(IFILE oFile, bool siteOnly);
-  void printVCFMarkerSubset(IFILE oFile, std::vector<int>& subsetIndices);
+  void printVCFMarker(IFILE oFile, bool siteOnly, int qGeno = 0);
+  void printVCFMarkerSubset(IFILE oFile, std::vector<int>& subsetIndices, bool includeMono = false);
   void printBEDMarker(IFILE oBedFile, IFILE oBimFile, bool siteOnly);
 
   ////////////////////////////////////////////////////////////////////////////////////////

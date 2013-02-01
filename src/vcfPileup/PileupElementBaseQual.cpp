@@ -4,7 +4,6 @@
 #include <math.h>
 
 #include "PileupElementBaseQual.h"
-#include "GenomeSequence.h"
 
 PileupElementBaseQual::PileupElementBaseQual()
     : PileupElement(),
@@ -13,11 +12,11 @@ PileupElementBaseQual::PileupElementBaseQual()
       myQualities(NULL),
       myStrands(NULL),
       myCycles(NULL),
+      myReadNameHashes(NULL),
       myGLScores(NULL),
       myAllocatedSize(0),
       myIndex(-1),
       myAddDelAsBase(false),
-      myRefSeq(NULL),
       myVcfOutFile(NULL)
 {
     myAllocatedSize = 1024;
@@ -26,12 +25,14 @@ PileupElementBaseQual::PileupElementBaseQual()
     myQualities = (int8_t*)malloc(myAllocatedSize * sizeof(int8_t));
     myStrands = (char*)malloc(myAllocatedSize + 1);
     myCycles = (int8_t*)malloc(myAllocatedSize * sizeof(int8_t));
+    myReadNameHashes = (uint32_t*)malloc(myAllocatedSize * sizeof(uint32_t));
     myGLScores = (int16_t*)malloc(myAllocatedSize * sizeof(int16_t));
     if((myBases == NULL ) 
     || (myMapQualities == NULL)
     || (myQualities == NULL)
     || (myStrands == NULL)
     || (myCycles == NULL)
+    || (myReadNameHashes == NULL)
     || (myGLScores == NULL))
     {                     
         // TODO, check for malloc failures.
@@ -50,7 +51,6 @@ PileupElementBaseQual::PileupElementBaseQual(bool addDelAsBase)
       myAllocatedSize(0),
       myIndex(-1),
       myAddDelAsBase(addDelAsBase),
-      myRefSeq(NULL),
       myVcfOutFile(NULL)
 {
     myAllocatedSize = 1024;
@@ -60,11 +60,13 @@ PileupElementBaseQual::PileupElementBaseQual(bool addDelAsBase)
     myGLScores = (int16_t*)malloc(myAllocatedSize * sizeof(int16_t));
     myStrands = (char*)malloc(myAllocatedSize + 1);
     myCycles = (int8_t*)malloc(myAllocatedSize * sizeof(int8_t));
+    myReadNameHashes = (uint32_t*)malloc(myAllocatedSize * sizeof(uint32_t));
     if((myBases == NULL ) 
     || (myMapQualities == NULL)
     || (myQualities == NULL)
     || (myStrands == NULL)
     || (myCycles == NULL)
+    || (myReadNameHashes == NULL)
     || (myGLScores == NULL))
     {                     
         // TODO, check for malloc failures.
@@ -82,7 +84,6 @@ PileupElementBaseQual::PileupElementBaseQual(const PileupElementBaseQual& q)
       myGLScores(NULL), 
       myAllocatedSize(0), 
       myIndex(-1),
-      myRefSeq(NULL),
       myVcfOutFile(NULL)
 {                         
     myAllocatedSize = 1024;
@@ -90,6 +91,7 @@ PileupElementBaseQual::PileupElementBaseQual(const PileupElementBaseQual& q)
     myMapQualities = (int8_t*)malloc(myAllocatedSize * sizeof(int8_t));
     myQualities = (int8_t*)malloc(myAllocatedSize * sizeof(int8_t));
     myStrands = (char*)malloc(myAllocatedSize + 1);
+    myReadNameHashes = (uint32_t*)malloc(myAllocatedSize * sizeof(uint32_t));
     myCycles = (int8_t*)malloc(myAllocatedSize * sizeof(int8_t));
     myGLScores = (int16_t*)malloc(myAllocatedSize * sizeof(int16_t));
     myAddDelAsBase = q.myAddDelAsBase;
@@ -98,6 +100,7 @@ PileupElementBaseQual::PileupElementBaseQual(const PileupElementBaseQual& q)
     || (myQualities == NULL)
     || (myStrands == NULL)
     || (myCycles == NULL)
+    || (myReadNameHashes == NULL)
     || (myGLScores == NULL))
     {
         // TODO, check for malloc failures.
@@ -131,6 +134,11 @@ PileupElementBaseQual::~PileupElementBaseQual()
     {
         free(myCycles);
         myCycles = NULL;
+    }
+    if(myReadNameHashes != NULL)
+    {
+        free(myReadNameHashes);
+        myReadNameHashes = NULL;
     }
     if(myGLScores != NULL)
     {
@@ -168,6 +176,7 @@ void PileupElementBaseQual::computeGLScores(int index, int16_t* GLScores, char* 
 
 			if(base!=-1)
 			{
+			  //std::cerr << (int)baseQualities[i] << std::endl;
 				result += myLogGLMatrix[baseQualities[i]][genotype][base];
     		}
     	}
@@ -178,7 +187,10 @@ void PileupElementBaseQual::computeGLScores(int index, int16_t* GLScores, char* 
 
 const char* PileupElementBaseQual::getRefAllele() 
 { 
-	return(myRefAllele.c_str()); 
+  if (myRefAllele.empty() ) {
+    myRefAllele = ".";
+  }
+  return(myRefAllele.c_str()); 
 }
     
 // Add an entry to this pileup element.  
@@ -187,11 +199,11 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
     // Call the base class:
     PileupElement::addEntry(record);
 
-    if(myRefAllele.empty())
-    {
-    	genomeIndex_t markerIndex = (*myRefSeq).getGenomePosition(getChromosome(), static_cast<uint32_t>(getRefPosition()+1));
-        myRefAllele = (*myRefSeq)[markerIndex];
-    }
+    //if(myRefAllele.empty())
+    //{
+    //	genomeIndex_t markerIndex = (*myRefSeq).getGenomePosition(getChromosome(), static_cast<uint32_t>(getRefPosition()+1));
+    //    myRefAllele = (*myRefSeq)[markerIndex];
+    //}
 
     // Increment the index
     ++myIndex;
@@ -239,6 +251,14 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
             return;
         }
         myCycles = tempInt8Buffer; 
+        uint32_t* tempUint32Buffer = (uint32_t*)realloc(myReadNameHashes, myAllocatedSize * 2 * sizeof(uint32_t));
+        if(tempUint32Buffer == NULL)
+        {
+            std::cerr << "Memory Allocation Failure\n";
+            // TODO
+            return;
+        }
+        myReadNameHashes = tempUint32Buffer; 
         int16_t* tempInt16Buffer = (int16_t*)realloc(myGLScores, myAllocatedSize * 2 * sizeof(int16_t));
         if(tempInt8Buffer == NULL)
         {
@@ -278,6 +298,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         myQualities[myIndex] = qual;
         myStrands[myIndex] = strand;
         myCycles[myIndex] = cycle;
+	myReadNameHashes[myIndex] = hash16(record.getReadName());
     }
     else if(myAddDelAsBase)
     {
@@ -288,6 +309,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         myQualities[myIndex] = -1;
         myStrands[myIndex] = strand;
         myCycles[myIndex] = -1;
+	myReadNameHashes[myIndex] = hash16(record.getReadName());
     }
     else
     {
@@ -302,6 +324,7 @@ void PileupElementBaseQual::analyze()
 {
     if(getRefPosition() != UNSET_POSITION && myIndex != -1)
     {
+
     	char tempCStr[11];
     	std::string tempStr;
     	tempStr.append(getChromosome());
@@ -311,13 +334,13 @@ void PileupElementBaseQual::analyze()
     	tempStr.append("\t.\t");
     	tempStr.append(getRefAllele());
     	tempStr.append("\t.\t.\t.\t.\t");
-         
-        tempStr.append("N:BASE:MAPQ:BASEQ:STRAND:CYCLE:GL\t");
+
+        tempStr.append("N:BASE:MAPQ:BASEQ:STRAND:CYCLE:RHASH:PL\t");
         
         sprintf(tempCStr, "%d", myIndex+1 );
     	tempStr.append(tempCStr);
     	tempStr.append(":");
-        
+
         sprintf(tempCStr, "%c", myBases[0]);
         tempStr.append(tempCStr);
         for (int i=1; i<=myIndex; ++i)
@@ -354,17 +377,26 @@ void PileupElementBaseQual::analyze()
         }
         tempStr.append(":");
  
-	    sprintf(tempCStr, "%d", myCycles[0]);
-	    tempStr.append(tempCStr); 
+	sprintf(tempCStr, "%d", myCycles[0]);
+	tempStr.append(tempCStr); 
         for (int i=1; i<=myIndex; ++i)
         {
         	sprintf(tempCStr, ",%d", myCycles[i]);
 	        tempStr.append(tempCStr);        	
         }
         tempStr.append(":");
-         
+
+	sprintf(tempCStr, "%d", myReadNameHashes[0]);
+	tempStr.append(tempCStr); 
+        for (int i=1; i<=myIndex; ++i)
+        {
+        	sprintf(tempCStr, ",%d", myReadNameHashes[i]);
+	        tempStr.append(tempCStr);        	
+        }
+        tempStr.append(":");
+
         computeGLScores(myIndex, myGLScores, myBases, myQualities);
-        
+
         sprintf(tempCStr, "%d", myGLScores[0]);
 	    tempStr.append(tempCStr);    
         for (int i=1; i<=9; ++i)
@@ -374,6 +406,7 @@ void PileupElementBaseQual::analyze()
         }
         
         tempStr.append("\n");  	
+
        	myVcfOutFile->ifwrite(tempStr.c_str(), tempStr.length());
     }
     
@@ -391,7 +424,7 @@ void PileupElementBaseQual::reset(int refPosition)
 }
 
 
-void PileupElementBaseQual::reset(int refPosition, GenomeSequence* refSeq, InputFile* vcfOutFile, bool addDelAsBase, double*** logGLMatrix)
+void PileupElementBaseQual::reset(int refPosition, InputFile* vcfOutFile, bool addDelAsBase, double*** logGLMatrix)
 {
 	// Assign pointer to myLogGLMatrix
 	if (myLogGLMatrix == NULL)
@@ -400,10 +433,10 @@ void PileupElementBaseQual::reset(int refPosition, GenomeSequence* refSeq, Input
 	}
 		
 	// Assign pointer to myRefSeq
-	if (myRefSeq == NULL)
-	{
-		myRefSeq = refSeq;
-	}
+	//if (myRefSeq == NULL)
+	//{
+	//	myRefSeq = refSeq;
+	//}
 
 	// Assign pointer to myVcfOutFile
 	if (myVcfOutFile == NULL)
@@ -419,4 +452,3 @@ void PileupElementBaseQual::reset(int refPosition, GenomeSequence* refSeq, Input
 
     myIndex = -1;
 }
-

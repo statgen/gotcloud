@@ -62,13 +62,23 @@ vcfCooker thunderVCF infoCollector: libVcf
 
 thunderVCF: libMach
 
-$(EXES): 
+$(subst bamUtil,,$(STAT_GEN_EXES)): 
 	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
 	mkdir --p bin/
-	cd bin/; ln -s ../$@/bin/$@ $@; cd ..
+	cd bin/; ln -fs ../$@/bin/$@ $@; cd ..
+
+bamUtil: 
+	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
+	mkdir --p bin/
+	cd bin/; ln -fs ../$@/bin/bam $@; cd ..
+
+samtools-hybrid: 
+	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
+	mkdir --p bin/
+	cd bin/; ln -fs ../$@/$@ $@; cd ..
 
 
 $(LIBS): 
 	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
 	mkdir --p lib/
-	cd lib/; ln -s ../$@/$@.a $@.a; cd ..
+	cd lib/; ln -fs ../$@/$@.a $@.a; cd ..

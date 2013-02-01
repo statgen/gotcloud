@@ -450,6 +450,22 @@ void BedFile::openForRead(const char* bedFile, const char* bimFile, const char* 
       throw VcfFileException("Failed opening index file of the reference.");
     }
   }
+
+  // set a default MetaLines
+  asMetaKeys.Add("fileformat");
+  asMetaValues.Add("VCFv4.0");
+  asMetaKeys.Add("INFO");
+  asMetaValues.Add("<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">");
+  asMetaKeys.Add("INFO");
+  asMetaValues.Add("<ID=AC,Number=.,Type=Integer,Description=\"Allele Count\">");
+  asMetaKeys.Add("INFO");
+  asMetaValues.Add("<ID=AN,Number=1,Type=Integer,Description=\"Number of Alleles With Data\">");
+  asMetaKeys.Add("INFO");
+  asMetaValues.Add("<ID=AF,Number=.,Type=Float,Description=\"Allele Frequency\">");
+  asMetaKeys.Add("FORMAT");
+  asMetaValues.Add("<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+  asMetaKeys.Add("FORMAT");
+  asMetaValues.Add("<ID=PL,Number=.,Type=Integer,Description=\"Phred-scale Genotype Likelihood\">");
 }
 
 
@@ -503,7 +519,7 @@ bool VcfFile::iterateMarker() {
 	pMarker->setSample(i-offset, lineTokens[i], bParseGenotypes, bParseDosages, bParseValues, nMinGD, nMinGQ);
       }
     }
-    pMarker->setInfo(lineTokens[7], bUpgrade);
+    pMarker->setInfo(lineTokens[7], bUpgrade, ( ( nMinGD > 1 ) || ( nMinGQ > 0 ) ) );
   }
   catch (VcfFileException exc) {
     // add the line number to the error message
@@ -556,7 +572,7 @@ void VcfMarker::setFilters(const String& s) {
   asFilters.ReplaceColumns(s,';');
 }
 
-void VcfMarker::setInfo(const String& s, bool upgrade) {
+void VcfMarker::setInfo(const String& s, bool upgrade, bool updateAC) {
   if ( s[0] == '.' ) {
     if ( asInfoKeys.Length() > 0 ) {
       asInfoKeys.Clear();
@@ -777,6 +793,69 @@ void VcfMarker::setInfo(const String& s, bool upgrade) {
       asInfoValues.Add(sAB);
     }
   }
+  else if ( updateAC ) {
+    int ACindex = -1;
+    int ANindex = -1;
+    int NSindex = -1;
+
+    ACindex = asInfoKeys.Find("AC");
+    ANindex = asInfoKeys.Find("AN");
+    NSindex = asInfoKeys.Find("NS");
+
+    int AN = 0; 
+    int NS = 0;
+    int ACs[3] = {0,0,0};
+    for(int j=0; j < (int)vnSampleGenotypes.size(); ++j) {
+      if ( vnSampleGenotypes[j] != 0xffff ) {
+	AN += 2;
+	++NS;
+	++ACs[(vnSampleGenotypes[j] & 0x7f00) >> 8];
+	if ( (vnSampleGenotypes[j] & 0x007f) != 0x007f ) {
+	  ++ACs[(vnSampleGenotypes[j] & 0x007f)];
+	}
+      }
+    }
+
+    if ( ANindex >= 0 ) {
+      asInfoValues[ANindex].printf("%d",AN);
+    }
+    else { //if ( AN > 0 ) {
+      String tmp;
+      tmp.printf("%d",AN);
+      asInfoKeys.Add("AN");
+      asInfoValues.Add(tmp);
+    }
+
+    if ( NSindex >= 0 ) {
+      asInfoValues[NSindex].printf("%d",NS);
+    }
+    else { //if ( NS > 0 ) {
+      String tmp;
+      tmp.printf("%d",NS);
+      asInfoKeys.Add("NS");
+      asInfoValues.Add(tmp);
+    }
+    
+    if ( ACindex >= 0 ) {
+      if ( ACs[2] == 0 ) {
+      asInfoValues[ACindex].printf("%d",ACs[1]);
+    }
+      else {
+	asInfoValues[ACindex].printf("%d,%d",ACs[1],ACs[2]);
+      }
+    }
+    else { // if ( ACs[0]+ACs[1]+ACs[2] > 0 ) {
+      String tmp;
+      if ( ACs[2] == 0 ) {
+	tmp.printf("%d",ACs[1]);
+      }
+      else {
+	tmp.printf("%d,%d",ACs[1],ACs[2]);
+      }
+      asInfoKeys.Add("AC");
+      asInfoValues.Add(tmp);
+    }
+  }
 }
 
 void VcfMarker::setFormat(const String& s, bool upgrade) {
@@ -834,8 +913,9 @@ void VcfMarker::setSample(int sampleIndex, const String& sampleValue, bool parse
 
   if ( (sampleValue.Compare("./.") == 0) || ( sampleValue.Compare(".") == 0 ) ) {
     if ( parseValues ) {
-      for(int i=0; i < asFormatKeys.Length(); ++i) {
-	asSampleValues[i + asFormatKeys.Length() * sampleIndex] = ".";
+      asSampleValues[asFormatKeys.Length() * sampleIndex] = "./.";
+      for(int i=1; i < asFormatKeys.Length(); ++i) {
+	asSampleValues[i + asFormatKeys.Length() * sampleIndex] = "";
       }
     }
     if ( parseGenotypes ) {
@@ -857,7 +937,7 @@ void VcfMarker::setSample(int sampleIndex, const String& sampleValue, bool parse
       }
     }
     if ( parseGenotypes ) {
-      if ( ( GTindex < 0 ) || ( tmpTokens[GTindex][0] == '.' ) ) {
+      if ( ( GTindex < 0 ) || ( tmpTokens[GTindex][0] == '.' ) || ( ( tmpTokens[GTindex].Length() > 2 ) && ( tmpTokens[GTindex][2] == '.' ) ) ) {
 	// missing - 0xfff
 	vnSampleGenotypes[sampleIndex] = 0xffff;
       }
@@ -876,6 +956,10 @@ void VcfMarker::setSample(int sampleIndex, const String& sampleValue, bool parse
 
 	if ( ( GD < minGD ) || ( GQ < minGQ ) ) {
 	  vnSampleGenotypes[sampleIndex] = 0xffff;
+	  asSampleValues[asFormatKeys.Length() * sampleIndex] = "./.";
+	  for(int i=1; i < asFormatKeys.Length(); ++i) {
+	    asSampleValues[i + asFormatKeys.Length() * sampleIndex] = "";
+	  }
 	}
 	else {
 	  int sepPos = tmpTokens[GTindex].Find('|');
@@ -890,7 +974,7 @@ void VcfMarker::setSample(int sampleIndex, const String& sampleValue, bool parse
 	    if ( sepPos < 0 ) {
 	      // allow haploid only for non-autosomal chromosomes
 	      if ( VcfHelper::chromName2Num(sChrom) < 23 ) {
-		throw VcfFileException("Cannot parse the genotype field " + tmpTokens[GTindex]);
+		throw VcfFileException("Cannot parse the genotype field " + tmpTokens[GTindex] + " at chromosome " + sChrom);
 	      }
 	    }
 	  }
@@ -1032,14 +1116,14 @@ bool BedFile::iterateMarker() {
 	AN += 2;
 	++NS;
 	break;
-      case 1:
-	pMarker->setGenotype(i,0xffff); // missing
-	break;
       case 2: // 0/1
 	pMarker->setGenotype(i,0x0001); // 0/1
 	++AC;
 	AN += 2;
 	++NS;
+	break;
+      case 1: // Missing
+	pMarker->setGenotype(i,0xffff); // missing
 	break;
       case 3:
 	if ( bRefIsAllele1 ) {
@@ -1057,8 +1141,8 @@ bool BedFile::iterateMarker() {
       }
     }
 
-    pMarker->setQual(".");
-    pMarker->setFilters(".");
+    pMarker->setQual("100");
+    pMarker->setFilters("PASS");
 
     String info;
     if ( AN > 0 ) {
@@ -1067,7 +1151,7 @@ bool BedFile::iterateMarker() {
     else {
       info.printf("NS=%d;AC=%d;AN=%d",NS,AC,AN);
     }
-    pMarker->setInfo(info, false);
+    pMarker->setInfo(info, false, false);
 
     return true;
   }
@@ -1218,10 +1302,12 @@ void VcfFile::printBEDHeader(IFILE oBedFile, IFILE oFamFile) {
 
 void VcfHelper::printArrayJoin(IFILE oFile, const StringArray& arr, const char* sep, const char* empty, int start, int end) {
   for(int i=start; i < end; ++i) {
-    if ( i > start ) {
-      ifprintf(oFile,"%s",sep);
+    if ( arr[i].Length() > 0 ) {
+      if ( i > start ) {
+	ifprintf(oFile,"%s",sep);
+      }
+      ifprintf(oFile,"%s",arr[i].c_str());
     }
-    ifprintf(oFile,"%s",arr[i].c_str());
   }
 }
 
@@ -1259,7 +1345,8 @@ void VcfHelper::printArrayDoubleJoin(IFILE oFile, const StringArray& arr1, const
   }
 }
 
-void VcfMarker::printVCFMarker(IFILE oFile, bool siteOnly) {
+// baseQ assume that 2 
+void VcfMarker::printVCFMarker(IFILE oFile, bool siteOnly, int qGeno) {
   String line;
 
   ifprintf(oFile,"%s",sChrom.c_str());
@@ -1308,18 +1395,29 @@ void VcfMarker::printVCFMarker(IFILE oFile, bool siteOnly) {
 	VcfHelper::printArrayJoin(oFile, asSampleValues, ":", ".", i*asFormatKeys.Length(), (i+1)*asFormatKeys.Length());
       }
     }
-    else if ( vnSampleGenotypes.size() > 0 ) {
-      ifprintf(oFile,"\tGT",line.c_str());
+    else if ( vnSampleGenotypes.size() > 0 ) { // converting from BED to VCF
+      ifprintf(oFile,"\tGT");
+      if ( qGeno > 0 ) ifprintf(oFile,":PL");
       for(int i=0; i < (int)vnSampleGenotypes.size(); ++i) {
 	if ( vnSampleGenotypes[i] == 0xffff ) {
 	  ifprintf(oFile,"\t./.");
+	  if ( qGeno > 0 ) ifprintf(oFile,":0,0,0");
 	}
 	// special case for haploid
 	else if ( (vnSampleGenotypes[i] & 0x00ff) == 0x00ff ) {
-	  ifprintf(oFile,"\t%d",(vnSampleGenotypes[i] & 0xff00) >> 8);
+	  ifprintf(oFile,"\t%d",(vnSampleGenotypes[i] & 0x7f00) >> 8);
+	  if ( qGeno > 0 ) ifprintf(oFile,":0,0,0");
 	}
 	else {
-	  ifprintf(oFile,"\t%d/%d",((vnSampleGenotypes[i] & 0xff00) >> 8),(vnSampleGenotypes[i] & 0xff));
+	  int g1 = (int)((vnSampleGenotypes[i] & 0x7f00) >> 8);
+	  int g2 = (int)(vnSampleGenotypes[i] & 0x7f);
+	  ifprintf(oFile,"\t%d/%d",g1,g2);
+	  if ( qGeno > 0 ) {
+	    ifprintf(oFile,":");
+	    if ( g1 + g2 == 0 ) ifprintf(oFile,"%d,%d,%d",0,qGeno,qGeno+qGeno);
+	    else if ( g1 + g2 == 1 ) ifprintf(oFile,"%d,%d,%d",qGeno,0,qGeno);
+	    else ifprintf(oFile,"%d,%d,%d",qGeno+qGeno,qGeno,0);
+	  }
 	}
       }
     }
@@ -1327,39 +1425,54 @@ void VcfMarker::printVCFMarker(IFILE oFile, bool siteOnly) {
   ifprintf(oFile,"\n");
 }
 
-void VcfMarker::printVCFMarkerSubset(IFILE oFile, std::vector<int>& subsetIndices) {
+void VcfMarker::printVCFMarkerSubset(IFILE oFile, std::vector<int>& subsetIndices, bool includeMono) {
   String line;
+  //fprintf(stderr,"%s\n",(includeMono ? "foo" : "bar"));
 
   int ACindex = -1;
   int ANindex = -1;
+  int NSindex = -1;
 
   ACindex = asInfoKeys.Find("AC");
   ANindex = asInfoKeys.Find("AN");
+  NSindex = asInfoKeys.Find("NS");
 
   int AN = 0; 
+  int NS = 0;
   int ACs[3] = {0,0,0};
   for(int j=0; j < (int)subsetIndices.size(); ++j) {
     int i = subsetIndices[j];
-    if ( vnSampleGenotypes[i] != 0xffff ) {
+    if ( vnSampleGenotypes[i] != 0xffff ) { // not a missing genotype
       AN += 2;
-      ++ACs[(vnSampleGenotypes[i] & 0xff00) >> 8];
-      if ( (vnSampleGenotypes[i] & 0x00ff) != 0x00ff ) {
-	++ACs[(vnSampleGenotypes[i] & 0x00ff)];
+      ++NS;
+      ++ACs[(vnSampleGenotypes[i] & 0x7f00) >> 8];
+      if ( (vnSampleGenotypes[i] & 0x007f) != 0x007f ) {
+	++ACs[(vnSampleGenotypes[i] & 0x007f)];
       }
     }
   }
 
-  if ( ( ACs[1] == 0 ) && ( ACs[2] == 0 ) ) {
+  if ( ( ACs[1] == 0 ) && ( ACs[2] == 0 ) && ( !includeMono ) ) {
     return;
   }
 
   if ( ANindex >= 0 ) {
     asInfoValues[ANindex].printf("%d",AN);
   }
-  else if ( AN > 0 ) {
+  else { //if ( AN > 0 ) {
     String tmp;
     tmp.printf("%d",AN);
     asInfoKeys.Add("AN");
+    asInfoValues.Add(tmp);
+  }
+
+  if ( NSindex >= 0 ) {
+    asInfoValues[NSindex].printf("%d",NS);
+  }
+  else { //if ( NS > 0 ) {
+    String tmp;
+    tmp.printf("%d",NS);
+    asInfoKeys.Add("NS");
     asInfoValues.Add(tmp);
   }
   
@@ -1371,7 +1484,7 @@ void VcfMarker::printVCFMarkerSubset(IFILE oFile, std::vector<int>& subsetIndice
       asInfoValues[ACindex].printf("%d,%d",ACs[1],ACs[2]);
     }
   }
-  else if ( ACs[0]+ACs[1]+ACs[2] > 0 ) {
+  else { // if ( ACs[0]+ACs[1]+ACs[2] > 0 ) {
     String tmp;
     if ( ACs[2] == 0 ) {
       tmp.printf("%d",ACs[1]);
@@ -1437,10 +1550,10 @@ void VcfMarker::printVCFMarkerSubset(IFILE oFile, std::vector<int>& subsetIndice
 	ifprintf(oFile,"\t./.");
       }
       else if ( (vnSampleGenotypes[i] & 0x00ff) == 0x00ff ) {
-	ifprintf(oFile,"\t%d",(vnSampleGenotypes[i] & 0xff00) >> 8);
+	ifprintf(oFile,"\t%d",(vnSampleGenotypes[i] & 0x7f00) >> 8);
       }
       else {
-	ifprintf(oFile,"\t%d/%d",((vnSampleGenotypes[i] & 0xff00) >> 8),(vnSampleGenotypes[i] & 0xff));
+	ifprintf(oFile,"\t%d/%d",((vnSampleGenotypes[i] & 0x7f00) >> 8),(vnSampleGenotypes[i] & 0x007f));
       }
     }
   }

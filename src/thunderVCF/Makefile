@@ -4,7 +4,7 @@ SRCONLY = Main.cpp
 USER_INCLUDES = -I../include/ -I../libVcf/ -I../libMach/
 USER_LIBS = ../lib/libVcf.a ../lib/libMach.a
 OBJDIR=obj
-BINDIR=.
+BINDIR=bin
 
 VERSION=1.0.0
 DATE=$(shell date)

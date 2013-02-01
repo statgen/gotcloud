@@ -11,7 +11,7 @@
 #include <map>
 
 #include "SamFile.h"
-#include "PileupWithGenomeReference.h"
+#include "PileupWithoutGenomeReference.h"
 #include "PileupElementBaseQual.h"
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
@@ -46,22 +46,24 @@ Alignment statistics are written to the VCF file specified, if the file name end
    		std::string version = "0.577";
 		TCLAP::CmdLine cmd(desc, ' ', version);
 		TCLAP::ValueArg<std::string> argInputBAMFileName("b", "bam", "BAM file", true, "", "string");
-		TCLAP::ValueArg<std::string> argRefSeqFileName("r", "reference", "Reference Sequence file", true, "", "string");
+		//TCLAP::ValueArg<std::string> argRefSeqFileName("r", "reference", "Reference Sequence file", true, "", "string");
 		TCLAP::ValueArg<std::string> argInputVCFFileName("i", "inputvcf", "VCF file listing the loci of interest (can be gzipped), bam index file is automatically assumed to be in the same location as the bam file.", false, "", "string");
-		TCLAP::ValueArg<std::string> argOutputVCFFileName("v", "ouputvcf", "VCF file - if the extension is .gz, the written file will be a gzip file, (default is STDOUT)", false, "-", "string");
+		TCLAP::ValueArg<std::string> argOutputVCFFileName("v", "outputvcf", "VCF file - if the extension is .gz, the written file will be a gzip file, (default is STDOUT)", false, "-", "string");
+		TCLAP::ValueArg<int> argWindow("w","window","Window size for pileup (default 1024)", false, 1024, "integer");
 		TCLAP::SwitchArg argAddDelAsBase("d", "adddelasbase", "Adds deletions as base", cmd, false);
 
 		cmd.add(argInputBAMFileName);
-		cmd.add(argRefSeqFileName);
+		//cmd.add(argRefSeqFileName);
 		cmd.add(argInputVCFFileName);
 		cmd.add(argOutputVCFFileName);
+		cmd.add(argWindow);
 		cmd.parse(argc, argv);
 
 		std::cout << "Running gpileup version " << version << std::endl; 
 		std::string inputBAMFileName = argInputBAMFileName.getValue();
 		std::cout << "bam file                : " << inputBAMFileName << std::endl; 
-		std::string refSeqFileName = argRefSeqFileName.getValue();	
-		std::cout << "reference sequence file : " << argRefSeqFileName.getValue() << std::endl; 
+		//std::string refSeqFileName = argRefSeqFileName.getValue();	
+		//std::cout << "reference sequence file : " << argRefSeqFileName.getValue() << std::endl; 
 		std::string inputVCFFileName = argInputVCFFileName.getValue();
 		//if input VCF is detected, look for BAM index file
 		std::string inputBAMIndexFileName = "";
@@ -75,7 +77,7 @@ Alignment statistics are written to the VCF file specified, if the file name end
 			}	
 			std::cout << "bam index file          : " << inputBAMIndexFileName << std::endl; 
 		}
-		std::string outputVCFFileName = argOutputVCFFileName .getValue();
+		std::string outputVCFFileName = argOutputVCFFileName.getValue();
 
 		bool inputVCFFileIsGZipped = false;
 		if (outputVCFFileName.length()>3 && (outputVCFFileName.substr(outputVCFFileName.length()-3, 3) == ".gz"))
@@ -106,16 +108,17 @@ Alignment statistics are written to the VCF file specified, if the file name end
 
 		std::cout << "add deletions as bases  : " << (argAddDelAsBase.getValue()? "yes" : "no") << std::endl; 
 
-		PileupWithGenomeReference<PileupElementBaseQual> pileup(1024, refSeqFileName, argAddDelAsBase.getValue(), inputVCFFileIsGZipped, outputVCFFileIsGZipped);   	
-		
+		PileupWithoutGenomeReference<PileupElementBaseQual> pileup(argWindow.getValue(), argAddDelAsBase.getValue(), inputVCFFileIsGZipped, outputVCFFileIsGZipped);   	
+		//PileupWithoutGenomeReference<PileupElementBaseQual> pileup(1000000, argAddDelAsBase.getValue(), inputVCFFileIsGZipped, outputVCFFileIsGZipped);   	
 		//process file with index    	
 		if (inputVCFFileName != "")
 		{
-    		pileup.processFile(inputBAMFileName, inputBAMIndexFileName, inputVCFFileName, outputVCFFileName);
+		  //fprintf(stderr,"foo\n");
+		  pileup.processFile(inputBAMFileName, inputBAMIndexFileName, inputVCFFileName, outputVCFFileName);
 		}
 		else
 		{
-    		pileup.processFile(inputBAMFileName, outputVCFFileName);
+		  pileup.processFile(inputBAMFileName, outputVCFFileName);
 		}
 	}
 	catch (TCLAP::ArgException &e) 

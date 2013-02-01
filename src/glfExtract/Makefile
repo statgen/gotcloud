@@ -3,7 +3,7 @@ TOOLBASE = GlfLikelihoods MathGold
 SRCONLY = Main.cpp
 USER_INCLUDES = -I../include/
 OBJDIR = obj
-BINDIR=.
+BINDIR=bin
 
 VERSION=0.1.1
 DATE=$(shell date)
