@@ -53,7 +53,7 @@ void Pedigree::Load(IFILE & input)
         buffer.ReadLine(input);
 
         tokens.Clear();
-        tokens.AddTokens(buffer, WHITESPACE);
+        tokens.AddTokens(buffer, SEPARATORS);
 
         if (tokens.Length() == 0) continue;
         if (tokens[0].SlowCompare("end") == 0) break;

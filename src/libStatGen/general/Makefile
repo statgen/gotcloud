@@ -28,7 +28,6 @@ TOOLBASE=\
 	Cigar \
 	CigarRoller \
 	Error \
-	ErrorHandler \
 	FileType \
 	FortranFormat \
 	GenomeSequence \
@@ -37,7 +36,6 @@ TOOLBASE=\
 	GzipFileType \
 	GzipHeader \
 	Hash \
-	IndexBase \
 	Input \
 	InputFile \
 	IntArray \
@@ -65,13 +63,11 @@ TOOLBASE=\
 	SmithWaterman \
 	Sort \
 	STLUtilities \
-	StatGenStatus \
 	StringAlias \
 	StringArray \
 	StringBasics \
 	StringHash \
 	StringMap \
-	Tabix \
 	UncompressedFileType \
 	WindowsHelper
 
@@ -93,7 +89,6 @@ HDRONLY= \
 	PackedVector.h \
 	PedigreeAlleles.h \
 	Performance.h \
-	ReusableVector.h \
 	SimpleStats.h \
 	TrimSequence.h \
 	UnitTest.h

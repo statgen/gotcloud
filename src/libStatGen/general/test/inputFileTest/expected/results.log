@@ -1,7 +1,6 @@
 
 UncompressedFileType Tests:
   Passed test_readFromFile
-  Passed test_readTilChar
   Passed test_ifeof_ifrewind
   Passed test_ifread_ifgetc
   Passed test_ifclose
@@ -9,7 +8,6 @@ UncompressedFileType Tests:
 
 GzipFileType Tests:
   Passed test_readFromFile
-  Passed test_readTilChar
   Passed test_ifeof_ifrewind
   Passed test_ifread_ifgetc
   Passed test_ifclose
@@ -17,7 +15,6 @@ GzipFileType Tests:
 
 BgzfFileType Tests:
   Passed test_readFromFile
-  Passed test_readTilChar
   Passed test_ifeof_ifrewind
   Passed test_ifread_ifgetc
   Passed test_ifclose
@@ -25,7 +22,6 @@ BgzfFileType Tests:
 
 .glf file Tests:
   Passed test_readFromFile
-  Passed test_readTilChar
   Passed test_ifeof_ifrewind
   Passed test_ifread_ifgetc
   Passed test_ifclose

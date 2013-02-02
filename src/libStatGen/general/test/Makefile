@@ -3,7 +3,7 @@ include ../../Makefiles/Makefile.include
 
 .DEFAULT_GOAL := all
 
-SUBDIRS=inputFileTest cigar string memoryMapArrayTest packedVectorTest referenceSequenceTest nonOverlapRegions baseUtilitiesTest trimSequence reusableVector
+SUBDIRS=inputFileTest cigar string memoryMapArrayTest packedVectorTest referenceSequenceTest nonOverlapRegions baseUtilitiesTest trimSequence
 
 OPTFLAG?=-O0
 
