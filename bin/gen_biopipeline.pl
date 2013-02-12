@@ -706,7 +706,7 @@ print MAK "\tmkdir -p \$(\@D)\n";
   # Merge the Polished BAMs
   print MAK "\$(MERGE_TMP)/$mergeName.merged.bam.done: $allPolish\n";
   print MAK "\tmkdir -p \$(\@D)\n";
-  print MAK "\t\$(JAVA_EXE) -jar \$(JAVA_MEM) \$(MERGE_JAR) VALIDATION_STRINGENCY=SILENT AS=true O=\$(basename \$\@) \$(subst \$(POL_TMP),I=\$(POL_TMP),\$(basename \$^))\n";
+  print MAK "\t\$(BAM_EXE) mergeBam --out \$(basename \$\@) \$(subst \$(POL_TMP),--in \$(POL_TMP),\$(basename \$^))\n";
   print MAK "\ttouch \$\@\n\n";
 
   print MAK $allSteps;
