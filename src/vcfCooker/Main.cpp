@@ -66,6 +66,9 @@ int main(int argc, char ** argv)
    int nWinFFRQ = 0;
    int nMaxFFRQ = 0;
    double fMaxFFRQ = 0;
+   int nWinFVAR = 0;
+   int nMerFVAR = 0;
+   int nMaxFVAR = 0;
    int nMinNS = 0;
    int nWinIndel = 0;
    int nMaxSTP = INT_MAX;
@@ -169,6 +172,9 @@ int main(int argc, char ** argv)
      LONG_INTPARAMETER("maxABL",&nMaxAB)
      LONG_INTPARAMETER("winFFRQ",&nWinFFRQ)
      LONG_INTPARAMETER("maxFFRQ",&nMaxFFRQ)
+     LONG_INTPARAMETER("winFVAR",&nWinFVAR)
+     LONG_INTPARAMETER("merFVAR",&nMerFVAR)
+     LONG_INTPARAMETER("maxFVAR",&nMaxFVAR)
      LONG_INTPARAMETER("minNS",&nMinNS)
      LONG_INTPARAMETER("maxSTP",&nMaxSTP)
      LONG_INTPARAMETER("maxTTT",&nMaxTTT)
@@ -279,15 +285,22 @@ int main(int argc, char ** argv)
      std::map<uint64_t,int> freqRight;
      std::vector<uint64_t> leftKeys;
      std::vector<uint64_t> rightKeys;
+     std::vector<std::string> leftFlanks;
+     std::vector<std::string> rightFlanks;
+     std::vector<double> maxFVARs;
 
-     if ( bRecipesFilter && ( nWinFFRQ > 0 ) && ( nMaxFFRQ > 0 ) ) {
+     if ( ( bRecipesFilter ) && ( ( ( nWinFFRQ > 0 ) && ( nMaxFFRQ > 0 ) ) || ( ( nWinFVAR > 0 ) && ( nMaxFVAR ) ) ) ) {
        Logger::gLogger->writeLog("Reading VCF file and calculating the distribution of flanking %d-mers",nWinFFRQ);
 
        fMaxFFRQ = VcfHelper::vPhred2Err[nMaxFFRQ];
 
        // read over the VCF files and calculate the frequency of flanking k-mers
-       char* lefts = new char[nWinFFRQ];
-       char* rights = new char[nWinFFRQ];
+       char* lefts = new char[nWinFFRQ+1];
+       char* rights = new char[nWinFFRQ+1];
+       char* leftsV = new char[nWinFVAR+1];
+       char* rightsV = new char[nWinFVAR+1];
+       lefts[nWinFFRQ] = '\0';
+       rights[nWinFFRQ] = '\0';
        VcfFile* pVcf;
        pVcf = new VcfFile();
        pVcf->setUpgrade(false);
@@ -325,17 +338,47 @@ int main(int argc, char ** argv)
 	   lefts[nWinFFRQ-i-1] = genomeSequence[markerIndex-i-1];
 	   rights[i] = genomeSequence[markerIndex+i+1];
 	 }
+	 for(int i=0; i < nWinFVAR; ++i) {
+	   leftsV[nWinFVAR-i-1] = genomeSequence[markerIndex-i-1];
+	   rightsV[i] = genomeSequence[markerIndex+i+1];
+	 }
 	 uint32_t leftKey = VcfHelper::str2TwoBits(lefts, nWinFFRQ);
 	 uint32_t rightKey = VcfHelper::str2TwoBits(rights, nWinFFRQ);
-	 
+
+	 std::map<uint64_t,int> freqLeftV;
+	 std::map<uint64_t,int> freqRightV;
+	 std::map<uint64_t,int>::iterator it;
+	 for(int i=0; i < nWinFVAR-nMerFVAR+1; ++i) {
+	   uint32_t leftKeyV = VcfHelper::str2TwoBits(leftsV, nMerFVAR);
+	   uint32_t rightKeyV = VcfHelper::str2TwoBits(rightsV, nMerFVAR);
+	   ++(freqLeftV[leftKeyV]);
+	   ++(freqRightV[rightKeyV]);
+	 }
+
+	 int ln = 0, ls2 = 0, rn = 0, rs2 = 0;
+	 for(it = freqLeftV.begin(); it != freqLeftV.end(); ++it) {
+	   ++ln;
+	   ls2 += (it->second * it->second);
+	 }
+	 for(it = freqRightV.begin(); it != freqRightV.end(); ++it) {
+	   ++rn;
+	   rs2 += (it->second * it->second);
+	 }
+	 //double lv = ((double)ls2/ln - (double)(nWinFVAR-nMerFVAR-1)/ln*(nWinFVAR-nMerFVAR-1)/ln);
+	 //double rv = ((double)rs2/rn - (double)(nWinFVAR-nMerFVAR-1)/rn*(nWinFVAR-nMerFVAR-1)/rn);
+
 	 ++(freqLeft[leftKey]);
 	 ++(freqRight[rightKey]);
 	 leftKeys.push_back(leftKey);
 	 rightKeys.push_back(rightKey);
+	 leftFlanks.push_back(lefts);
+	 rightFlanks.push_back(rights);
        }
 
        delete [] lefts;
        delete [] rights;
+       delete [] leftsV;
+       delete [] rightsV;
        delete pVcf;
 
        Logger::gLogger->writeLog("Finished calculating the distribution of flanking %d-mers",nWinFFRQ);
@@ -727,6 +770,7 @@ int main(int argc, char ** argv)
 	   // check if sample exists in the VCF
 	   if ( name2SampleInd.find(ind) == name2SampleInd.end() ) {
 	     Logger::gLogger->warning("Cannot recognize individual ID %s. Skipping..",ind.c_str());
+	     continue;
 	   }
 
 	   // iterate thru subset names
@@ -868,6 +912,11 @@ int main(int argc, char ** argv)
 	     if ( maxFrq > fMaxFFRQ * leftKeys.size() ) {
 	       pMarker->asFilters.Add(String("FFRQ")+nMaxFFRQ);
 	     }
+
+	     pMarker->asInfoKeys.Add("LFLANK");
+	     pMarker->asInfoValues.Add(leftFlanks[cnt].c_str());
+	     pMarker->asInfoKeys.Add("RFLANK");
+	     pMarker->asInfoValues.Add(rightFlanks[cnt].c_str());
 	   }
 	 }
 

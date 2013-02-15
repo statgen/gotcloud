@@ -171,7 +171,7 @@ void PileupElementBaseQual::computeGLScores(int index, int16_t* GLScores, char* 
                     break;
                 case 'T':
                     base = 3;
-                    break;    			
+                    break;
                 default :
                     base = -1;
             }
