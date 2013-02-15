@@ -13,21 +13,113 @@
 FILE * baseCalls = NULL;
 
 int char2IntBase(char c) {
-  switch(c) {
-  case 'A':
-    return 1;
-  case 'C':
-    return 2;
-  case 'G':
-    return 3;
-  case 'T':
-    return 4;
-  default:
-    fprintf(stderr,"Cannot recognize base %c\n",c);
-    error("Incompatible VCF format");
-    return 0;
-  }
+    switch(c) {
+        case 'A':
+            return 1;
+        case 'C':
+            return 2;
+        case 'G':
+            return 3;
+        case 'T':
+            return 4;
+        default:
+            fprintf(stderr,"Cannot recognize base %c\n",c);
+            error("Incompatible VCF format");
+            return 0;
+    }
 }
+
+class glFit {
+public:
+  double pHWE, pHWD1, pHWD2;
+  double llkHWE, llkHWD;
+  double inbreedingCoeff;
+  int rounds;
+  double signedLRT() { return (inbreedingCoeff > 0 ? 2 : -2 )*(llkHWD-llkHWE); }
+
+  glFit(GenotypeLikelihood& lk, glfHandler * glf, int n, int position, int refAllele, int al1, int al2, int maxiter = 100, double eps=1e-6) {
+    int geno11 = glfHandler::GenotypeIndex(al1, al1);
+    int geno12 = glfHandler::GenotypeIndex(al1, al2);
+    int geno22 = glfHandler::GenotypeIndex(al2, al2);
+
+    //int label1 = al1 == refAllele ? 0 : 1;
+    //int label2 = al2 == refAllele ? 0 : al1 == al2 ? label1 : label1 + 1;
+
+    double p = .2 + rand()/(RAND_MAX+1.)*.6; // start from random but common AF
+    double f0,f1,f2, fsum, sum, sum0, sum1, sum2;
+    bool convE = false, convD = false;
+
+    double q = 1.-p;
+    double p0 = q * q;
+    double p1 = 2. * p * q;
+    double p2 = p * p;
+    int i;
+
+    for(rounds = 0; rounds < maxiter; ++rounds) {
+      sum = sum0 = sum1 = sum2 = 0;
+      
+      for(i=0; i < n; ++i) {
+        const double  * lks = glf[i].GetLikelihoods(position);
+        if ( !convE ) {
+          f0 = q * q * lks[geno11];
+          f1 = 2. * p * q * lks[geno12];
+          f2 = p * p * lks[geno22];
+          fsum = f0+f1+f2; // sum_g Pr(g)Pr(Data|g)
+          //postE[i*3] = f0/fsum;
+          sum += f1/fsum; //(postE[i*3+1] = f1/fsum);
+          sum += (2. * f2/fsum); //(2 * (postE[i*3+2] = f2/fsum));
+        }
+
+        if ( !convD ) {
+          f0 = p0 * lks[geno11];
+          f1 = p1 * lks[geno12];
+          f2 = p2 * lks[geno22];
+          fsum = f0+f1+f2;
+          sum0 += f0/fsum; //(postD[i*3] = f0/fsum);
+          sum1 += f1/fsum; //(postD[i*3+1] = f1/fsum);
+          sum2 += f2/fsum; //(postD[i*3+2] = f2/fsum);
+        }
+      }
+
+      if ( !convE ) {
+        p = sum / (2*n);
+        if ( fabs(p + q - 1.) < eps ) convE = true;
+        q = 1.-p;
+      }
+      if ( !convD ) {
+        if ( ( fabs(p1 - sum1/n) < eps ) && ( fabs(p2 - sum2/n) < eps ) ) convD = true;
+        p0 = sum0 / (n);
+        p1 = sum1 / (n);
+        p2 = sum2 / (n);
+      }
+      if ( convE && convD ) break;
+    }
+
+    llkHWE = 0;
+    llkHWD = 0;
+    pHWE = p;
+    pHWD1 = p1;
+    pHWD2 = p2;
+    double obsHET = 0;
+    for(i=0; i < n; ++i) {
+      const double* lks = glf[i].GetLikelihoods(position);
+
+      f0 = q * q * lks[geno11];
+      f1 = 2. * p * q * lks[geno12];
+      f2 = p * p * lks[geno22];
+      fsum = f0+f1+f2; // sum_g Pr(g)Pr(Data|g)
+      llkHWE += log(fsum);
+
+      f0 = p0 * lks[geno11];
+      f1 = p1 * lks[geno12];
+      f2 = p2 * lks[geno22];
+      fsum = f0+f1+f2; // sum_g Pr(g)Pr(Data|g)
+      llkHWD += log(fsum);
+      obsHET += f1/fsum;
+    }
+    inbreedingCoeff = 1.-obsHET/(2.*p*q*n);
+  }
+};
 
 void ReportDate(FILE * output)
    {
@@ -107,11 +199,11 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
    int genoRR = 0, genoR1 = 0, genoR2 = 0;
 
    if (label2 == 2)
-   {
-     genoRR = glfHandler::GenotypeIndex(refAllele, refAllele);
-     genoR1 = glfHandler::GenotypeIndex(refAllele, al1);
-     genoR2 = glfHandler::GenotypeIndex(refAllele, al2);
-   }
+      {
+      genoRR = glfHandler::GenotypeIndex(refAllele, refAllele);
+      genoR1 = glfHandler::GenotypeIndex(refAllele, al1);
+      genoR2 = glfHandler::GenotypeIndex(refAllele, al2);
+      }
 
    String label11[2], label12[2], label22[2];
 
@@ -164,18 +256,18 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
       int     depth  = glf[i].GetDepth(position);
 
       genotypes.catprintf("\t%s:%d:%d",
-			  (const char *) label, depth, nocall ? 0 : quality);
+               (const char *) label, depth, nocall ? 0 : quality);
 
       if (label[0] != '.')
          {
-	   if ( depth > 0 ) {
-	     ns++;
-	     ac[label[0] - '0']++;
-	   }
+           if ( depth > 0 ) {
+             ns++;
+             ac[label[0] - '0']++;
+           }
 
          if (label.Length() > 1 && label[2] != '.')
             {
-	      if ( depth > 0 ) ac[label[2] - '0']++;
+              if ( depth > 0 ) ac[label[2] - '0']++;
 
             const double  * likelihoods = glf[i].GetLikelihoods(position);
             const unsigned char * logLikelihoods = glf[i].GetLogLikelihoods(position);
@@ -224,6 +316,7 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
                   glf[i].GetLogLikelihoods(position)[geno22]);
       }
    double AB = Acount / (ABcount + 1e-30);
+   double AZ = (Acount - 0.5*ABcount)/sqrt(ABcount*0.25 + 1e-30);
 
    info.catprintf("NS=%d", ns);
    info.catprintf(";AN=%d", ac[0] + ac[1] + ac[2] + ac[3]);
@@ -242,14 +335,17 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
       info.catprintf(";AF=%.6lf,%.6lf", lk.min, 1. - lk.min);
       }
 
-   info.catprintf(";AB=%.4lf", AB);
+   info.catprintf(";AB=%.4lf;AZ=%.4lf", AB, AZ);
+
+   glFit gFit(lk, glf, n, position, refAllele, al1, al2);
+   info.catprintf(";FIC=%.4lf;SLRT=%.4lf;HWEAF=%.4lf;HWDAF=%.4lf,%.4lf",gFit.inbreedingCoeff,gFit.signedLRT(),gFit.pHWE,gFit.pHWD1,gFit.pHWD2);
    }
 
 void ReportSNP(GenotypeLikelihood & lk,
                   int n, int position,
                   int refBase, int allele1, int allele2,
                   const char * filter,
-                  int totalCoverage, int rmsMapQuality, double quality)
+                  int totalCoverage, int rmsMapQuality, double posterior)
    {
    if (baseCalls == NULL) return;
 
@@ -288,10 +384,10 @@ void ReportSNP(GenotypeLikelihood & lk,
 
    fprintf(baseCalls, "\t");
 
-   //int quality = posterior > 0.9999999999 ? 100 : -10 * log10(1.0 - posterior);
+   int quality = posterior > 0.9999999999 ? 100 : -10 * log10(1.0 - posterior);
 
    // Quality for this call
-   fprintf(baseCalls, "%.0lf\t", quality);
+   fprintf(baseCalls, "%d\t", quality);
 
    // Filter for this call
    fprintf(baseCalls, "%s\t", filter == NULL || filter[0] == 0 ? "PASS" : filter);
@@ -316,6 +412,7 @@ void ReportSNP(GenotypeLikelihood & lk,
 
    fprintf(baseCalls, "%s\n", (const char *) genotypes);
    }
+
 
 int main(int argc, char ** argv) {
    printf("glfExtract -- Extract VCF based on .glf or .glz files\n");
@@ -342,9 +439,9 @@ int main(int argc, char ** argv) {
          LONG_STRINGPARAMETER("mito", &mitoLabel)
          LONG_INTPARAMETER("xStart", &xStart)
          LONG_INTPARAMETER("xStop", &xStop)
-      LONG_PARAMETER_GROUP("Output")
+         LONG_PARAMETER_GROUP("Output")
          LONG_PARAMETER("verbose", &verbose)
-      LONG_PARAMETER_GROUP("Sample Names")
+         LONG_PARAMETER_GROUP("Sample Names")
          LONG_STRINGPARAMETER("glfAliases", &glfAliases)
    END_LONG_PARAMETERS();
 
@@ -434,10 +531,10 @@ int main(int argc, char ** argv) {
       fprintf(baseCalls, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
       for (int i = 0; i < n; i++) {
          fprintf(baseCalls, "\t%s", ped.count ?
-		 ( (ped[i].famid.Compare(ped[i].pid) == 0) ? 
-		   (const char*)(ped[i].pid) :
-		   (const char *) (ped[i].famid + ":" + ped[i].pid) ) 
-		   : (const char *) aliases.GetAlias(argv[i]));
+                 ( (ped[i].famid.Compare(ped[i].pid) == 0) ? 
+                   (const char*)(ped[i].pid) :
+                   (const char *) (ped[i].famid + ":" + ped[i].pid) ) 
+                   : (const char *) aliases.GetAlias(argv[i]));
       }
 
       fprintf(baseCalls, "\n");
@@ -474,54 +571,54 @@ int main(int argc, char ** argv) {
        int refBase = char2IntBase(vcfTokens[3][0]);
        int allele1, allele2;
        if ( vcfTokens[4].Length() == 1 ) {
-	 allele1 = refBase;
-	 allele2 = char2IntBase(vcfTokens[4][0]);
+         allele1 = refBase;
+         allele2 = char2IntBase(vcfTokens[4][0]);
        }
        else {
-	 tokens2.ReplaceColumns(vcfTokens[4],',');
-	 allele1 = char2IntBase(tokens2[0][0]);
-	 allele2 = char2IntBase(tokens2[1][0]);
+         tokens2.ReplaceColumns(vcfTokens[4],',');
+         allele1 = char2IntBase(tokens2[0][0]);
+         allele2 = char2IntBase(tokens2[1][0]);
        }
 
        curPos = vcfTokens[1].AsInteger()-1;
        if ( curChrom.Compare(vcfTokens[0]) != 0 ) {
-	 curChrom = vcfTokens[0];
-	 for(int i=firstGlf; i < n; ++i) {
-	   if ( glf[i].isStub ) continue;
-	   glf[i].NextSection();  // need to check whether the label matches
-	   if ( curChrom.Compare(glf[i].label) != 0 )
-	     error("Chromosome Name does not match");
-	 }
+         curChrom = vcfTokens[0];
+         for(int i=firstGlf; i < n; ++i) {
+           if ( glf[i].isStub ) continue;
+           glf[i].NextSection();  // need to check whether the label matches
+           if ( curChrom.Compare(glf[i].label) != 0 )
+             error("Chromosome Name does not match : curChrom=%s, glf[%d].label=%s",curChrom.c_str(),i,glf[i].label.c_str());
+         }
 
-	 chromosomeType = CT_AUTOSOME;
+         chromosomeType = CT_AUTOSOME;
 	 
-	 if (ped.count) {
-	   if (curChrom == xLabel) chromosomeType = CT_CHRX;
-	   if (curChrom == yLabel) chromosomeType = CT_CHRY;
-	   if (curChrom == mitoLabel) chromosomeType = CT_MITO;
-	 }
+         if (ped.count) {
+           if (curChrom == xLabel) chromosomeType = CT_CHRX;
+           if (curChrom == yLabel) chromosomeType = CT_CHRY;
+           if (curChrom == mitoLabel) chromosomeType = CT_MITO;
+         }
 	 
-	 printf("Processing section %s with %d entries\n",
-		(const char *) glf[firstGlf].label, glf[firstGlf].maxPosition);
+         printf("Processing section %s with %d entries\n",
+                (const char *) glf[firstGlf].label, glf[firstGlf].maxPosition);
        }
 
        for(int i=firstGlf; i < n; ++i) {
-	 while( glf[i].position < curPos )
-	   glf[i].NextBaseEntry();
+         while( glf[i].position < curPos )
+           glf[i].NextBaseEntry();
        }
 
        int     totalDepth = 0, nSamplesCovered = 0;
        double  rmsMapQuality = 0.0;
        for (int i = 0; i < n; i++) {
-	 int depth = glf[i].GetDepth(curPos);
+         int depth = glf[i].GetDepth(curPos);
 	 
-	 if (depth > 0) {
-	   totalDepth += depth;
-	   nSamplesCovered++;
+         if (depth > 0) {
+           totalDepth += depth;
+           nSamplesCovered++;
 	   
-	   int mapQuality = glf[i].GetMapQuality(curPos);
-	   rmsMapQuality += depth * mapQuality * mapQuality;
-	 }
+           int mapQuality = glf[i].GetMapQuality(curPos);
+           rmsMapQuality += depth * mapQuality * mapQuality;
+         }
        }
        rmsMapQuality = sqrt(rmsMapQuality / (totalDepth + 1e-15));
 
@@ -530,7 +627,7 @@ int main(int argc, char ** argv) {
                curPos >= xStart && curPos <= xStop ? CT_CHRX : CT_AUTOSOME;
 
        ReportSNP(lkGeno, n, curPos, refBase, allele1, allele2,
-		 vcfTokens[6], totalDepth, rmsMapQuality, vcfTokens[5].AsDouble()); 
+                 vcfTokens[6], totalDepth, rmsMapQuality, vcfTokens[5].AsDouble()); 
      }
    }
 
