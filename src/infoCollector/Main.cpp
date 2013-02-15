@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
   while( line.ReadLine(indexFile) > 0 ) {
     //fprintf(stderr,"line = %s",line.c_str());
     StringArray tok;
-    tok.ReplaceColumns(line,'\t');
+    tok.ReplaceTokens(line," \t\r\n");
     if ( tok.Length() < indexSkip + 1 ) {
       Logger::gLogger->error("Cannot recognize %s in the index file",line.c_str());
     }

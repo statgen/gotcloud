@@ -3,8 +3,10 @@
 
 #define MAX_READS_PER_BASE 10000
 
+#include <stdint.h>
 #include <vector>
 #include <cmath>
+#include <utility>
 //#include <boost/thread/mutex.hpp>
 
 
@@ -60,13 +62,17 @@ class VariantStatizer {
   // For now, assume that the all VCFs are coming from the same VCF
   String sChrom;
   
-  std::vector<char> vBase2Num;
+  std::vector<uint8_t> vBase2Num;
   std::vector<double> vPhred2Err;
+  std::vector<double> vPhred2Match;
+  std::vector<double> vPhred2Het;
+  std::vector<double> p2e;
 
   int anchorPos;
   int anchorAl1;
   int anchorAl2;
   double anchorAF;
+  double emAF;
 
   // list of latest position, INT_MAX when ended
   // list of Allele1, Allele2, Allele Frequencies
@@ -76,11 +82,13 @@ class VariantStatizer {
   // std::vector<int> vAl2;
 
   std::vector<int>     nReads;
-  std::vector<char*>   pcBases;
-  std::vector<char*>   pcMapQs;
-  std::vector<char*>   pcQuals;
-  std::vector<char*>   pcStrands;
-  std::vector<short*>  pcCycles;
+  std::vector<uint8_t*>   pcBases;
+  std::vector<uint8_t*>   pcMapQs;
+  std::vector<uint8_t*>   pcQuals;
+  std::vector<uint8_t*>   pcStrands;
+  std::vector<uint16_t*>  pcCycles;
+  std::vector<uint16_t*>  pcHashes;
+  std::vector<int>     nPLs;
 
   void writeCurrentMarker(IFILE oFile);
   bool advancePileVcf(int index);
@@ -91,22 +99,22 @@ class VariantStatizer {
     for(int i=0; i < 256; ++i) {
       switch((char)i) {
       case 'A': case 'a':
-	vBase2Num.push_back((char)1);
+	vBase2Num.push_back((uint8_t)1);
 	break;
       case 'C': case 'c':
-	vBase2Num.push_back((char)2);
+	vBase2Num.push_back((uint8_t)2);
 	break;
       case 'G': case 'g':
-	vBase2Num.push_back((char)3);
+	vBase2Num.push_back((uint8_t)3);
 	break;
       case 'T': case 't':
-	vBase2Num.push_back((char)4);
+	vBase2Num.push_back((uint8_t)4);
 	break;
       case 'N': case 'n':
-	vBase2Num.push_back((char)5);
+	vBase2Num.push_back((uint8_t)5);
 	break;
       case 'D': case 'd':
-	vBase2Num.push_back((char)6);
+	vBase2Num.push_back((uint8_t)6);
 	break;
       default:
 	vBase2Num.push_back(0);
@@ -114,16 +122,22 @@ class VariantStatizer {
     }
 
     for(int i=0; i < 256; ++i) {
-      vPhred2Err.push_back(pow(0.1,i/10.));
+      double e = pow(0.1,i/10.);
+      vPhred2Err.push_back(e);
+      vPhred2Match.push_back(log10(1.-e));
+      vPhred2Het.push_back(log10(0.5-e/3.));
     }
   }
 
   bool loadAnchorVcf(const char* file);
   bool appendStatVcf(const char* file);
   bool writeMergedVcf(const char* outFile);
+  std::pair<double,double> estimateAF(double eps);
   //bool openOutputFile(const char* file);
   //#bool advanceMarker();
   //bool closeOutputFile(const char* file);
+  static double cor22(int a, int b, int c, int d);
+  static double qcor(double sumA, double sumSqA, double sumB, double sumSqB, double sumAB, int n);
 };
 
 #endif
