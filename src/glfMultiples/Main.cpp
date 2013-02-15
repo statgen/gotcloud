@@ -12,6 +12,99 @@
 
 FILE * baseCalls = NULL;
 
+class glFit {
+public:
+    double pHWE, pHWD1, pHWD2;
+    double llkHWE, llkHWD;
+    double inbreedingCoeff;
+    int rounds;
+    double signedLRT() { return (inbreedingCoeff > 0 ? 2 : -2 )*(llkHWD-llkHWE); }
+
+    glFit(GenotypeLikelihood& lk, glfHandler * glf, int n, int position, int refAllele, int al1, int al2, int maxiter = 100, double eps=1e-6) {
+        int geno11 = glfHandler::GenotypeIndex(al1, al1);
+        int geno12 = glfHandler::GenotypeIndex(al1, al2);
+        int geno22 = glfHandler::GenotypeIndex(al2, al2);
+
+        //int label1 = al1 == refAllele ? 0 : 1;
+        //int label2 = al2 == refAllele ? 0 : al1 == al2 ? label1 : label1 + 1;
+
+        double p = .2 + rand()/(RAND_MAX+1.)*.6; // start from random but common AF
+        double f0,f1,f2, fsum, sum, sum0, sum1, sum2;
+        bool convE = false, convD = false;
+
+        double q = 1.-p;
+        double p0 = q * q;
+        double p1 = 2. * p * q;
+        double p2 = p * p;
+        int i;
+
+        for(rounds = 0; rounds < maxiter; ++rounds) {
+            sum = sum0 = sum1 = sum2 = 0;
+
+            for(i=0; i < n; ++i) {
+                const double  * lks = glf[i].GetLikelihoods(position);
+                if ( !convE ) {
+                    f0 = q * q * lks[geno11];
+                    f1 = 2. * p * q * lks[geno12];
+                    f2 = p * p * lks[geno22];
+                    fsum = f0+f1+f2; // sum_g Pr(g)Pr(Data|g)
+                    //postE[i*3] = f0/fsum;
+                    sum += f1/fsum; //(postE[i*3+1] = f1/fsum);
+                    sum += (2. * f2/fsum); //(2 * (postE[i*3+2] = f2/fsum));
+                }
+
+                if ( !convD ) {
+                    f0 = p0 * lks[geno11];
+                    f1 = p1 * lks[geno12];
+                    f2 = p2 * lks[geno22];
+                    fsum = f0+f1+f2;
+                    sum0 += f0/fsum; //(postD[i*3] = f0/fsum);
+                    sum1 += f1/fsum; //(postD[i*3+1] = f1/fsum);
+                    sum2 += f2/fsum; //(postD[i*3+2] = f2/fsum);
+                }
+            }
+
+            if ( !convE ) {
+                p = sum / (2*n);
+                if ( fabs(p + q - 1.) < eps ) convE = true;
+                q = 1.-p;
+            }
+            if ( !convD ) {
+                if ( ( fabs(p1 - sum1/n) < eps ) && ( fabs(p2 - sum2/n) < eps ) ) convD = true;
+                p0 = sum0 / (n);
+                p1 = sum1 / (n);
+                p2 = sum2 / (n);
+            }
+            if ( convE && convD ) break;
+        }
+
+        llkHWE = 0;
+        llkHWD = 0;
+        pHWE = p;
+        pHWD1 = p1;
+        pHWD2 = p2;
+        double obsHET = 0;
+        for(i=0; i < n; ++i) {
+            const double* lks = glf[i].GetLikelihoods(position);
+
+            f0 = q * q * lks[geno11];
+            f1 = 2. * p * q * lks[geno12];
+            f2 = p * p * lks[geno22];
+            fsum = f0+f1+f2; // sum_g Pr(g)Pr(Data|g)
+            llkHWE += log(fsum);
+
+            f0 = p0 * lks[geno11];
+            f1 = p1 * lks[geno12];
+            f2 = p2 * lks[geno22];
+            fsum = f0+f1+f2; // sum_g Pr(g)Pr(Data|g)
+            llkHWD += log(fsum);
+            obsHET += f1/fsum;
+        }
+        inbreedingCoeff = 1.-obsHET/(2.*p*q*n);
+    }
+};
+
+
 void ReportDate(FILE * output)
    {
    if (output == NULL) return;
@@ -118,7 +211,9 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
    int label1 = al1 == refAllele ? 0 : 1;
    int label2 = al2 == refAllele ? 0 : al1 == al2 ? label1 : label1 + 1;
 
-   int genoRR, genoR1, genoR2;
+   int genoRR = 0;
+   int genoR1 = 0;
+   int genoR2 = 0;
 
    if (label2 == 2)
       {
@@ -238,6 +333,7 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
                   glf[i].GetLogLikelihoods(position)[geno22]);
       }
    double AB = Acount / (ABcount + 1e-30);
+   double AZ = (Acount - 0.5*ABcount)/sqrt(ABcount*0.25 + 1e-30);
 
    info.catprintf("NS=%d", ns);
    info.catprintf(";AN=%d", ac[0] + ac[1] + ac[2] + ac[3]);
@@ -256,7 +352,10 @@ void ReportGenotypes(GenotypeLikelihood & lk, glfHandler * glf, int n,
       info.catprintf(";AF=%.6lf,%.6lf", lk.min, 1. - lk.min);
       }
 
-   info.catprintf(";AB=%.4lf", AB);
+    info.catprintf(";AB=%.4lf;AZ=%.4lf", AB, AZ);
+
+    glFit gFit(lk, glf, n, position, refAllele, al1, al2);
+    info.catprintf(";FIC=%.4lf;SLRT=%.4lf;HWEAF=%.4lf;HWDAF=%.4lf,%.4lf",gFit.inbreedingCoeff,gFit.signedLRT(),gFit.pHWE,gFit.pHWD1,gFit.pHWD2);
    }
 
 void ReportSNP(GenotypeLikelihood & lk,
@@ -668,8 +767,8 @@ int main(int argc, char ** argv)
             for (int i = 0; i < n; i++)
                if (glf[i].data.recordType != 0)
                   done = false;
-            if (done) break;
-            }
+               if (done) break;
+               }
 
          // Advance to the next position where needed
          for (int i = 0; i < n; i++)
