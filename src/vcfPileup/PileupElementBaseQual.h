@@ -29,26 +29,27 @@ public:
     		
     // Allows for repeat polymorphisms
     virtual const char* getRefAllele();
-    
+    static int MAX_READS_PER_SITE;
+  
 private:
     static const char UNSET_QUAL = 0xFF;
     
     static uint16_t hash16(const char* s, uint16_t seed = 0) {
-      uint16_t hash = seed;
-      while (*s)
-      {
-	  hash = hash * 101  +  *s++;
-      }
-      return hash;
+        uint16_t hash = seed;
+        while (*s)
+        {
+            hash = hash * 101  +  *s++;
+        }
+        return hash;
     }
 
     static uint32_t hash32(const char* s, uint32_t seed = 0) {
-      uint32_t hash = seed;
-      while (*s)
-      {
-	  hash = hash * 101  +  *s++;
-      }
-      return hash;
+        uint32_t hash = seed;
+        while (*s)
+        {
+            hash = hash * 101  +  *s++;
+        }
+        return hash;
     }
 
     char* myBases;

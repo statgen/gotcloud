@@ -20,9 +20,6 @@ BWA_EXE = $(BIN_DIR)/bwa
 VERIFY_BAM_ID_EXE = $(BIN_DIR)/verifyBamID
 QPLOT_EXE = $(BIN_DIR)/qplot
 BAM_EXE = $(BIN_DIR)/bam
-MERGE_JAR = $(BIN_DIR)/MergeSamFiles.jar
-JAVA_EXE = java
-JAVA_MEM = -Xmx4g
 BWA_THREADS = -t 1
 BWA_QUAL = -q 15
 BWA_MAX_MEM = 2000000000
@@ -75,7 +72,7 @@ $(DEDUP_TMP)/Sample1.dedup.bam.done: $(MERGE_TMP)/Sample1.merged.bam.done
 
 $(MERGE_TMP)/Sample1.merged.bam.done: $(POL_TMP)/fastq/Sample_1/File1_R1.bam.done $(POL_TMP)/fastq/Sample_1/File2_R1.bam.done 
 	mkdir -p $(@D)
-	$(JAVA_EXE) -jar $(JAVA_MEM) $(MERGE_JAR) VALIDATION_STRINGENCY=SILENT AS=true O=$(basename $@) $(subst $(POL_TMP),I=$(POL_TMP),$(basename $^))
+	$(BAM_EXE) mergeBam --out $(basename $@) $(subst $(POL_TMP),--in $(POL_TMP),$(basename $^))
 	touch $@
 
 $(POL_TMP)/fastq/Sample_1/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_1/File1_R1.bam.done
