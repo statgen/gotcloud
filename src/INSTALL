@@ -1,0 +1,8 @@
+This software requires some development libraries to be installed:
+
+On Ubunutu
+
+  sudo apt-get install zlib1g-dev libncurses5-dev
+
+
+
