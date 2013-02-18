@@ -90,7 +90,7 @@ fi
 
 # Check the Makefiles
 diff -r $RESULTS_DIR/biopipetest/Makefiles/ $EXPECTED_DIR/biopipetest/Makefiles/ \
-    -x *.log \
+    -x "*.log" \
     -I '$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) .*fastq/Sample_[1-2]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
     -I '($(BWA_EXE) sampe -r .* $(FA_REF) $(basename $^) .*fastq/Sample_[1-2]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-2]/File[1-2]_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
     -I '^[A-Z_][A-Z_]* = ' >> $DIFFRESULTS
