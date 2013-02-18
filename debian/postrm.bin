@@ -7,14 +7,15 @@
 #       DPKG_MAINTSCRIPT_PACKAGE=biopipe-align
 #
 #set -e
-banner="#============================================================"
 TOP=/usr/local/gotcloud
 BIN=$TOP/bin
+SCRIPTS=$TOP/scripts
 
-f=/usr/share/doc/gotcloud*bin*/README
-if [ -r $f.gz ]; then
-  gunzip -c $f.gz
-else
-  cat $f
-fi
+#================================================================
+#   The only real work for this package
+#================================================================
+for x in gen_biopipeline.pl umake.pl make_indexfile.pl; do
+  rm -f /usr/local/bin/$x
+done
+
 exit

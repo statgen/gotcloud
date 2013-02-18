@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+#   Run just after installing the package
+#   Debian environment varibales of possible interest:
+#       DPKG_MAINTSCRIPT_ARCH=amd64
+#       DPKG_RUNNING_VERSION=1.15.5.6ubuntu2
+#       DPKG_MAINTSCRIPT_PACKAGE=biopipe-align
+#
+#set -e
+TOP=/usr/local/gotcloud
+BIN=$TOP/bin
+SCRIPTS=$TOP/scripts
+
+#================================================================
+#   The only real work for this package
+#================================================================
+
+exit
