@@ -16,14 +16,6 @@ SUBDIRS = $(EXES) $(LIBS)
 .NOTPARALLEL:
 
 .PHONY: $(SUBDIRS) all test clean debug install 
-all: TARGET = all
-opt: TARGET = opt
-debug: TARGET = debug
-profile: TARGET = profile
-test: TARGET = test
-clean: TARGET = clean
-install: TARGET = install
-samtools-hybrid: TARGET = all
 
 all test opt debug profile: $(SUBDIRS)
 
@@ -63,22 +55,22 @@ vcfCooker thunderVCF infoCollector: libVcf
 thunderVCF: libMach
 
 $(subst bamUtil,,$(STAT_GEN_EXES)): 
-	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
+	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/$@ $@; cd ..
 
 bamUtil: 
-	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
+	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/bam $@; cd ..
 
 samtools-hybrid: 
-	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
+	$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
 
 
 $(LIBS): 
-	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(TARGET)
+	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)
 	mkdir --p lib/
 	cd lib/; ln -fs ../$@/$@.a $@.a; cd ..
