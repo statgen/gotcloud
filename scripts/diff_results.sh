@@ -31,6 +31,9 @@ BAM2_2=biopipetest/tmp/alignment.pol/$BAM2_2_FILE
 BAI1=Sample1.recal.bam.bai
 BAI2=Sample2.recal.bam.bai
 
+MAKEFILE1=biopipe_Sample1.Makefile
+MAKEFILE2=biopipe_Sample2.Makefile
+
 # qemp files may be in varying order based on the system
 QEMPS="Sample1.recal.bam.qemp Sample2.recal.bam.qemp"
 SKIP_QEMPS="-x Sample1.recal.bam.qemp -x Sample2.recal.bam.qemp"
@@ -41,6 +44,7 @@ QEMP_SUBDIR=biopipetest/tmp/alignment.recal
 echo "Results from DIFF will be in $DIFFRESULTS"
 diff -r $RESULTS_DIR/biopipetest/ $EXPECTED_DIR/biopipetest/ -x $BAI1 -x $BAI2 \
     -x $BAM1_1_FILE -x $BAM1_2_FILE -x $BAM2_1_FILE -x $BAM2_2_FILE $SKIP_QEMPS \
+    -x $MAKEFILE1 -x $MAKEFILE2 -x $MAKEFILE1.log -x $MAKEFILE2.log \
     -I '--in \[.*biopipetest/tmp/alignment.bwa/fastq/Sample_[1-2]/File[1-2]_R1.bam\]$' \
     -I '--out \[.*biopipetest/tmp/alignment.pol/fastq/Sample_[1-2]/File[1-2]_R1.bam\]$' \
     -I '--log \[.*biopipetest/tmp/alignment.pol/fastq/Sample_[1-2]/File[1-2]_R1.bam.log\]$' \
@@ -55,11 +59,6 @@ diff -r $RESULTS_DIR/biopipetest/ $EXPECTED_DIR/biopipetest/ -x $BAI1 -x $BAI2 \
     -I '-o (--out) = \[.*/biopipetest/QCFiles/Sample[1-2].genoCheck\]$' \
     -I '^Writing output file .*/biopipetest/QCFiles/Sample[1-2].genoCheck$' \
     -I '^Finished writing output files .*/biopipetest/QCFiles/Sample[1-2].genoCheck.{bestRG,selfRG,bestSM,selfSM}$' \
-    -I '^PIPELINE_DIR = ' \
-    -I '^OUT_DIR = ' \
-    -I '^FASTQ = ' \
-    -I '^INDEX_FILE = .*indexFile.txt$' \
-    -I '^REF_DIR = .*chr20Ref$' \
     -I '^[0-9a-g]\{32\}  .*/biopipetest/alignment.recal/Sample[1-2].recal.bam$' \
     -I '^Reading the reference file ' \
     -I '^Finished reading the reference file ' \
@@ -71,18 +70,35 @@ diff -r $RESULTS_DIR/biopipetest/ $EXPECTED_DIR/biopipetest/ -x $BAI1 -x $BAI2 \
     -I '^Reading .*/hapmap_3.3.b37.chr20.bim$' \
     -I '^Finished Reading .*/hapmap_3.3.b37.chr20.bim containing 37152 markers.* info$' \
     -I '^Opening .*/hapmap_3.3.b37.chr20.bed and checking the magic numbers$' \
-    -I '$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) .*fastq/Sample_[1-2]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
-    -I '($(BWA_EXE) sampe -r .* $(FA_REF) $(basename $^) .*fastq/Sample_[1-2]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-2]/File[1-2]_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
     -I '^Writing recalibration table .*' \
     -I '^Writing recalibrated file .*' \
     -I 'Start: ' \
     -I 'Start iterating SAM/BAM file .*' \
     -I 'End: .*' \
+    -I '^Input list file : ' \
+    -I '^Output BAM file : ' \
+    -I '^Output log file : ' \
     -I '^Writing .*biopipetest/tmp/alignment.dedup/Sample[1-2].dedup.bam$' \
     -I '^\[bwa_sai2sam_pe_core\] time elapses: ' \
     -I '^\[bwa_sai2sam_pe_core\] refine gapped alignments\.\.\. ' \
     -I '^\[bwa_sai2sam_pe_core\] print alignments\.\.\. ' \
     > $DIFFRESULTS
+if [ "$?" != "0" ]; then
+    echo "Failed results validation. See mismatches in $DIFFRESULTS"
+    exit 2
+fi
+
+# Check the Makefiles
+diff -r $RESULTS_DIR/biopipetest/Makefiles/ $EXPECTED_DIR/biopipetest/Makefiles/ \
+    -x *.log \
+    -I '$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) .*fastq/Sample_[1-2]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
+    -I '($(BWA_EXE) sampe -r .* $(FA_REF) $(basename $^) .*fastq/Sample_[1-2]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-2]/File[1-2]_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
+    -I '^[A-Z_][A-Z_]* = ' >> $DIFFRESULTS
+if [ "$?" != "0" ]; then
+    echo "Failed Makefile results validation. See mismatches in $DIFFRESULTS"
+    exit 2
+fi
+
 
 set -e                          # Fail on errors
 for file in $QEMPS; do
@@ -97,12 +113,12 @@ $BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM1_1 --in2 $EXPECTED_DIR/$BAM1_1
 $BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM1_2 --in2 $EXPECTED_DIR/$BAM1_2
 $BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM2_1 --in2 $EXPECTED_DIR/$BAM2_1
 $BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM2_2 --in2 $EXPECTED_DIR/$BAM2_2
-if [ ! -e $RESULTS_DIR/biopipetest/alignment.recal/$BAI1 ]; then
+if [ ! -f $RESULTS_DIR/biopipetest/alignment.recal/$BAI1 ]; then
     echo "ERROR, Missing: $RESULTS_DIR/biopipetest/alignment.recal/$BAI1"
     exit 3
 fi
-if [ ! -e $RESULTS_DIR/biopipetest/alignment.recal/$BAT2 ]; then
-    echo "ERROR, Missing: $RESULTS_DIR/biopipetest/alignment.recal/$BAT2"
+if [ ! -f $RESULTS_DIR/biopipetest/alignment.recal/$BAI2 ]; then
+    echo "ERROR, Missing: $RESULTS_DIR/biopipetest/alignment.recal/$BAI2"
     exit 3
 fi
 

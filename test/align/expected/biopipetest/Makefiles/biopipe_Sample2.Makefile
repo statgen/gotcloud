@@ -1,11 +1,9 @@
 .DELETE_ON_ERROR:
 
-PIPELINE_DIR = /home/mktrost/gotcloud
-OUT_DIR = /home/mktrost/gotcloud/test/align/T3/biopipetest
-KEEP_TMP = 0
-KEEP_LOG = 0
-INDEX_FILE = /home/mktrost/gotcloud/test/align/indexFile.txt
-REF_DIR = /home/mktrost/gotcloud/test/align/chr20Ref
+PIPELINE_DIR = gotcloud
+OUT_DIR = ALIGN_OUT/biopipetest
+INDEX_FILE = test/align/indexFile.txt
+REF_DIR = test/align/chr20Ref
 AS = NCBI37
 FA_REF = $(REF_DIR)/human_g1k_v37_chr20.fa
 DBSNP_VCF = $(REF_DIR)/dbsnp.b130.ncbi37.chr20.vcf.gz
@@ -84,7 +82,7 @@ $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File1_R1.
 
 $(ALN_TMP)/fastq/Sample_2/File1_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File1_R1.sai.done $(SAI_TMP)/fastq/Sample_2/File1_R2.sai.done
 	mkdir -p $(@D)
-	($(BWA_EXE) sampe -r "@RG	ID:RGID2	SM:SampleID2	LB:Lib2	CN:UM	PL:ILLUMINA" $(FA_REF) $(basename $^) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File1_R1.fastq.gz /home/mktrost/gotcloud/test/align/fastq/Sample_2/File1_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log
+	($(BWA_EXE) sampe -r "@RG	ID:RGID2	SM:SampleID2	LB:Lib2	CN:UM	PL:ILLUMINA" $(FA_REF) $(basename $^) test/align/fastq/Sample_2/File1_R1.fastq.gz test/align/fastq/Sample_2/File1_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log
 	@echo "(grep -q -v -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log || exit 1)"
 	@(grep -q -v -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log || exit 1) || (echo "`grep -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log`" >&2; echo "\nFailed sampe step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $(basename $@)).sampe.log $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log) for more details" >&2; exit 1;)
 	rm -f $(basename $(basename $@)).sampe.log
@@ -92,15 +90,15 @@ $(ALN_TMP)/fastq/Sample_2/File1_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File1_R1.
 
 $(SAI_TMP)/fastq/Sample_2/File1_R1.sai.done:
 	mkdir -p $(@D)
-	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File1_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log"
-	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File1_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File1_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log"
+	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File1_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
 $(SAI_TMP)/fastq/Sample_2/File1_R2.sai.done:
 	mkdir -p $(@D)
-	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File1_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log"
-	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File1_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File1_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log"
+	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File1_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
@@ -113,7 +111,7 @@ $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File2_R1.
 
 $(ALN_TMP)/fastq/Sample_2/File2_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File2_R1.sai.done $(SAI_TMP)/fastq/Sample_2/File2_R2.sai.done
 	mkdir -p $(@D)
-	($(BWA_EXE) sampe -r "@RG	ID:RGID2	SM:SampleID2	LB:Lib2	CN:UM	PL:ILLUMINA" $(FA_REF) $(basename $^) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File2_R1.fastq.gz /home/mktrost/gotcloud/test/align/fastq/Sample_2/File2_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log
+	($(BWA_EXE) sampe -r "@RG	ID:RGID2	SM:SampleID2	LB:Lib2	CN:UM	PL:ILLUMINA" $(FA_REF) $(basename $^) test/align/fastq/Sample_2/File2_R1.fastq.gz test/align/fastq/Sample_2/File2_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log
 	@echo "(grep -q -v -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log || exit 1)"
 	@(grep -q -v -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log || exit 1) || (echo "`grep -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log`" >&2; echo "\nFailed sampe step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $(basename $@)).sampe.log $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log) for more details" >&2; exit 1;)
 	rm -f $(basename $(basename $@)).sampe.log
@@ -121,15 +119,15 @@ $(ALN_TMP)/fastq/Sample_2/File2_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File2_R1.
 
 $(SAI_TMP)/fastq/Sample_2/File2_R1.sai.done:
 	mkdir -p $(@D)
-	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File2_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log"
-	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File2_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File2_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log"
+	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File2_R1.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
 $(SAI_TMP)/fastq/Sample_2/File2_R2.sai.done:
 	mkdir -p $(@D)
-	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File2_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log"
-	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) /home/mktrost/gotcloud/test/align/fastq/Sample_2/File2_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File2_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log"
+	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) test/align/fastq/Sample_2/File2_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 

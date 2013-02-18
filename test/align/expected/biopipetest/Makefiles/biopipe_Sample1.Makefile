@@ -2,8 +2,6 @@
 
 PIPELINE_DIR = /home/mktrost/gotcloud
 OUT_DIR = /home/mktrost/gotcloud/test/align/T3/biopipetest
-KEEP_TMP = 0
-KEEP_LOG = 0
 INDEX_FILE = /home/mktrost/gotcloud/test/align/indexFile.txt
 REF_DIR = /home/mktrost/gotcloud/test/align/chr20Ref
 AS = NCBI37

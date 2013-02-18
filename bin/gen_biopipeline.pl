@@ -90,7 +90,7 @@ my %opts = (
     batchtype => '',
     batchopts => '',
     keeptmp => 0,
-    keeplog => 1,
+    keeplog => 0,
     conf => '',
 );
 Getopt::Long::GetOptions( \%opts,qw(
@@ -125,11 +125,15 @@ if ($opts {test}) {
     my $outdir=abs_path($opts{test});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
-    print "Running GOTCLOUD TEST, test log in: $outdir/biopipeTest.log\n";
+    my $testoutdir = $outdir."/biopipetest";
+    print "Removing any previous results from: $testoutdir\n";
+    system("rm -rf $testoutdir") &&
+        die "Unable to clear the test output directory '$testoutdir'\n";
+    print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
     my $testdir = $basepath . '/test/align';
     my $cmd = "$0 -conf $testdir/test.conf -index $testdir/indexFile.txt " .
-        "-ref $testdir/chr20Ref -fastq $testdir -out $outdir/biopipetest " .
-        "-batchtype local -keeplog";
+        "-ref $testdir/chr20Ref -fastq $testdir -out $testoutdir " .
+        "-batchtype local";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
     $cmd = "$basepath/scripts/diff_results.sh $outdir $basepath/test/align/expected";
@@ -181,8 +185,14 @@ if ($opts{index_file}) {
     setConf('INDEX_FILE', $index_file);
 }
 
-setConf('KEEP_TMP', $opts{keeptmp});
-setConf('KEEP_LOG', $opts{keeplog});
+if($opts{keeptmp})
+{
+  setConf('KEEP_TMP', $opts{keeptmp});
+}
+if($opts{keeplog})
+{
+  setConf('KEEP_LOG', $opts{keeplog});
+}
 
 #--------------------------------------------------------------
 #   Load configuration variables from conf file
@@ -410,7 +420,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
 
   print MAK "\$(OUT_DIR)/$mergeName.OK: \$(RECAL_DIR)/$mergeName.recal.bam.done \$(QC_DIR)/$mergeName.genoCheck.done " .
     "\$(QC_DIR)/$mergeName.qplot.done\n";
-  if(! $opts{keeptmp})
+  if(! getConf("KEEP_TMP"))
   {
     print MAK "\trm -f \$(SAI_FILES) \$(ALN_FILES) \$(POL_FILES) \$(DEDUP_FILES) \$(RECAL_FILES)\n";
   }
@@ -702,7 +712,7 @@ sub logCatchFailure {
     $makeCmd .= "echo \"See \$(OUT_DIR)/failLogs/\$\(notdir $log\) for more details\" >&2; ";
     #   Exit on failure.
     $makeCmd .= "exit 1;)\n";
-    if ($opts{keeplog}) { return $makeCmd; }
+    if (getConf("KEEP_LOG")) { return $makeCmd; }
 
     #   On success, remove the log
     $makeCmd .= "\trm -f $log\n";
