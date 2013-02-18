@@ -51,8 +51,9 @@ use Cwd 'abs_path';
 my %hConf = ();
 my @keys = ();
 
-my($me, $scriptdir, $mesuffix) = fileparse($0, '\.pl');
-if ($scriptdir !~ /^(\/.+)\/bin\//) { die "Unable to set basepath. No 'bin' found in '$0'\n"; }
+my ($me, $scriptdir, $mesuffix) = fileparse($0, '\.pl');
+$scriptdir = abs_path($scriptdir);
+if ($scriptdir !~ /(.*)\/bin$/) { die "Unable to set basepath. No 'bin' found in '$scriptdir'\n"; }
 my $basepath = $1;
 
 setConf("PIPELINE_DIR", $basepath);         # Get rid of this someday
@@ -90,6 +91,7 @@ my %opts = (
     batchopts => '',
     keeptmp => 0,
     keeplog => 1,
+    conf => '',
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
@@ -141,7 +143,7 @@ if ($opts{batchtype} eq 'pbs') { $opts{nowait} = 1; }
 $opts{runcluster} = abs_path($opts{runcluster});    # Make sure this is fully qualified
 
 if ((! $opts{conf}) || (! -r $opts{conf})) {
-    die "Conf file '$opts{conf}' does not exist\n";
+    die "Conf file '$opts{conf}' does not exist or was not specified\n";
 }
 $opts{conf} = abs_path($opts{conf});
 if (! $opts{out_dir}) {
