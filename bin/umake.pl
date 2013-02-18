@@ -108,14 +108,18 @@ foreach (@commlist) {
 ## getConf() : access configuration hash table to contain a value
 ############################################################################
 sub getConf {
-    my $key = shift;
+    my ($key,$req) = @_;
 
     if ( defined($hConf{$key}) ) {
 	return $hConf{$key};
     }
     else {
-	return "";
-	#die "Cannot find key $key in the configuration file\n";
+	if ( defined($req ) ) {
+	   die "Cannot find the required key $key in the configuration file\n";
+        }
+        else {
+ 	   return "";
+	}
     }
 }
 
@@ -1193,6 +1197,8 @@ foreach my $chr (@chrs) {
 	my @outs = ();
 	my @cmds = ();
 
+	my $multiBam = 0;
+
 	for(my $i=0; $i < @allSMs; ++$i) {
 	    my @bams = @{$hSM2bams{$allSMs[$i]}};
 	    for(my $j=0; $j < @unitStarts; ++$j) {
@@ -1209,9 +1215,13 @@ foreach my $chr (@chrs) {
 		    push(@bamGlfs,$bamGlf);
 		}
 		push(@outs,"$smGlf.OK");
-		my $cmd = "$smGlf.OK: ".join(".OK ",@bamGlfs).".OK\n\tmkdir --p $smGlfParent\n\t";
+		my $cmd = "$smGlf.OK:";
+		$cmd .= (" ".join(".OK ",@bamGlfs).".OK") if ( $#bamGlfs > 0 );
+		$cmd .= " bai" if ( &getConf("RUN_INDEX") eq "TRUE" );
+		$cmd .= "\n\tmkdir --p $smGlfParent\n\t";
 		#my $cmd = "$smGlf.OK:\n\tmkdir --p $smGlfParent\n\t";
 		if ( $#bamGlfs > 0 ) {
+		    $multiBam = 1;
 		    my $qualities = "0";
 		    my $minDepths = "1";
 		    my $maxDepths = "1000";
@@ -1228,7 +1238,37 @@ foreach my $chr (@chrs) {
                     $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		}
 		else {
-		    $cmd .= "ln -f -s $bamGlfs[0] $smGlf";
+		    #$cmd .= "ln -f -s $bamGlfs[0] $smGlf";
+		    my $baqFlag = 1;
+		    foreach my $s (@nobaqSubstrings) {
+			if ( $bams[0] =~ m/($s)/ ) {
+			    $baqFlag = 0;
+			}
+		    }
+		    my $loci = "";
+		    my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
+		    if ( $#uniqBeds >= 0 ) {
+			my $idx = $hBedIndices{$allSMs[$i]};
+			$loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
+			if ( &getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
+			    $region = "";
+			    foreach my $p (@{$targetIntervals[$idx]->{$chr}}) {
+				my $rmin = ($p->[0] > $unitStarts[$j]) ? $p->[0] : $unitStarts[$j];  # take bigger one
+				my $rmax = ($p->[1] > $unitEnds[$j]) ? $unitEnds[$j] : $p->[1];  # take smaller one
+				$region .= " $chr:$rmin-$rmax" if ( $rmin <= $rmax );
+			    }
+			    ## if no target exists then set region as single base
+			    $region = "$chr:0-0" if ( $region eq "" );
+			}
+		    }
+
+		    if ( $baqFlag == 0 ) {
+			$cmd .= &getMosixCmd(&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf");
+		    }
+		    else {
+			$cmd .= &getMosixCmd(&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf");
+		    }
+                    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		}
 		$cmd .= "\n\ttouch $smGlf.OK\n";
 		push(@cmds,$cmd);
@@ -1238,8 +1278,6 @@ foreach my $chr (@chrs) {
 	print MAK "glf$chr: ";
 	print MAK join(" ",@outs);
 	print MAK "\n\n";
-	#print MAK join("\n",@cmds);
-	#print MAK "\n";
 
 	for(my $i=0; $i < @allbams; ++$i) {
 	    my $bam = $allbams[$i];
@@ -1273,7 +1311,7 @@ foreach my $chr (@chrs) {
 		}
 
 		if ( $baqFlag == 0 ) {
-		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
 		}
 		else {
 		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
