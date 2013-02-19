@@ -1,11 +1,20 @@
 #!/usr/bin/make -f
-PFX=usr/local/gotcloud
 PACKAGE=gotcloud-test
-PACKVER=1.0
+
+#   Allow PACKVER to override our internal value
+ifndef PACKVER
+PACKVER=99.99
+endif
+
+#   Allow PFX to override our internal value.  If set PFX should not have leading /
+ifndef PFX
+PFX=usr/local/gotcloud
+endif
+
 PKG=${PACKAGE}_${PACKVER}
 INSTALLDIR=${PFX}
 #PREPOSTLIST=debian/postinst debian/postrm debian/preinst debian/prerm
-PREPOSTLIST=debian/postinst
+PREPOSTLIST=debian/postinst debian/postrm
 DIRLIST=test
 
 binary-indep:
@@ -17,10 +26,13 @@ clean:
 	rm -rf files substvars tmp debian/errs
 
 binary:
-	rm -rf debian/tmp debian/errs
+	@rm -rf debian/tmp debian/errs
+	@echo "===> Version '${PACKVER} of '${PACKAGE}' will install into '${INSTALLDIR}'"
 	install -d debian/tmp/DEBIAN
 	cp debian/control ${PREPOSTLIST} debian/tmp/DEBIAN
 	install -d debian/tmp/usr/share/doc/${PKG}
+	sed -e s/99.99/${PACKVER}/g < debian/changelog > debian/changelog.new
+	mv debian/changelog.new debian/changelog
 	cp debian/changelog debian/tmp/usr/share/doc/${PKG}
 	cp README    debian/tmp/usr/share/doc/${PKG}/README
 	gzip -9      debian/tmp/usr/share/doc/${PKG}/*
@@ -31,4 +43,4 @@ binary:
 	chown -R root.root debian/tmp
 	chmod -R o-s,go=u,go-ws debian/tmp
 	dpkg --build debian/tmp .
-	rm -rf tmp
+	@rm -rf debian/tmp

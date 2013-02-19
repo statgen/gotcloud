@@ -1,4 +1,4 @@
-gotcloud-test (1.0) unstable; urgency=low
+gotcloud-test (99.99) unstable; urgency=low
 
   * Sep 17, 2012  - initial packaging from tools developed by the CSG, University of Michigan
   * Oct 15, 2012  - improve packaging
