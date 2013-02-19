@@ -182,7 +182,7 @@ if ($opts{index_file}) {
     #   If no full or partial path provided, default to conf file path
     if ($opts{index_file} !~ /\//) {
         if ($opts{conf} !~ /(.+)\/[^\/]+$/) { die "Unable to parse path from conf file '$opts{conf}'\n"; }
-        $opts{index_file} = $1 . $opts{index_file};
+        $opts{index_file} = $1 . '/' . $opts{index_file};
     }
     $index_file = abs_path($opts{index_file});
     setConf('INDEX_FILE', $index_file);
