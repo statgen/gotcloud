@@ -51,9 +51,12 @@ use Cwd 'abs_path';
 my %hConf = ();
 my @keys = ();
 
-my ($me, $scriptdir, $mesuffix) = fileparse($0, '\.pl');
+#   Everything is relative to where this program lives
+#   so it must be in a 'bin' directory.  Symlinks are tricky
+$_ = abs_path($0);
+my ($me, $scriptdir, $mesuffix) = fileparse($_, '\.pl');
 $scriptdir = abs_path($scriptdir);
-if ($scriptdir !~ /(.*)\/bin$/) { die "Unable to set basepath. No 'bin' found in '$scriptdir'\n"; }
+if ($scriptdir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptdir'\n"; }
 my $basepath = $1;
 
 setConf("PIPELINE_DIR", $basepath);         # Get rid of this someday
@@ -125,7 +128,7 @@ if ($opts {test}) {
     my $outdir=abs_path($opts{test});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
-    my $testoutdir = $outdir."/biopipetest";
+    my $testoutdir = $outdir . '/biopipetest';
     print "Removing any previous results from: $testoutdir\n";
     system("rm -rf $testoutdir") &&
         die "Unable to clear the test output directory '$testoutdir'\n";
