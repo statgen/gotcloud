@@ -1,7 +1,7 @@
 Analysis started on Wed Jan 30 11:24:37 2013
 
 The following filters are in effect:
-dp30 : DP >= 30.00
+dp60 : DP >= 60.00
 DP1200 : DP <= 1200.00
 AB70 : AB <= 0.70
 STR20 : STR <= 0.20

@@ -231,16 +231,26 @@ $hConf{"UMAKE_ROOT"} = $umakeRoot;
 
 my $here = getcwd();                # Where I am now
 
+#   Special case for convenient testing
 if($testdir ne "") {
-  if (substr($testdir, 0, 1) ne '/')
-  {
-    $testdir = $here . '/' . $testdir;
-  }
-  `mkdir -p $testdir`;
-  print "Running UMAKE TEST, test log in: $testdir/umakeTest.log\n";
-  system("make -C ${umakeRoot}/test/umake UMAKE_TEST_DIR=$testdir 1> $testdir/umakeTest.log 2>&1") && die "Failed test";
-  print "Test Passed\n";
-  exit 1;
+    my $outdir=abs_path($testdir);
+    system("mkdir -p $outdir") &&
+        die "Unable to create directory '$outdir'\n";
+    my $testoutdir = $outdir."/umaketest";
+    print "Removing any previous results from: $testoutdir\n";
+    system("rm -rf $testoutdir") &&
+        die "Unable to clear the test output directory '$testoutdir'\n";
+    print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
+    $testdir = $umakeRoot . '/test/umake';
+    my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall " .
+        "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
+    system($cmd) &&
+        die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
+    $cmd = "$umakeRoot/scripts/diff_results_umake.sh $outdir $umakeRoot/test/umake/expected";
+    system($cmd) &&
+        die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
+    print "Successfully ran the test case, congratulations!\n";
+    exit;
 }
 
 &loadOverride($override);
@@ -376,19 +386,23 @@ while(<IN>) {
     foreach my $mpop (@mpops) {
 	$hPops{$mpop} = 1;
     }
-    push(@allbams,@bams);
     foreach my $bam (@bams) {
         if(!($bam =~ /^\// ))
         {
             # check if it starts with a configuration value.
-            my $path = $bam;
-            while($path =~ /\$\(([^\s)]+)\)/ )
+            while($bam =~ /\$\(([^\s)]+)\)/ )
             {
                 my $key = $1;
                 my $val = &getConf($key);
-                $path =~ s/\$\($key\)/$val/;
+                $bam =~ s/\$\($key\)/$val/;
             }
-            die "FATAL ERROR: All BAM filepath, $bam, must be absolute path when running in the cluster" if ( !( $path =~ /^\// ) && ( &getConf("MOS_PREFIX") ne "" ) );
+            # Check if there is just a relative path to the bams.
+            if ( !( $bam =~ /^\// ) )
+            {
+              # It is relative, so make it absolute.
+              my $bamPath = dirname(abs_path($bamIndex));
+              $bam = abs_path($bamPath .'/'. $bam);
+            }
         }
 	push(@allbamSMs,$smID);
 
@@ -400,6 +414,7 @@ while(<IN>) {
 	}
     }
     push(@allSMs,$smID);
+    push(@allbams,@bams);
 }
 close IN;
 
