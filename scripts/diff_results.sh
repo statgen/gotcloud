@@ -100,19 +100,14 @@ if [ "$?" != "0" ]; then
 fi
 
 
-set -e                          # Fail on errors
 for file in $QEMPS; do
-    sort $RESULTS_DIR/$QEMP_SUBDIR/$file | diff - $EXPECTED_DIR/$QEMP_SUBDIR/$file > $RESULTS_DIR/$file.mismatches
+    sort $RESULTS_DIR/$QEMP_SUBDIR/$file | diff - $EXPECTED_DIR/$QEMP_SUBDIR/$file >> $DIFFRESULTS
     if [ "$?" != "0" ]; then
-        echo "$file failed. See mismatches in $RESULTS_DIR"
+        echo "$RESULTS_DIR/$QEMP_SUBDIR/$file does not match $EXPECTED_DIR/$QEMP_SUBDIR/$file. See mismatches in $DIFFRESULTS"
         exit 2
     fi
 done
 
-$BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM1_1 --in2 $EXPECTED_DIR/$BAM1_1
-$BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM1_2 --in2 $EXPECTED_DIR/$BAM1_2
-$BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM2_1 --in2 $EXPECTED_DIR/$BAM2_1
-$BAM_UTIL diff --all --in1 $RESULTS_DIR/$BAM2_2 --in2 $EXPECTED_DIR/$BAM2_2
 if [ ! -f $RESULTS_DIR/biopipetest/alignment.recal/$BAI1 ]; then
     echo "ERROR, Missing: $RESULTS_DIR/biopipetest/alignment.recal/$BAI1"
     exit 3
@@ -121,6 +116,16 @@ if [ ! -f $RESULTS_DIR/biopipetest/alignment.recal/$BAI2 ]; then
     echo "ERROR, Missing: $RESULTS_DIR/biopipetest/alignment.recal/$BAI2"
     exit 3
 fi
+
+set -e                          # Fail on errors
+for file in $BAM1_1 $BAM1_2 $BAM2_1 $BAM2_2
+do
+  $BAM_UTIL diff --all --in1 $RESULTS_DIR/$file --in2 $EXPECTED_DIR/$file >> $DIFFRESULTS
+  if [ `wc -l $DIFFRESULTS|cut -f 1 -d ' '` != "0" ]; then
+      echo "$RESULTS_DIR/$file does not match $EXPECTED_DIR/$file. See mismatches in $DIFFRESULTS"
+      exit 2
+  fi
+done
 
 echo "Successful comparison of data in '$RESULTS_DIR' and '$EXPECTED_DIR'"
 exit 0

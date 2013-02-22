@@ -1,18 +1,18 @@
 Initialize errormodel structure...
-Start iterating SAM/BAM file biopipetest/tmp/alignment.dedup/Sample2.dedup.bam
-Start: Tue Oct 23 21:14:29 2012
+Start iterating SAM/BAM file /net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.dedup/Sample2.dedup.bam
+Start: Fri Feb 22 14:05:51 2013
 
 Open reference
 Done! Sequence length 63025520
-End: Tue Oct 23 21:14:29 2012
+End: Fri Feb 22 14:05:54 2013
 
 # mapped Reads observed: 3273; Q>0: 3187
 # unmapped Reads observed: 6726
 # Duplicate Reads skipped: 1
 # Mapping Quality 0 Reads skipped: 86
 # Mapping Quality 255 Reads skipped: 0
-# Bases observed: 205723 - #match: 202502; #mismatch: 3221
-# Bases Skipped for DBSNP: 2380, for Map Qual = 0: 86, for MapQual = 255: 0, for BaseQual < 5: 306
-Writing recalibration table biopipetest/tmp/alignment.recal/Sample2.recal.bam.qemp
-Writing recalibrated file biopipetest/tmp/alignment.recal/Sample2.recal.bam
+# Bases observed: 200498 - #match: 197378; #mismatch: 3120
+# Bases Skipped for DBSNP: 7612, for Map Qual = 0: 86, for MapQual = 255: 0, for BaseQual < 5: 299
+Writing recalibration table /net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.recal/Sample2.recal.bam.qemp
+Writing recalibrated file /net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.recal/Sample2.recal.bam
 Recalibration successfully finished
