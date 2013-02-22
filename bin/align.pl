@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #################################################################
 #
-# Name: gen_biopipeline.pl
+# Name: align.pl
 #
 # Description:
 #   Use this to generate makefiles for a single session whatever it is.
@@ -10,11 +10,11 @@
 #       rm -rf ~/outdataS
 #       d=/gotcloud/test/align
 #       export BIOPIPE_TEST_DIR=~/outdata
-#       /gotcloud/bin/gen_biopipeline.pl -conf $d/test.conf \
+#       /gotcloud/bin/align.pl -conf $d/test.conf \
 #          -index $d/indexFile.txt -ref /data/local/ref/gotcloud.ref \
 #          -fastq /gotcloud/test/align   -out ~/outdata
 #
-#   This is the equivalent of doing  '/gotcloud/bin/gen_biopipeline.pl -test ~/outdata'
+#   This is the equivalent of doing  '/gotcloud/bin/align.pl -test ~/outdata'
 #   only the make commands are not executed for you and the output is not verified.
 #
 #   You can do a verify with
@@ -102,13 +102,13 @@ Getopt::Long::GetOptions( \%opts,qw(
     batchtype=s
     batchopts=s
     test=s
-    out_dir=s
+    out_dir|outdir|outDir=s
     conf=s
-    index_file=s
-    ref_dir=s
+    index_file|indexfile|indexFile=s
+    ref_dir|refdir|refDir=s
     fastq_prefix=s
-    keeptmp
-    keeplog
+    keeptmp|keepTmp
+    keeplog|keepLog
     numjobs=i
     nowait
 )) || die "Failed to parse options\n";
@@ -813,14 +813,14 @@ __END__
 
 =head1 NAME
 
-gen_biopipeline.pl - Convert FASTQs to BAMs
+align.pl - Convert FASTQs to BAMs
 
 =head1 SYNOPSIS
 
-  gen_biopipeline.pl -test ~/testaligner    # Run short self check
-  gen_biopipeline.pl -conf ~/mydata.conf -out ~/testdir
-  gen_biopipeline.pl -batchtype slurm -conf ~/mydata.conf -index ~/mydata.index
-  gen_biopipeline.pl -conf ~/mydata.conf -index ~/mydata.index -ref /usr/local/ref
+  align.pl -test ~/testaligner    # Run short self check
+  align.pl -conf ~/mydata.conf -out ~/testdir
+  align.pl -batchtype slurm -conf ~/mydata.conf -index ~/mydata.index
+  align.pl -conf ~/mydata.conf -index ~/mydata.index -ref /usr/local/ref
 
 
 =head1 DESCRIPTION
@@ -977,7 +977,7 @@ return code of 0. Any error will set a non-zero return code.
 
 =head1 AUTHOR
 
-Written by Mary Kate Trost I<E<lt>mktrost@umich.eduE<gt>>.
+Written by Mary Kate Wing I<E<lt>mktrost@umich.eduE<gt>>.
 This is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
 Foundation; See http://www.gnu.org/copyleft/gpl.html

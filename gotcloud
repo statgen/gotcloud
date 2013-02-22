@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+
+##################################################################
+## gotcloud.pl : interface to alignment & variant calling pipelines
+##################################################################
+use strict;
+use Getopt::Long;
+use Pod::Usage;
+use Cwd;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+my $dir = $FindBin::RealBin;
+my $bindir = "$dir/bin";
+
+##################################################################
+## Determine the types of analysis to be done
+## Commands can be
+## perl gotcloud.pl align [options]    : Alignment pipeline
+## perl gotcloud.pl snpcall  [options] : Snp Calling pipeline
+##################################################################
+if ( $#ARGV < 0 ) {
+    print STDERR "ERROR: Missing command. Please see the usage below.\n";
+    pod2usage(1);
+}
+elsif ( $ARGV[0] =~ /^([\-])*man$/ ) {
+    pod2usage(-verbose => 2);
+}
+elsif ( $ARGV[0] =~ /^([\-])*help$/ ) {
+    pod2usage(1);
+}
+elsif ( $ARGV[0] eq "align") {
+    shift(@ARGV);
+    exec("$bindir/align.pl",@ARGV);
+}
+elsif ( $ARGV[0] eq "snpcall") {
+    shift(@ARGV);
+    exec("$bindir/umake.pl", "--snpcall",@ARGV);
+}
+elsif ( $ARGV[0] eq "ldrefine") {
+    shift(@ARGV);
+    system("$bindir/umake.pl", "--beagle",@ARGV)
+    or die "failed the first step of ld genotype refinement: $?";
+    exec("$bindir/umake.pl", "--thunder",@ARGV);
+  }
+else {
+    print STDERR "ERROR: Unknown command $ARGV[0]. Please see the usage below.\n";
+    pod2usage(1);
+}
+
+__END__
+
+=head1 NAME
+
+gotcloud - sequencing and genotyping software pipelines that also work on the cloud
+
+=head1 SYNOPSIS
+
+epacts [command] [options] 
+
+ Command:
+   help            Print out brief help message
+   man             Print the full documentation in man page style
+   align           Run the alignment pipeline
+   snpcall         Run the snp calling pipeline
+
+ Visit http://genome.sph.umich.edu/wiki/GotCloud for more detailed documentation
+
+=head1 COMMANDS
+
+=over 8
+
+=item B<help>
+
+Print a brief help message and exits.
+
+=item B<man>
+
+Prints the manual page and exits.
+
+=item B<align>
+
+Run the alignment pipeline. Type 'gotcloud align -help' for more detailed information.
+
+=item B<snpcall>
+
+Run the snp calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
+
+=back
+
+=head1 DESCRIPTION
+
+B<epacts> is an efficient and flexible software pipelien for sequence-based
+genetic analysis. It takes VCF-formatted file as input and performs a wide
+variety of single variant and buden test. 
+
+Visit http://genome.sph.umich.edu/wiki/EPACTS for more detailed documentation
+
+=cut
