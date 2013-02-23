@@ -1,6 +1,6 @@
 include Makefiles/Makefile.include
 
-STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF
+STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID
 EXES = samtools-hybrid $(STAT_GEN_EXES)
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)

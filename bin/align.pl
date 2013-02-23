@@ -98,7 +98,7 @@ my %opts = (
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
-    dry-run
+    dry-run|dryrun|dryRun
     batchtype=s
     batchopts=s
     test=s
@@ -434,8 +434,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
     # Verify Bam ID
     print MAK "\$(QC_DIR)/$mergeName.genoCheck.done: \$(RECAL_DIR)/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
-    my $verifyCommand = "\$(VERIFY_BAM_ID_EXE) --reference \$(FA_REF) -v -m 10 -g 5e-3 --selfonly -d 50 -b " .
-        "\$(PLINK) --in \$(basename \$^) --out \$(basename \$\@) 2> \$(basename \$\@).log";
+    my $verifyCommand = "\$(VERIFY_BAM_ID_EXE) --verbose --vcf \$(HM3_VCF) --bam \$(basename \$^) --out \$(basename \$\@) \$(VERIFY_BAM_ID_OPTIONS) 2> \$(basename \$\@).log";
     print MAK logCatchFailure("VerifyBamID", $verifyCommand, "\$(basename \$\@).log");
     print MAK "\ttouch \$\@\n\n";
   }

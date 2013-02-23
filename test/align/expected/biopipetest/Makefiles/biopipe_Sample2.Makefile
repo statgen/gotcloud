@@ -6,8 +6,9 @@ INDEX_FILE = test/align/indexFile.txt
 REF_DIR = test/align/chr20Ref
 AS = NCBI37
 FA_REF = $(REF_DIR)/human_g1k_v37_chr20.fa
-DBSNP_VCF = $(REF_DIR)/dbsnp.b130.ncbi37.chr20.vcf.gz
-PLINK = $(REF_DIR)/hapmap_3.3.b37.chr20
+DBSNP_VCF = $(REF_DIR)/dbsnp135_chr20.vcf.gz
+HM3_VCF = $(REF_DIR)/hapmap_3.3.b37.sites.chr20.vcf.gz
+VERIFY_BAM_ID_OPTIONS = 
 RUN_QPLOT = 1
 RUN_VERIFY_BAM_ID = 1
 RECAL_DIR = $(OUT_DIR)/alignment.recal
@@ -38,8 +39,8 @@ $(OUT_DIR)/Sample2.OK: $(RECAL_DIR)/Sample2.recal.bam.done $(QC_DIR)/Sample2.gen
 
 $(QC_DIR)/Sample2.genoCheck.done: $(RECAL_DIR)/Sample2.recal.bam.done
 	mkdir -p $(@D)
-	@echo "$(VERIFY_BAM_ID_EXE) --reference $(FA_REF) -v -m 10 -g 5e-3 --selfonly -d 50 -b $(PLINK) --in $(basename $^) --out $(basename $@) 2> $(basename $@).log"
-	@$(VERIFY_BAM_ID_EXE) --reference $(FA_REF) -v -m 10 -g 5e-3 --selfonly -d 50 -b $(PLINK) --in $(basename $^) --out $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed VerifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(VERIFY_BAM_ID_EXE) --verbose --vcf $(HM3_VCF) --bam $(basename $^) --out $(basename $@) $(VERIFY_BAM_ID_OPTIONS) 2> $(basename $@).log"
+	@$(VERIFY_BAM_ID_EXE) --verbose --vcf $(HM3_VCF) --bam $(basename $^) --out $(basename $@) $(VERIFY_BAM_ID_OPTIONS) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed VerifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
