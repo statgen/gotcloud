@@ -1003,7 +1003,7 @@ foreach my $chr (@chrs) {
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --dbsnp ".&getConf("DBSNP_PREFIX").".chr$chr.map --FNRbfile ".&getConf("HM3_PREFIX").".chr$chr > $mvcfPrefix.filtered.sites.vcf.summary\n";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
@@ -1121,7 +1121,7 @@ foreach my $chr (@chrs) {
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --dbsnp ".&getConf("DBSNP_PREFIX").".chr$chr.map --FNRbfile ".&getConf("HM3_PREFIX").".chr$chr > $mvcfPrefix.filtered.sites.vcf.summary\n";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";

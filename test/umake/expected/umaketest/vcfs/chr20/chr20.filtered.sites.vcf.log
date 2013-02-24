@@ -9,9 +9,9 @@ str-20 : STR >= -0.20
 stz-5 : STZ >= -5.00
 STZ5 : STZ <= 5.00
 AOI5 : AOI <= 5.00
-fic-10 : FIC >= -0.10
-INDEL5 : INDEL >= 5 bp with /home/mktrost/gotcloudPlay/test/umake/ref/indels/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf
+fic-20 : FIC >= -0.20
+INDEL5 : INDEL >= 5 bp with /gotcloud/test/umake/chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf
 
-Writing to VCF file /home/mktrost/gotcloudPlay/A2/umaketest/vcfs/chr20/chr20.filtered.sites.vcf
+Writing to VCF file /gotcloud/umaketest/vcfs/chr20/chr20.filtered.sites.vcf
 Analysis finished on Wed Jan 30 11:24:37 2013
 

@@ -1,0 +1,456 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+#use lib "/net/fantasia/home/hmkang/bin/utils/";
+#use hyunlib qw(initRef getCpGs);
+use strict;
+use warnings;
+
+my $vcf = "";
+my $dbSNPf = "";
+my $FNRbfile = "";
+my $FNRvcf = "";
+my $MAFthres = 0;
+my $monoFlag = "";
+my $defaultFlag = "";
+my $b135Flag = "";
+#my $exomeFlag = "";
+#my $agilentFlag = "";
+my $chr = "";
+my $ref = "/data/local/ref/karma.ref/human.g1k.v37.fa";
+my $defaultDbsnp = "/net/fantasia/home/hmkang/data/dbSNP/b129.ncbi37/dbsnp_129_b37.rod";
+my $b135Dbsnp = "/net/fantasia/home/hmkang/data/dbSNP/b135/00-All.vcf.gz";
+#my $exomeDbsnp = "/net/fantasia/home/hmkang/data/dbSNP/b129.ncbi37/dbsnp_129_b37.rod.1kg_exome_add50bp_consensus";
+#my $agilentDbsnp = "/net/fantasia/home/hmkang/data/dbSNP/b129.ncbi37/dbsnp_129_b37.rod.agilent_50bp";
+my $defaultHM3 = "/net/fantasia/home/hmkang/data/GATK-resources/hapmap_3.3.b37.sites.vcf.gz";
+#my $exomeHM3 = "/net/fantasia/home/hmkang/data/HapMap/broad/exonic/hapmap3.3.genotypes.b37_fwd.anno.vcf.1kg-consensus-50bp.vcf";
+#my $agilentHM3 = "/net/fantasia/home/hmkang/data/HapMap/broad/exonic/hapmap3.3.genotypes.b37_fwd.anno.agilent-50bp.vcf";
+my $auto = "";
+my $acbr = "";
+
+my $tabix = "tabix";
+
+my $result = GetOptions("vcf=s",\$vcf,
+			"dbsnp=s",\$dbSNPf,
+			"FNRvcf=s",\$FNRvcf,
+			"FNRbfile=s",\$FNRbfile,
+			"MAFthres=f",\$MAFthres,
+			"chr=i",\$chr,
+			"default",\$defaultFlag,
+			"b135",\$b135Flag,
+			#"exome",\$exomeFlag,
+			#"agilent",\$agilentFlag,
+			"mono",\$monoFlag,
+			"auto",\$auto,
+			"acbreaks=s",\$acbr,
+                        "tabix=s", \$tabix,
+			"ref=s",\$ref,
+    );
+
+die "Error in parsing options\n" unless ( ($result) );
+
+&initRef($ref);
+
+my %hdbsnps = ();
+if ( $defaultFlag ) {
+    if ( $chr ) {
+	$dbSNPf = "$defaultDbsnp.chr$chr.map";
+	$FNRvcf = $defaultHM3;
+    }
+    else {
+	$dbSNPf = "$defaultDbsnp.map";
+	$FNRvcf = $defaultHM3;
+    }
+}
+elsif ( $b135Flag ) {
+    $dbSNPf = $b135Dbsnp;
+    $FNRvcf = $defaultHM3;
+}
+#elsif ( $exomeFlag ) {
+#    $dbSNPf = "$exomeDbsnp.map";
+#    $FNRvcf = "$exomeHM3";
+#}
+#elsif ( $agilentFlag ) {
+#    $dbSNPf = "$agilentDbsnp.map";
+#    $FNRvcf = "$agilentHM3";
+#}
+
+if ( $dbSNPf ) {
+    my $ndbsnp = 0;
+    ## check if dbSNP file ends with .vcf or .vcf.gz
+    if ( ( $dbSNPf =~ /.vcf$/ ) || ( $dbSNPf =~ /.vcf.gz$/ ) ) {
+	print STDERR "loading $dbSNPf as a VCF input..\n";
+	if ( $dbSNPf =~ /.vcf.gz$/ ) {
+	    if ( $chr ) {
+		open(DBSNP,"$tabix $dbSNPf $chr:0 |") || die "Cannot open file\n";
+	    }
+	    else {
+		open(DBSNP,"zcat $dbSNPf |") || die "Cannot open file\n";
+	    }
+	}
+	else {
+	    open(DBSNP,$dbSNPf) || die "Cannot open file\n";
+	}
+	while(<DBSNP>) {
+	    next if ( /^#/ );
+	    my ($chr,$bp) = split;
+	    next if ( ($auto) && ( ! ( $chr =~ /^\d+$/ ) ) );
+	    $hdbsnps{"$chr:$bp"} = 1;
+	    ++$ndbsnp;
+	}
+	close DBSNP;
+    }
+    else {
+	print STDERR "loading $dbSNPf\n";
+	open(DBSNP,$dbSNPf) || die "Cannot open file\n";
+	while(<DBSNP>) {
+	    my ($chr,$rs,$bp) = split;
+	    next if ( ($auto) && ( ! ( $chr =~ /^\d+$/ ) ) );
+	    if ( $bp ) {
+		$hdbsnps{"$chr:".($bp+1)} = 1;
+		++$ndbsnp;
+	    }
+	}
+	close DBSNP;
+    }
+    print STDERR "finished loading dbSNP for $ndbsnp variants\n";
+}
+else {
+    print STDERR "Skipped loading dbSNP\n";
+}
+
+my %hFNRs = ();
+my $nFNR = 0;
+if ( $FNRbfile ) {
+    print STDERR "loading FNR evaluation sites from $FNRbfile\n";
+    open(IN,"$FNRbfile.bim") || die "Cannot open file\n";
+    open(IN2,"$FNRbfile.frq") || die "Cannot open file\n";
+    my $line = <IN2>;
+    while(<IN>) {
+	my ($chr,$snpid,$cM,$bp,$a1,$a2) = split;
+	next if ( ($auto) && ( $chr > 22 ) );
+	if ( $chr > 22 ) {
+	    if ( $chr == 23 ) { $chr = "X"; }
+	    elsif ( $chr == 24 ) { $chr = "Y"; }
+	    elsif ( $chr == 25 ) { $chr = "XY"; }
+	    elsif ( $chr == 26 ) { $chr = "MT"; }
+	}
+	my ($dummy,$chr2,$snpid2,$b1,$b2,$maf,$nchrobs) = split(/\s+/,<IN2>);
+	die "$snpid != $snpid2\n" unless ($snpid eq $snpid2);
+	if ( $monoFlag ) {
+	    if ( ($maf ne "NA") && ( ( $maf == 0 ) || ( $maf == 1 ) ) ) {
+		++$nFNR;
+		$hFNRs{"$chr:$bp"} = $snpid;
+	    }
+	}
+	else {
+	    if ( ($maf ne "NA") && ( $maf > $MAFthres ) && ( $maf < 1-$MAFthres ) ) {
+		++$nFNR;
+		$hFNRs{"$chr:$bp"} = $snpid;
+	    }
+	}
+    }
+    close IN;
+    close IN2;
+    print STDERR "finished loading $nFNR FNR evaluation sites\n";
+}
+elsif ( $FNRvcf ) {
+    if ( $FNRvcf =~ /\.gz$/ ) {
+	if ( ($chr) && ( -s "$FNRvcf.tbi" ) ) {
+	    open(IN,"$tabix -h $FNRvcf $chr:0 |") || die "Cannot open file\n";
+	}
+	else {
+	    open(IN,"zcat $FNRvcf|") || die "Cannot open file\n";
+	}
+    }
+    else {
+	open(IN,$FNRvcf) || die "Cannot open file\n";
+    }
+    while(<IN>) {
+	next if ( /^#/ );
+	my ($chrom,$pos,$id,$ref,$alt,$qual,$filter,$info) = split(/[\t\r\n]/);
+	next if ( ($auto) && ( ! ( $chrom =~ /^\d+$/ ) ) );
+	my $maf = 0;
+	if ( $info =~ /AC=(\d+);/ ) {
+	    my $AC = $1;
+	    if ( $info =~ /AN=(\d)+1;/ ) {
+		$maf = $1/$AC;
+	    }
+	    else {
+		$maf = 0.01 if ( $1 > 0 );
+	    }
+	}
+	elsif ( $info =~ /AF=([\d\.]+)/ ) {
+	    $maf = $1;
+	}
+	else {
+	    $maf = 0.5; # include if AF does not exist
+	}
+
+	if ( $monoFlag ) {
+	    if ( ($maf ne "NA") && ( ( $maf == 0 ) || ( $maf == 1 ) ) ) {
+		++$nFNR;
+		$hFNRs{"$chrom:$pos"} = $id;
+	    }
+	}
+	else {
+	    if ( ($maf ne "NA") && ( $maf > $MAFthres ) && ( $maf < 1-$MAFthres ) ) {
+		++$nFNR;
+		$hFNRs{"$chrom:$pos"} = $id;
+	    }
+	}
+    }
+    close IN;
+}
+else {
+    print STDERR "Skipped loading FNR evaluation sites\n";
+}
+
+#my ($fh,$ninds,$riids,$rhiids) = &openVCF($ARGV[0]);
+if ( $vcf eq "" ) {
+    *IN = *STDIN;
+}
+elsif ( $vcf =~ /\.gz$/ ) {
+    open(IN,"zcat $vcf|") || die "Cannot open file\n";
+    #tie (*IN, "IO::Zlib", $vcf, "rb") || die "Cannot open file $vcf\n";
+}
+else {
+    open(IN,$vcf) || die "Cannot open file $vcf\n";
+}
+my %hcnts = ();
+my %mcnts = ();
+my %hszchrs = ();
+my $prev = "";
+
+my @acbrs = split(/,/,$acbr) if ( $acbr );
+shift(@acbrs) if ( ( $#acbrs >= 0 ) && ( $acbrs[0] == 1 ) );
+while(<IN>) {
+    next if ( /^#/ );
+    my ($chrom,$pos,$id,$ref,$alt,$qual,$filter,$info) = split(/[\t\r\n]/);
+    next if ( ( length($ref) > 1 ) || ( length($alt) > 1 ) );
+    next if ( ($auto) && ( ! ( $chrom =~ /^\d+$/ ) ) );
+    next if ( $prev eq $pos );
+    $prev = $pos;
+
+    if ( $acbr ) {
+	my $ac = $1 if ( $info =~ /AC=(\d+)/ );
+	if ( defined($ac) && ( $ac > 0 ) ) {
+	    if ( $#acbrs < 0 ) {
+		$filter .= ";AC=1+";
+	    }
+	    elsif ( $ac < $acbrs[0] ) {
+		$filter .= ";AC=1-".($acbrs[0]-1);
+	    }
+	    elsif ( $ac >= $acbrs[$#acbrs] ) {
+		$filter .= ";AC=".($acbrs[$#acbrs])."+";
+	    }
+	    else {
+		for(my $i=1; $i < @acbrs; ++$i) {
+		    if ( $ac < $acbrs[$i] ) {
+			$filter .= ";AC=".($acbrs[$i-1])."-".($acbrs[$i]-1);
+			last;
+		    }
+		}
+	    }
+	}
+	else {
+	    $filter .= ";AC=.";
+	}
+    }
+
+    my ($cpg) = @{&getCpGs($chrom,$pos,$pos)};
+
+    $ref = uc($ref);
+    $alt = uc($alt);
+    
+    my @filters = split(/;/,$filter);
+    unless ( defined($hcnts{$filter}) ) { # Old/New, CpG/nonCpG, Ts/Tv
+	$hcnts{$filter} = [0,0,[0,0,0,0,0,0,0,0],0];
+    }
+    
+    foreach my $f (@filters) {
+	unless ( defined($mcnts{$f}) ) {
+	    $mcnts{$f} = [0,0,[0,0,0,0,0,0,0,0],0];
+	}
+    }
+    
+    my $refalt = $ref.$alt;
+    my $dbsnpFlag = 0;
+    if ( ( ( $dbSNPf eq "" ) && ( $id =~ /^rs/ ) ) || ( ( $dbSNPf ne "" ) && ( defined($hdbsnps{"$chrom:$pos"}) ) ) ) {
+	++($hcnts{$filter}->[1]);
+	$dbsnpFlag = 1;
+	
+	foreach my $f (@filters) {
+	    ++($mcnts{$f}->[1]);
+	}
+    }
+    
+    if ( ( $refalt eq "AG" ) || ( $refalt eq "GA" ) || ( $refalt eq "TC") || ( $refalt eq "CT" ) ) {
+	my $key = 0+(($dbsnpFlag ==1) ? 0 : 4) + ($cpg == 1 ? 2 : 0);
+	++($hcnts{$filter}->[2]->[$key]);
+	#++($hcnts{$filter}->[2]->[($dbsnpFlag == 1) ? 2 : 4]);
+	
+	foreach my $f (@filters) {
+	    #++($mcnts{$f}->[($dbsnpFlag == 1) ? 2 : 4]);
+	    ++($mcnts{$f}->[2]->[$key]);
+	}
+    }
+    elsif ( ( $ref ne $alt ) && ( $refalt =~ /^[ACGT][ACGT]$/ ) ) {
+	my $key = 1+(($dbsnpFlag ==1) ? 0 : 4) + ($cpg == 1 ? 2 : 0);
+	++($hcnts{$filter}->[2]->[$key]);
+	#++($hcnts{$filter}->[($dbsnpFlag == 1) ? 3 : 5]);
+	
+	foreach my $f (@filters) {
+	    #++($mcnts{$f}->[($dbsnpFlag == 1) ? 3 : 5]);
+	    ++($mcnts{$f}->[2]->[$key]);
+	}
+    }
+    if ( defined($hFNRs{"$chrom:$pos"}) ) {
+	++($hcnts{$filter}->[3]);
+	
+	foreach my $f (@filters) {
+	    ++($mcnts{$f}->[3]);
+	}
+    }
+    ++($hcnts{$filter}->[0]);
+    foreach my $f (@filters) {
+	++($mcnts{$f}->[0]);
+    }
+}
+
+close IN;
+
+my @totals = (0,0,[0,0,0,0,0,0,0,0],0);
+my @passes = (0,0,[0,0,0,0,0,0,0,0],0);
+my @fails  = (0,0,[0,0,0,0,0,0,0,0],0);
+print "--------------------------------------------------------------------------------------------------------------\n";
+print sprintf("%20s","FILTER")."\t#SNPs\t#dbSNP\t%dbSNP\t%CpG\t%CpG\t%Known\t%Novel\t%nCpG-K\t%nCpG-N\t%HM3\t%HM3\n";
+print sprintf("%20s","")."\t\t\t\tKnown\tNovel\tTs/Tv\tTs/Tv\tTs/Tv\tTs/Tv\tsens\t/SNP\n";
+print "--------------------------------------------------------------------------------------------------------------\n";
+
+foreach my $key (sort keys %hcnts) {
+    for(my $i=0; $i < @totals; ++$i) {
+	if ( ( $key eq "PASS" ) || ( $key eq "0" ) ) {
+	    if ( $i == 2 ) {
+		for(my $j=0; $j < 8; ++$j) {
+		    $passes[$i]->[$j] += $hcnts{$key}->[$i]->[$j];
+		    $totals[$i]->[$j] += $hcnts{$key}->[$i]->[$j];
+		}
+	    }
+	    else {
+		$passes[$i] += $hcnts{$key}->[$i];	    
+		$totals[$i] += $hcnts{$key}->[$i];
+	    }
+	}
+	else {
+	    if ( $i == 2 ) {
+		for(my $j=0; $j < 8; ++$j) {
+		    $fails[$i]->[$j] += $hcnts{$key}->[$i]->[$j];
+		    $totals[$i]->[$j] += $hcnts{$key}->[$i]->[$j];
+		}
+	    }
+	    else {
+		$fails[$i] += $hcnts{$key}->[$i];	
+		$totals[$i] += $hcnts{$key}->[$i];
+    	    }
+	}
+    }
+    &printSummary($key,$hcnts{$key});
+}
+print "--------------------------------------------------------------------------------------------------------------\n";
+print sprintf("%20s","FILTER")."\t#SNPs\t#dbSNP\t%dbSNP\t%CpG\t%CpG\t%Known\t%Novel\t%nCpG-K\t%nCpG-N\t%HM3\t%HM3\n";
+print sprintf("%20s","")."\t\t\t\tKnown\tNovel\tTs/Tv\tTs/Tv\tTs/Tv\tTs/Tv\tsens\t/SNP\n";
+print "--------------------------------------------------------------------------------------------------------------\n";
+foreach my $key (sort keys %mcnts) {
+    &printSummary($key,$mcnts{$key});
+}
+print "--------------------------------------------------------------------------------------------------------------\n";
+if ( $passes[0] > 0 ) {
+    &printSummary("PASS",\@passes);
+}
+if ( $fails[0] > 0 ) {
+    &printSummary("FAIL",\@fails);
+}
+&printSummary("TOTAL",\@totals);
+print "------------------------------------------------------------------------------------------------------------\n";
+
+sub printSummary {
+    my ($key,$r) = @_;
+    my ($a,$b,$c,$d,$e,$f,$g,$h) = @{$r->[2]};
+    my $s = $a+$b+$c+$d+$e+$f+$g+$h;
+    print STDERR "$key\t$r->[0]\t$s\t".join("\t",@{$r->[2]})."\n" if ( $key eq "TOTAL" );
+    print sprintf("%20s",$key)."\t".($r->[0])."\t".($r->[1])."\t".sprintf("%.1lf",$r->[1]*100/$r->[0]);
+    print ( ($a+$b+$c+$d > 0) ? sprintf("\t%.1lf",($c+$d)/($a+$b+$c+$d)*100) : "\tNA");
+    print ( ($e+$f+$g+$h > 0) ? sprintf("\t%.1lf",($g+$h)/($e+$f+$g+$h)*100) : "\tNA");
+    print ( ($b+$d == 0) ? "\tNA" : sprintf("\t%.2lf",($a+$c)/($b+$d)) );
+    print ( ($f+$h == 0) ? "\tNA" : sprintf("\t%.2lf",($e+$g)/($f+$h)) );
+    print ( ($b == 0) ? "\tNA" : sprintf("\t%.2lf",($a)/($b)) );
+    print ( ($f == 0) ? "\tNA" : sprintf("\t%.2lf",($e)/($f)) );
+    printf("\t%.3lf",100*($r->[3]/($nFNR+1e-6)));
+    printf("\t%.3lf\n",100*($r->[3]/($r->[0]+1e-6)));
+}
+
+sub getCpGs {
+    my ($chr,$beg,$end) = @_;
+    my @seqs = split(//,uc(&readFasta($chr,$beg-1,$end+1)));
+   my @cpgs = ();
+    for(my $i=1; $i < $#seqs; ++$i) {
+	if ( ( ( $seqs[$i] eq "C" ) && ( $seqs[$i+1] eq "G" ) ) ||
+	     ( ( $seqs[$i-1] eq "C" ) && ( $seqs[$i] eq "G" ) ) ) {
+	    push(@cpgs,1);
+	}
+	elsif ( $seqs[$i] =~ /^[ACGT]$/ ) {
+	    push(@cpgs,0);
+	}
+	else {
+	    push(@cpgs,-1);
+	}
+    }
+    return (\@cpgs);
+}
+
+sub initRef {
+    my $ref = shift;
+
+    unless ( %hszchrs ) {
+	%hszchrs = ();
+	$ref = "/data/local/ref/karma.ref/human.g1k.v37.fa" unless ( defined($ref) );
+	open(REF,"$ref.fai") || die "Cannot open file $ref.fai\n";
+	while(<REF>) {
+	    my ($chrom,$base,$startbyte,$basesperline,$bytesperline) = split;
+	    $hszchrs{$chrom} = [$startbyte,$basesperline,$bytesperline];
+	}
+	close REF;
+	
+	open(FASTA,$ref) || die "Cannot open file $ref\n";
+    }
+}
+
+sub readFasta {
+    my ($chr,$beg,$end) = @_;
+
+    &initRef($ref);
+
+    $chr =~ s/^chr//;
+    my ($startbyte,$basesperline,$bytesperline) = @{$hszchrs{$chr}};
+    my $byteoffset = ($startbyte + int($beg/$basesperline)*$bytesperline + ( $beg % $basesperline ) - 1 );
+    seek(FASTA,$byteoffset,0);
+    my $pos = 0;
+    my $bp = $beg;
+    my $seq = "";
+    while( $bp <= $end ) {
+	my $line = <FASTA>;
+	chomp $line;
+	my $l = length($line);
+	if ( $bp + $l <= $end ) {
+	    $seq .= $line;
+	    $bp += $l;
+	}
+	else {
+	    $seq .= substr($line,0,$end-$bp+1);
+	    $bp = $end+1;
+	}
+    }
+    return ($seq);
+ }
