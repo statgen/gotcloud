@@ -22,7 +22,7 @@ fi
 #================================================================
 #   The only real work for this package
 #================================================================
-for x in gen_biopipeline.pl umake.pl make_indexfile.pl; do
+for x in gotcloud align.pl umake.pl make_indexfile.pl; do
   ln -sf $BIN/$x /usr/local/bin/$x
   if [ "$?" = "0" ]; then
     echo "Created symlink '/usr/local/bin/$x' to make execution easier."

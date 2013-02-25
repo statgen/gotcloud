@@ -28,6 +28,7 @@ clean:
 binary:
 	@rm -rf debian/tmp debian/errs
 	@echo "===> Version '${PACKVER} of '${PACKAGE}' will install into '${INSTALLDIR}'"
+	cp bin/bam /tmp/xxremove && echo "FAIL:  You have not compiled the 'src' directory"
 	install -d debian/tmp/DEBIAN
 	cp debian/control ${PREPOSTLIST} debian/tmp/DEBIAN
 	install -d debian/tmp/usr/share/doc/${PKG}
@@ -38,10 +39,12 @@ binary:
 	gzip -9      debian/tmp/usr/share/doc/${PKG}/*
 	cp debian/copyright debian/tmp/usr/share/doc/${PKG}
 	mkdir -p debian/tmp/${INSTALLDIR}
+	cp -p release_version.txt debian/tmp/${INSTALLDIR}
 	cp -rp ${DIRLIST} debian/tmp/${INSTALLDIR}
+	cp -p gotcloud debian/tmp/${INSTALLDIR}/bin
 	#ls -laR debian/tmp/${INSTALLDIR}
-	test -z "${RPMDIR}" || mv debian/tmp/${INSTALLDIR}/rpmbin/* debian/tmp/${INSTALLDIR}/bin
-	test -z "${RPMDIR}" || rm -rf debian/tmp/${INSTALLDIR}/rpmbin
+	#test -z "${RPMDIR}" || mv debian/tmp/${INSTALLDIR}/rpmbin/* debian/tmp/${INSTALLDIR}/bin
+	#test -z "${RPMDIR}" || rm -rf debian/tmp/${INSTALLDIR}/rpmbin
 	@echo "Converting symlinks into the actual executables to be distributed"
 	find bin -type l -exec rm -f debian/tmp/${INSTALLDIR}/{} \;
 	find bin -type l -exec cp -p {} debian/tmp/${INSTALLDIR}/bin \;
@@ -50,4 +53,4 @@ binary:
 	chown -R root.root debian/tmp
 	chmod -R o-s,go=u,go-ws debian/tmp
 	dpkg --build debian/tmp .
-	@rm -rf debian/tmp
+	@rm -rf debian/tmp /tmp/xxremove
