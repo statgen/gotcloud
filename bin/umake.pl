@@ -58,7 +58,7 @@ my $localdefaults = "";
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
-                           "outdir|out_dir|outDir=s",\$outdir,
+                           "outdir|out_dir=s",\$outdir,
                            "conf=s",\$conf,
                            "numjobs=i",\$numjobs,
 			   "snpcall",\$snpcallOpt,
@@ -208,9 +208,8 @@ for(my $i=0; $i < @orderFlags; ++$i) {
 }
 
 if ( $validFlag == 0 ) {
- foreach (@ARGV) { print STDERR "$_\n" };
-print STDERR qx/ps -o args $$/;
-
+# foreach (@ARGV) { print STDERR "$_\n" };
+#print STDERR qx/ps -o args $$/;
     die "ERROR IN CONF FILE : Options are not compatible. Use --snpcall, --extract, --beagle, --thunder or compatible subsets\n";
 }
 
@@ -319,12 +318,12 @@ print MAK "UMAKE_ROOT=$umakeRoot\n\n";
 print MAK ".DELETE_ON_ERROR:\n\n";
 
 # Write the values from the configuration.
-foreach my $key (@keys)
-{
-  print MAK "$key = $hConf{$key}\n";
-}
-
-print MAK "\n";
+#foreach my $key (@keys)
+#{
+#  print MAK "$key = $hConf{$key}\n";
+#}
+#
+#print MAK "\n";
 
 print MAK "all:";
 foreach my $chr (@chrs) {
@@ -1306,6 +1305,10 @@ sub loadLine{
         my ($key,$val);
         if ( /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
             ($key,$val) = ($1,$2);
+            $key =~ s/^\s+//;  # remove leading whitespaces
+            $key =~ s/\s+$//;  # remove trailing whitespaces
+	    $val =~ s/^\s+//;
+	    $val =~ s/\s+$//;
         }
         else {
 	    die "Cannot parse line $_ at line $.\n"; # removed "in $conf"

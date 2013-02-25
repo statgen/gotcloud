@@ -641,6 +641,10 @@ sub loadConf {
         my ($key,$val);
         if ( /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
             ($key,$val) = ($1,$2);
+            $key =~ s/^\s+//;  # remove leading whitespaces
+            $key =~ s/\s+$//;  # remove trailing whitespaces
+	    $val =~ s/^\s+//;
+	    $val =~ s/\s+$//;
         }
         else {
             die "Unable to parse config line \n" .
