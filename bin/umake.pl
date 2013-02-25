@@ -6,6 +6,11 @@
 # Usage : 
 # - STEP 1 : perl umake.pl --conf [config-file]
 # - STEP 2 : make -f [out-prefix].Makefile -j [# parallel jobs]
+#
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation; See http://www.gnu.org/copyleft/gpl.html
+################################################################
 ###################################################################
 
 use strict;
@@ -16,112 +21,9 @@ use File::Basename;
 use Cwd 'abs_path';
 
 my %hConf = ();
+my @keys = ();
 my $nSM;
 
-#############################################################################
-## loadLine() : parses a line of text from a conf file and builds a hash table for configuration (moved from loadConf())
-#############################################################################
-
-sub loadLine{
-	return if ( /^#/ );  # if the line starts with #, regard them as comment line
-	s/#.*$//;          # trim in-line comment lines starting with #
-	my ($key,$val);
-	if ( /^([^=]+)=(.+)$/ ) {
-	    ($key,$val) = ($1,$2);
-	}
-	else {
-	    die "Cannot parse line $_ at line $.\n"; # removed "in $conf"
-	}
-
-	$key =~ s/^\s+//;  # remove leading whitespaces
-	$key =~ s/\s+$//;  # remove trailing whitespaces
-
-        # Skip if the key has already been defined.
-        return if ( defined($hConf{$key}) );
-
-	if ( !defined($val) ) {
-	    $val = "";     # if value is undefined, set it as empty string
-	}
-	else {
-	    $val =~ s/^\s+//;
-	    $val =~ s/\s+$//;
-	}
-
-	# check if predefined key exist and substitute it if needed
-	while ( $val =~ /\$\((\S+)\)/ ) {
-	    my $subkey = $1;
-	    my $subval = &getConf($subkey);
-	    if ($subval eq "") {
-#              if ($subkey ne "UMAKE_ROOT") {
-		die "Cannot parse configuration value $val at line $., $subkey not previously defined\n"; # removed "of $conf"
-#              }
-#              else {
-#               $subval = "\${UMAKE_ROOT}"
-#              }
-            }
-            $val =~ s/\$\($subkey\)/$subval/;
-	}
-	$hConf{$key} = $val;
-
-	## if BAM_INDEX exists, count # of samples
-	if ( $key eq "BAM_INDEX" ) {
-	    ($nSM) = split(/\s+/,`wc -l $val`);
-	}
-	elsif ( $key eq "FILTER_MAX_SAMPLE_DP" ) {
-	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
-	    $hConf{"FILTER_MAX_TOTAL_DP"} = $nSM * $val;
-	}
-	elsif ( $key eq "FILTER_MIN_SAMPLE_DP" ) {
-	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
-	    $hConf{"FILTER_MIN_TOTAL_DP"} = $nSM * $val;
-	}
-}
-
-
-#############################################################################
-## loadConf() : load configuration file and build hash table for configuration
-############################################################################
-sub loadConf {
-    my $conf = shift;
-
-    my $curPath = getcwd();
-
-    open(IN,$conf) || die "Cannot open $conf file for reading, from $curPath";
-    while(<IN>) {
-	&loadLine($_);
-    }
-    close IN;
-}
-
-#############################################################################
-## loadOverride() : load configuration file and build hash table for configuration
-############################################################################
-sub loadOverride {
-my $commands = shift;
-my @commlist = split(";",$commands);
-foreach (@commlist) {
- &loadLine($_);
- }
-}
-
-#############################################################################
-## getConf() : access configuration hash table to contain a value
-############################################################################
-sub getConf {
-    my ($key,$req) = @_;
-
-    if ( defined($hConf{$key}) ) {
-	return $hConf{$key};
-    }
-    else {
-	if ( defined($req ) ) {
-	   die "Cannot find the required key $key in the configuration file\n";
-        }
-        else {
- 	   return "";
-	}
-    }
-}
 
 #############################################################################
 ## getMosixCmd() : convert a command to mosix command
@@ -136,52 +38,6 @@ sub getMosixCmd {
 	my $newcmd = &getConf("MOS_PREFIX")." -j$mosNodes sh -c '$cmd'";
 	return $newcmd;
     }
-}
-
-#############################################################################
-## parseTarget() : Read UCSC BED format as target information 
-##                 allowing a certain offset from the target
-##                 merge overlapping extended intervals if possible 
-############################################################################
-sub parseTarget {
-    my ($bed,$offset) = @_;
-    my %loci = ();
-    # read BED file and construct old loci file
-    open(IN,$bed) || die "Cannot open $bed\n";
-    while(<IN>) {
-	my ($chr,$start,$end) = split;
-	if ( $chr =~ /^chr/ ) {
-	    $chr = substr($chr,3);
-	}
-	$loci{$chr} = [] unless defined($loci{$chr});
-
-	$start = ( $start-$offset < 0 ) ? 0 : $start-$offset;
-	$end = $end + $offset;
-	push(@{$loci{$chr}},[$start+1,$end]);
-    }
-    close IN;
-
-    # sort by starting position
-    foreach my $chr (sort keys %loci) {
-	my @s = sort { $a->[0] <=> $b->[0] } @{$loci{$chr}};
-	## if regions overlap, merge them. 
-	for(my $j=1; $j < @s; ++$j) {
-	    if ( $s[$j-1]->[1] < $s[$j]->[0] ) {
-		## prev-L < prev-R < next-L < next-R
-		## do not merge intervals
-	    }
-	    else {
-		## merge the intervals
-		my $mergedMin = $s[$j-1]->[0];
-		my $mergedMax = $s[$j-1]->[1];
-		$mergedMax = $s[$j]->[1] if ( $mergedMax < $s[$j]->[1] );
-		splice(@s,$j-1,2,[$mergedMin,$mergedMax]);
-		--$j; 
-	    }
-	}
-	$loci{$chr} = \@s;
-    }
-    return \%loci;
 }
 
 #############################################################################
@@ -202,7 +58,7 @@ my $localdefaults = "";
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
-                           "outdir=s",\$outdir,
+                           "outdir|out_dir|outDir=s",\$outdir,
                            "conf=s",\$conf,
                            "numjobs=i",\$numjobs,
 			   "snpcall",\$snpcallOpt,
@@ -458,6 +314,15 @@ open(MAK,">$makef") || die "Cannot open $makef for writing\n";
 print MAK "OUTPUT_DIR=$outDir\n";
 print MAK "UMAKE_ROOT=$umakeRoot\n\n";
 print MAK ".DELETE_ON_ERROR:\n\n";
+
+# Write the values from the configuration.
+foreach my $key (@keys)
+{
+  print MAK "$key = $hConf{$key}\n";
+}
+
+print MAK "\n";
+
 print MAK "all:";
 foreach my $chr (@chrs) {
     print MAK " all$chr";
@@ -1391,3 +1256,307 @@ print STDERR "Try 'make -f $makef -n | less' for a sanity check before running\n
 print STDERR "Run 'make -f $makef -j [#parallele jobs]'\n";
 }
 print STDERR "--------------------------------------------------------------------\n";
+
+
+#--------------------------------------------------------------
+#   setConf(key, value, force)
+#
+#   Sets a value in a global hash (%hConf) to save the value
+#   for various key=value pairs. First key wins, so if a
+#   second key is provided, only the value for the first is kept.
+#   If $force is specified, we change the conf value even if
+#   it is set.
+#--------------------------------------------------------------
+sub setConf {
+    my ($key, $value, $force) = @_;
+    if (! defined($force)) { $force = 0; }
+
+    if ((! $force) && (defined($hConf{$key}))) { return; }
+    #   Why manage keys for a has manually ??
+    if (! defined($hConf{$key})) { push (@keys, $key); }
+    $hConf{$key} = $value;
+}
+
+#--------------------------------------------------------------
+#   loadLine(line)
+#
+#   Parse the specified configuration line, extracting key=value data
+#   Will not return on errors
+#--------------------------------------------------------------
+sub loadLine{
+	return if ( /^#/ );  # ignore lines that start with # (comment lines)
+        return if (/^\s*$/); # Ignore blank lines
+	s/#.*$//;          # trim in-line comment lines starting with #
+        my ($key,$val);
+        if ( /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
+            ($key,$val) = ($1,$2);
+        }
+        else {
+	    die "Cannot parse line $_ at line $.\n"; # removed "in $conf"
+	}
+
+        # Skip if the key has already been defined.
+        return if ( defined($hConf{$key}) );
+
+	if ( !defined($val) ) {
+	    $val = "";     # if value is undefined, set it as empty string
+	}
+
+	# check if predefined key exist and substitute it if needed
+	while ( $val =~ /\$\((\S+)\)/ ) {
+	    my $subkey = $1;
+	    my $subval = &getConf($subkey);
+	    if ($subval eq "") {
+		die "Cannot parse configuration value $val at line $., $subkey not previously defined\n";
+            }
+            $val =~ s/\$\($subkey\)/$subval/;
+	}
+	setConf($key, $val);
+
+	## if BAM_INDEX exists, count # of samples
+	if ( $key eq "BAM_INDEX" ) {
+	    ($nSM) = split(/\s+/,`wc -l $val`);
+	}
+	elsif ( $key eq "FILTER_MAX_SAMPLE_DP" ) {
+	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
+	    setConf("FILTER_MAX_TOTAL_DP", $nSM * $val);
+	}
+	elsif ( $key eq "FILTER_MIN_SAMPLE_DP" ) {
+	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
+	    setConf("FILTER_MIN_TOTAL_DP", $nSM * $val);
+	}
+}
+
+
+#--------------------------------------------------------------
+#   loadConf(config)
+#
+#   Read a configuration file, extracting key=value data
+#   Calls loadLine(line)
+#   Will not return on errors
+#--------------------------------------------------------------
+sub loadConf {
+    my $conf = shift;
+
+    my $curPath = getcwd();
+
+    open(IN,$conf) || die "Cannot open $conf file for reading, from $curPath";
+    while(<IN>) {
+	&loadLine($_);
+    }
+    close IN;
+}
+
+
+#--------------------------------------------------------------
+#   loadOveride(commands)
+#
+#   Read the passed in overide string of configuration overrides,
+#   extracting extracting key=value data separated by ';'
+#   Calls loadLine(line)
+#   Will not return on errors
+#--------------------------------------------------------------
+sub loadOverride {
+my $commands = shift;
+my @commlist = split(";",$commands);
+foreach (@commlist) {
+ &loadLine($_);
+ }
+}
+
+
+#--------------------------------------------------------------
+#   value = getConf(key, required)
+#
+#   Gets a value in a global hash (%hConf).
+#   If required is not TRUE and the key does not exist, return ''
+#   If required is TRUE and the key does not exist, die
+#--------------------------------------------------------------
+sub getConf {
+    my ($key, $required) = @_;
+    if (! defined($required)) { $required = 0; }
+
+    if (! defined($hConf{$key}) ) {
+        if (! $required) { return '' }
+        die "Required key '$key' not found in configuration files\n";
+    }
+
+    my $val = $hConf{$key};
+    #   Substitute for variables of the form $(varname)
+    foreach (0 .. 50) {             # Avoid infinite loop
+        if ($val !~ /\$\((\S+)\)/) { last; }
+        my $subkey = $1;
+        my $subval = getConf($subkey);
+        if ($subval eq '' && $required) {
+            die "Unable to substitue for variable '$subkey' in configuration variable.\n" .
+                "  key=$key\n  value=$val\n";
+        }
+        $val =~ s/\$\($subkey\)/$subval/;
+    }
+    return $val;
+}
+
+#--------------------------------------------------------------
+#   parseTarget() : Read UCSC BED format as target information 
+#                   allowing a certain offset from the target
+#                   merge overlapping extended intervals if possible
+#--------------------------------------------------------------
+sub parseTarget {
+    my ($bed,$offset) = @_;
+    my %loci = ();
+    # read BED file and construct old loci file
+    open(IN,$bed) || die "Cannot open $bed\n";
+    while(<IN>) {
+	my ($chr,$start,$end) = split;
+	if ( $chr =~ /^chr/ ) {
+	    $chr = substr($chr,3);
+	}
+	$loci{$chr} = [] unless defined($loci{$chr});
+
+	$start = ( $start-$offset < 0 ) ? 0 : $start-$offset;
+	$end = $end + $offset;
+	push(@{$loci{$chr}},[$start+1,$end]);
+    }
+    close IN;
+
+    # sort by starting position
+    foreach my $chr (sort keys %loci) {
+	my @s = sort { $a->[0] <=> $b->[0] } @{$loci{$chr}};
+	## if regions overlap, merge them. 
+	for(my $j=1; $j < @s; ++$j) {
+	    if ( $s[$j-1]->[1] < $s[$j]->[0] ) {
+		## prev-L < prev-R < next-L < next-R
+		## do not merge intervals
+	    }
+	    else {
+		## merge the intervals
+		my $mergedMin = $s[$j-1]->[0];
+		my $mergedMax = $s[$j-1]->[1];
+		$mergedMax = $s[$j]->[1] if ( $mergedMax < $s[$j]->[1] );
+		splice(@s,$j-1,2,[$mergedMin,$mergedMax]);
+		--$j; 
+	    }
+	}
+	$loci{$chr} = \@s;
+    }
+    return \%loci;
+}
+
+#==================================================================
+#   Perldoc Documentation
+#==================================================================
+__END__
+
+=head1 NAME
+
+umake.pl - Preform variant calling, generating VCF
+
+=head1 SYNOPSIS
+
+  umake.pl -test ~/testumake    # Run short self check
+  umake.pl -conf ~/mydata.conf -out ~/testdir
+  umake.pl -batchtype slurm -conf ~/mydata.conf -index ~/mydata.index
+  umake.pl -conf ~/mydata.conf -index ~/mydata.index -ref /usr/local/ref
+
+
+=head1 DESCRIPTION
+
+Use this program to generate a Makefile which will run the programs
+to perform variant calling to generate a single VCF for all samples.
+
+There are many inputs to this script which are most often specified in a
+configuration file.
+
+The official documentation for this program can be found at
+B<http://genome.sph.umich.edu/wiki/Variant_Calling_Pipeline_(UMAKE)>
+
+There are command line options which may be used to specify certain values
+in the configuration file.
+Command line options override values specified in the configuration file.
+
+When running in a batch environment (option B<batchtype>) it will be
+important to use paths for files which are valid in the cluster environment also.
+The path to your HOME (e.g. /home/myuser) may not be valid in the machine in the cluster.
+It i<may> be sufficent to specify an alternative path by setting the HOME environment
+variable to something valid for the cluster (e.g. I<export HOME=/net/gateway/home/myuser>).
+
+
+=head1 INPUT FILES
+
+The B<configuration file> consists of a set of keyword = value lines which define variables.
+These variables can be referenced in the values of other lines.
+This short example will give you an idea of a configuration file:
+
+  INDEX_FILE = indexFile.txt
+  # References
+  REF_ROOT = $(TEST_ROOT)/ref
+  REF = $(REF_ROOT)/karma.ref/human.g1k.v37.chr20.fa
+  INDEL_PREFIX = $(REF_ROOT)/indels/1kg.pilot_release.merged.indels.sites.hg19
+  DBSNP_PREFIX =  $(REF_ROOT)/dbSNP/dbsnp135_chr20.vcf.gz
+  HM3_PREFIX =  $(REF_ROOT)/HapMap3/hapmap_3.3.b37.sites.chr20.vcf.gz
+
+The B<bam index> file specifies information about individuals and paths to
+bam data. The data is tab delimited.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-conf file>
+
+Specifies the configuration file to be used.
+The default configuration is B<pipelineDefaults.conf> found in the same directory
+where this program resides.
+If this file is not found, you must specify this option on the command line.
+
+=item B<-dry-run>
+
+If specified no commands will actually be executed, but you will be shown
+the commands that would be run.
+
+=item B<-help>
+
+Generates this output.
+
+=item B<-bam_index str>
+
+Specifies the name of the bam index file containing the table of bams to process.
+This value must be set in the configuration file or specified by this option.
+
+=item B<-nowait>
+
+Do not wait for the tasks that were submitted to the cluster to end.
+This is forced when B<batchtype pbs> is specified.
+
+=item B<-numjobs N>
+
+The value of the B<-j> flag for the make command.
+If not specified, the flag is not set on the make command to be executed.
+
+=item B<-outdir dir>
+
+Specifies the toplevel directory where the output is created.
+
+=item B<-test outdir>
+
+Run a small test case putting the output in the directory B<outdir> and verify the output.
+
+=back
+
+=head1 PARAEMETERS
+
+The program accepts no parameters - all input is specified as options.
+
+=head1 EXIT
+
+If no fatal errors are detected, the program exits with a
+return code of 0. Any error will set a non-zero return code.
+
+=head1 AUTHOR
+
+Written by Mary Kate Wing I<E<lt>mktrost@umich.eduE<gt>>.
+This is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; See http://www.gnu.org/copyleft/gpl.html
+
+=cut
