@@ -48,7 +48,7 @@ diff -r $RESULTS_DIR/umaketest $EXPECTED_DIR/umaketest \
     -I "^Analysis started on " \
     -I "^##filedate=" \
     -I '^Writing to VCF file .*vcfs/chr20/chr20\.filtered\.sites\.vcf$' \
-    -I '^INDEL5 : INDEL >= 5 bp with .*ref/indels/1kg\.pilot_release\.merged\.indels\.sites\.hg19\.chr20\.vcf$'\
+    -I '^INDEL5 : INDEL >= 5 bp with .*chr20Ref/1kg\.pilot_release\.merged\.indels\.sites\.hg19\.chr20\.vcf$'\
     -I '^\s*Pedigree File : --ped \[.*glfs/samples/chr20/20000001.25000000/glfIndex\.ped\]$' \
     -I '^\s*Input Options : --anchor \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf\],$' \
     -I '^\s*--prefix \[.*pvcfs/chr20/20000001.25000000/\],$' \

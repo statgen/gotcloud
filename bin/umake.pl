@@ -208,6 +208,9 @@ for(my $i=0; $i < @orderFlags; ++$i) {
 }
 
 if ( $validFlag == 0 ) {
+ foreach (@ARGV) { print STDERR "$_\n" };
+print STDERR qx/ps -o args $$/;
+
     die "ERROR IN CONF FILE : Options are not compatible. Use --snpcall, --extract, --beagle, --thunder or compatible subsets\n";
 }
 
@@ -351,10 +354,12 @@ my $smGlfDirReal = "$outDir/".&getConf("SM_GLF_DIR");
 my $vcfDir = "\$(OUTPUT_DIR)/".&getConf("VCF_DIR");
 my $pvcfDir = "\$(OUTPUT_DIR)/".&getConf("PVCF_DIR");
 my $splitDir = "\$(OUTPUT_DIR)/".&getConf("SPLIT_DIR");
+my $splitDirReal = "$outDir/".&getConf("SPLIT_DIR");
 my $targetDir = "\$(OUTPUT_DIR)/".&getConf("TARGET_DIR");
 my $targetDirReal = "$outDir/".&getConf("TARGET_DIR");
 my $beagleDir = "\$(OUTPUT_DIR)/".&getConf("BEAGLE_DIR");
 my $thunderDir = "\$(OUTPUT_DIR)/".&getConf("THUNDER_DIR");
+my $thunderDirReal = "$outDir/".&getConf("THUNDER_DIR");
 my $remotePrefix = &getConf("REMOTE_PREFIX");
 my $ref = &getConf("REF");
 
@@ -508,7 +513,7 @@ foreach my $chr (@chrs) {
 	print MAK "\n\n";
 	
 	foreach my $pop (@pops) {
-	    my $splitPrefix = "$thunderDir/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
+	    my $splitPrefix = "$thunderDirReal/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
 	    open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
 	    my @splitVcfs = ();
 	    for(my $i=1;<IN>;++$i) {
@@ -612,7 +617,7 @@ foreach my $chr (@chrs) {
 	my $beaglePrefix = "$beagleDir/chr$chr/chr$chr.filtered.PASS.beagled";
 	print MAK "beagle$chr: $beaglePrefix.vcf.gz.tbi\n\n";
 
-	my $splitPrefix = "$splitDir/chr$chr/chr$chr.filtered.PASS.split";
+	my $splitPrefix = "$splitDirReal/chr$chr/chr$chr.filtered.PASS.split";
 	open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
 	my @splitVcfs = ();
 	while(<IN>) {
@@ -868,7 +873,7 @@ foreach my $chr (@chrs) {
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --dbsnp ".&getConf("DBSNP_PREFIX").".chr$chr.map --FNRbfile ".&getConf("HM3_PREFIX").".chr$chr > $mvcfPrefix.filtered.sites.vcf.summary\n";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
@@ -986,7 +991,7 @@ foreach my $chr (@chrs) {
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --dbsnp ".&getConf("DBSNP_PREFIX").".chr$chr.map --FNRbfile ".&getConf("HM3_PREFIX").".chr$chr > $mvcfPrefix.filtered.sites.vcf.summary\n";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
@@ -1244,11 +1249,21 @@ close MAK;
 print STDERR "--------------------------------------------------------------------\n";
 print STDERR "Finished creating makefile $makef\n\n";
 
+my $rc = 0;
 if($numjobs != 0) {
   print STDERR "Running $makef\n\n";
   my $cmd = "make -f $makef -j $numjobs";
-  system($cmd) &&
-    die "Makefile, $makef failed d=$cmd\n";
+  my $t = time();
+ #           my $rc = 0xffff & system($cmd);
+ #           exit($rc);
+  system($cmd);
+  $rc = ${^CHILD_ERROR_NATIVE};
+  $t = time() - $t;
+  print STDERR " Commands finished in $t secs";
+  if ($rc) { print STDERR " WITH ERRORS.  Check the logs\n"; }
+  else { print STDERR " with no errors reported\n"; }
+# system($cmd) &&
+#    die "Makefile, $makef failed d=$cmd\n";
 }
 else {
 
@@ -1257,6 +1272,7 @@ print STDERR "Run 'make -f $makef -j [#parallele jobs]'\n";
 }
 print STDERR "--------------------------------------------------------------------\n";
 
+exit($rc);
 
 #--------------------------------------------------------------
 #   setConf(key, value, force)
@@ -1560,3 +1576,4 @@ terms of the GNU General Public License as published by the Free Software
 Foundation; See http://www.gnu.org/copyleft/gpl.html
 
 =cut
+
