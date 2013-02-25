@@ -38,8 +38,9 @@ elsif ( $ARGV[0] eq "snpcall") {
 }
 elsif ( $ARGV[0] eq "ldrefine") {
     shift(@ARGV);
-    system("$bindir/umake.pl", "--beagle",@ARGV)
-    or die "failed the first step of ld genotype refinement: $?";
+    system("$bindir/umake.pl", "--beagle",@ARGV);
+    my $rc = ${^CHILD_ERROR_NATIVE};
+    die "failed the first step of ld genotype refinement: $?" if ($rc);
     exec("$bindir/umake.pl", "--thunder",@ARGV);
   }
 else {
