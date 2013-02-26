@@ -79,9 +79,10 @@ if ($help) {
 }
 
 # Set the umake base directory.
-my($scriptName, $scriptPath) = fileparse($0);
+$_ = abs_path($0);
+my($scriptName, $scriptPath) = fileparse($_);
 my $scriptDir = abs_path($scriptPath);
-$scriptDir =~ /(.*)\/bin$/;
+if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
 my $umakeRoot = $1;
 $hConf{"UMAKE_ROOT"} = $umakeRoot;
 
