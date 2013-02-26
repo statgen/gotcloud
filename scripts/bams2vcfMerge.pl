@@ -14,8 +14,10 @@ my $headerMatchFlag = 1;
 my $headerPrintedFlag = 0;
 
 for(my $j=0; $j < @vcfs; ++$j) {
-    my $start = sprintf("%d",$j*$unit+1);
-    my $end = sprintf("%d",($j+1)*$unit);
+    my ($start,$end) = ($1,$2) if ( $vcfs[$j] =~ /\.(\d+)\.(\d+)(.stats)?.vcf$/ );
+    die "Cannot recognize VCF file name $vcfs[$j]\n" unless ( defined($start) && defined($end) );
+    #my $start = sprintf("%d",$j*$unit+1);
+    #my $end = sprintf("%d",($j+1)*$unit);
     print STDERR "Merging $vcfs[$j] into STDOUT...\n";
     open(IN,$vcfs[$j]) || die "Cannot open file $vcfs[$j] for reading\n";
     my @headerBuffers = ();

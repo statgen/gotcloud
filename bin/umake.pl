@@ -55,6 +55,7 @@ my $thunderOpt = "";
 my $out = "";
 my $override = "";
 my $localdefaults = "";
+my $callregion = "";
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -67,6 +68,7 @@ my $optResult = GetOptions("help",\$help,
 			   "thunder",\$thunderOpt,
 			   "out=s",\$out,
 			   "override=s",\$override,
+			   "region=s",\$callregion,
 			   "localdefaults=s",\$localdefaults
     );
 
@@ -79,9 +81,10 @@ if ($help) {
 }
 
 # Set the umake base directory.
-my($scriptName, $scriptPath) = fileparse($0);
+$_ = abs_path($0);
+my($scriptName, $scriptPath) = fileparse($_);
 my $scriptDir = abs_path($scriptPath);
-$scriptDir =~ /(.*)\/bin$/;
+if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
 my $umakeRoot = $1;
 $hConf{"UMAKE_ROOT"} = $umakeRoot;
 
@@ -343,6 +346,20 @@ while(<IN>) {
 }
 close IN;
 
+my ($callstart,$callend);
+if ( $callregion ) {
+    if ( $callregion =~ /^([^:]+):(\d+)(\-\d+)?$/ ) {
+	@chrs = ($1);
+	$callstart = $2;
+	$callend = $3 ? substr($3,1) : $hChrSizes{$1};
+	print STDERR "Call region is $1:$callstart-$callend\n";
+    }
+    else {
+	die "Cannot recognize option --region $callregion\nExpected format: N:N-N\n";
+    }
+}
+
+
 #############################################################################
 ## STEP 5 : CONFIGURE PARAMETERS
 ############################################################################
@@ -437,6 +454,10 @@ foreach my $chr (@chrs) {
     for(my $j=0; $j < $hChrSizes{$chr}; $j += $unitChunk) {
 	my $start = sprintf("%d",$j+1);
 	my $end = ($j+$unitChunk > $hChrSizes{$chr}) ? $hChrSizes{$chr} : sprintf("%d",$j+$unitChunk);
+
+	## if --region was specified, check overlap and skip if necessary
+	next if ( defined($callstart) && ( ( $start > $callend ) || ( $end < $callstart ) ) );
+
 	## if targeted sequencing, 
 	## check if the region overlaps with any of the known targets
 	my $inTarget = ($#uniqBeds < 0) ? 1 : 0;
