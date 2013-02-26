@@ -355,7 +355,7 @@ if ( $callregion ) {
 	print STDERR "Call region is $1:$callstart-$callend\n";
     }
     else {
-	die "Cannot recognize option --region $callregion\n";
+	die "Cannot recognize option --region $callregion\nExpected format: N:N-N\n";
     }
 }
 
