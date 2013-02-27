@@ -141,7 +141,7 @@ make_indexfile.pl - Create an indexFile for the GotCloud aligner
 =head1 DESCRIPTION
 
 Use this program to generate the indexFile required by the GotCloud
-aligner, gen_biopipeline.pl.
+aligner, align.pl.
 All you need do is provide the path to the directory where the FASTQ
 files are to be found, and this program will generate an indexFile
 suitable for the aligner.
@@ -168,7 +168,7 @@ Specifies the library in the indexFile. This defaults to 'Lib1'.
 
 =item B<-path str>
 
-Specifies the library in the indexFile. This defaults to 'Lib1'.
+Specifies the path to the fastq files. This defaults to '.'.
 
 =item B<-platform str>
 
@@ -201,7 +201,7 @@ return code of 0. Any error will set a non-zero return code.
 
 =head1 AUTHOR
 
-Written by Mary Kate Trost I<E<lt>mktrost@umich.eduE<gt>>.
+Written by Mary Kate Wing I<E<lt>mktrost@umich.eduE<gt>>.
 This is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
 Foundation; See http://www.gnu.org/copyleft/gpl.html

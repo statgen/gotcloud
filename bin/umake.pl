@@ -19,11 +19,10 @@ use Getopt::Long;
 use File::Path qw(make_path);
 use File::Basename;
 use Cwd 'abs_path';
+use Scalar::Util qw(looks_like_number);
 
 my %hConf = ();
 my @keys = ();
-my $nSM;
-
 
 #############################################################################
 ## getMosixCmd() : convert a command to mosix command
@@ -232,6 +231,7 @@ my @allbams = ();   # list of all bamss
 my @allbamSMs = (); # list of all samples corresponding to each BAM
 my @allSMs = ();    # list of all unique sample IDs
 my %hPops = ();
+my $numSamples = 0;
 
 open(IN,$bamIndex) || die "Cannot open $bamIndex file\n";
 while(<IN>) {
@@ -278,6 +278,8 @@ while(<IN>) {
     push(@allbams,@bams);
 }
 close IN;
+
+$numSamples = @allSMs;
 
 if ( $pedIndex ne "" ) {
     open(IN,$pedIndex) || die "Cannot open $pedIndex file\n";
@@ -883,8 +885,7 @@ foreach my $chr (@chrs) {
 	    else {
 		print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $gvcf.OK\n";
 	    }
-
-	    $cmd = "\t".&getConf("VCFCOOKER")." ".&getConf("FILTER_ARGS")." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.filtered.sites.vcf --in-vcf $gvcf\n";
+	    $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.filtered.sites.vcf --in-vcf $gvcf\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz\n";
@@ -1002,7 +1003,7 @@ foreach my $chr (@chrs) {
 	    else {
 		print MAK "\t(cat $gvcfs[0] | head -100 | grep ^#; cat @gvcfs | grep -v ^#;) > $mvcfPrefix.merged.stats.vcf\n";
 	    }
-	    my $cmd = "\t".&getConf("VCFCOOKER")." ".&getConf("FILTER_ARGS")." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
+	    my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz\n";
@@ -1295,6 +1296,116 @@ print STDERR "------------------------------------------------------------------
 exit($rc);
 
 #--------------------------------------------------------------
+#   getFilterArgs()
+#
+#   Returns the filter arguments.
+#--------------------------------------------------------------
+sub getFilterArgs
+{
+    my $filterArgs = "--write-vcf --filter";
+    my $confValue = getIntConf('FILTER_MAX_SAMPLE_DP');
+    if($confValue)
+    {
+        $filterArgs .= " --maxDP ".($numSamples*$confValue);
+    }
+
+    $confValue = getIntConf('FILTER_MIN_SAMPLE_DP');
+    if($confValue)
+    {
+        $filterArgs .= " --minDP ".($numSamples*$confValue);
+    }
+
+    # Get the formula min/max sample numbers.
+    my $filterMinSamples = getIntConf('FILTER_FORMULA_MIN_SAMPLES');
+    if(! $filterMinSamples)
+    {
+        $filterMinSamples = 100;
+    }
+    my $filterMaxSamples = getIntConf('FILTER_FORMULA_MAX_SAMPLES');
+    if(! $filterMaxSamples)
+    {
+        $filterMaxSamples = 1000;
+    }
+    if($filterMinSamples >= $filterMaxSamples)
+    {
+        die "FILTER_FORMULA_MIN_SAMPLES must be < FILTER_FORMULA_MAX_SAMPLES, but $filterMinSamples >= $filterMaxSamples\n";
+    }
+
+    # format of hash value is: 
+    # (CONF_NAME, useLogDefault, minDefault, maxDefault)
+    # if useLogDefault is set:
+    #    min default is the value to use for numSamples < min samples
+    #    max default is the value to use for numSamples > max samples
+    # if useLogDefault is "", then use minDefault as the default.
+    my %filterArgHash = (
+                         maxABL => "FILTER_MAX_ABL",
+                         maxSTR => "FILTER_MAX_STR",
+                         minSTR => "FILTER_MIN_STR",
+                         winIndel => "FILTER_WIN_INDEL",
+                         maxSTZ => "FILTER_MAX_STZ",
+                         minSTZ => "FILTER_MIN_STZ",
+                         maxAOI => "FILTER_MAX_AOI",
+                         minFIC => "FILTER_MIN_FIC"
+                        );
+    foreach my $key (sort(keys %filterArgHash))
+    {
+        my $val = getConf($filterArgHash{$key});
+        my $printVal = 0;
+        if($val && (lc($val) ne "off"))
+        {
+            # Check to see if it has multiple values indicating to use
+            # the log formula
+            my @values = split(/[,\s]+/,$val);
+            if(scalar @values > 2)
+            {
+                die "$key can only have 1 or 2 values, but \"$val\" has ".scalar @values."\n";
+            }
+            elsif(scalar @values == 1)
+            {
+                # make sure it is a number.
+                if(!looks_like_number($val))
+                {
+                    die "$key must be set to a number, not \"$val\"";
+                }
+                $printVal = $val;
+            }
+            else
+            {
+                # Make sure both values are numbers
+                if(!looks_like_number($values[0]))
+                {
+                    die "First value in $key must be set to a number, not \"$values[0]\"";
+                }
+                if(!looks_like_number($values[1]))
+                {
+                    die "Second value in $key must be set to a number, not \"$values[1]\"";
+                }
+                if($numSamples < $filterMinSamples)
+                {
+                    $printVal = $values[0];
+                }
+                elsif($numSamples > $filterMaxSamples)
+                {
+                    $printVal = $values[1];
+                }
+                else
+                {
+                    my $tempVal = ($values[0] - $values[1]) *
+                    (log($filterMaxSamples) - log($numSamples)) /
+                    (log($filterMaxSamples) - log($filterMinSamples)) +
+                    $values[1];
+                    $printVal = sprintf("%.0f",$tempVal);
+                }
+            }
+            $filterArgs .= " --$key $printVal";
+        }
+    }
+
+    return $filterArgs;
+}
+
+
+#--------------------------------------------------------------
 #   setConf(key, value, force)
 #
 #   Sets a value in a global hash (%hConf) to save the value
@@ -1319,52 +1430,40 @@ sub setConf {
 #   Parse the specified configuration line, extracting key=value data
 #   Will not return on errors
 #--------------------------------------------------------------
-sub loadLine{
-	return if ( /^#/ );  # ignore lines that start with # (comment lines)
-        return if (/^\s*$/); # Ignore blank lines
-	s/#.*$//;          # trim in-line comment lines starting with #
-        my ($key,$val);
-        if ( /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
-            ($key,$val) = ($1,$2);
-            $key =~ s/^\s+//;  # remove leading whitespaces
-            $key =~ s/\s+$//;  # remove trailing whitespaces
-	    $val =~ s/^\s+//;
-	    $val =~ s/\s+$//;
+sub loadLine
+{
+    return if ( /^#/ );  # ignore lines that start with # (comment lines)
+    return if (/^\s*$/); # Ignore blank lines
+    s/#.*$//;          # trim in-line comment lines starting with #
+    my ($key,$val);
+    if ( /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
+        ($key,$val) = ($1,$2);
+        $key =~ s/^\s+//;  # remove leading whitespaces
+        $key =~ s/\s+$//;  # remove trailing whitespaces
+        $val =~ s/^\s+//;
+        $val =~ s/\s+$//;
+    }
+    else {
+        die "Cannot parse line $_ at line $.\n"; # removed "in $conf"
+    }
+
+    # Skip if the key has already been defined.
+    return if ( defined($hConf{$key}) );
+
+    if ( !defined($val) ) {
+        $val = "";     # if value is undefined, set it as empty string
+    }
+
+    # check if predefined key exist and substitute it if needed
+    while ( $val =~ /\$\((\S+)\)/ ) {
+        my $subkey = $1;
+        my $subval = &getConf($subkey);
+        if ($subval eq "") {
+            die "Cannot parse configuration value $val at line $., $subkey not previously defined\n";
         }
-        else {
-	    die "Cannot parse line $_ at line $.\n"; # removed "in $conf"
-	}
-
-        # Skip if the key has already been defined.
-        return if ( defined($hConf{$key}) );
-
-	if ( !defined($val) ) {
-	    $val = "";     # if value is undefined, set it as empty string
-	}
-
-	# check if predefined key exist and substitute it if needed
-	while ( $val =~ /\$\((\S+)\)/ ) {
-	    my $subkey = $1;
-	    my $subval = &getConf($subkey);
-	    if ($subval eq "") {
-		die "Cannot parse configuration value $val at line $., $subkey not previously defined\n";
-            }
-            $val =~ s/\$\($subkey\)/$subval/;
-	}
-	setConf($key, $val);
-
-	## if BAM_INDEX exists, count # of samples
-	if ( $key eq "BAM_INDEX" ) {
-	    ($nSM) = split(/\s+/,`wc -l $val`);
-	}
-	elsif ( $key eq "FILTER_MAX_SAMPLE_DP" ) {
-	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
-	    setConf("FILTER_MAX_TOTAL_DP", $nSM * $val);
-	}
-	elsif ( $key eq "FILTER_MIN_SAMPLE_DP" ) {
-	    die "BAM_INDEX defined before $key\n" unless defined($nSM);
-	    setConf("FILTER_MIN_TOTAL_DP", $nSM * $val);
-	}
+        $val =~ s/\$\($subkey\)/$subval/;
+    }
+    setConf($key, $val);
 }
 
 
@@ -1402,6 +1501,24 @@ my @commlist = split(";",$commands);
 foreach (@commlist) {
  &loadLine($_);
  }
+}
+
+
+#--------------------------------------------------------------
+#   value = getIntConf(key, required)
+#
+#   Calls into getConf with the specified parameters, but if set,
+#   verifies it is a number.
+#--------------------------------------------------------------
+sub getIntConf {
+    my ($key, $required) = @_;
+    my $val = getConf($key, $required);
+
+    if($val)
+    {
+        die "$key can only be set to a number, not $val" unless (looks_like_number($val));
+    }
+    return $val;
 }
 
 
