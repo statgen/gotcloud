@@ -59,6 +59,9 @@ $scriptdir = abs_path($scriptdir);
 if ($scriptdir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptdir'\n"; }
 my $basepath = $1;
 
+push @INC,$scriptdir;                       # use lib is a BEGIN block and does not work
+require Multi;
+
 setConf("PIPELINE_DIR", $basepath);         # Get rid of this someday
 
 (my $version = '$Revision: 1.1 $ ') =~ tr/[0-9].//cd;
@@ -95,22 +98,24 @@ my %opts = (
     keeptmp => 0,
     keeplog => 0,
     conf => '',
+    verbose => 0,
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
-    dry-run|dryrun|dryRun
+    dry-run|dryrun
     batchtype=s
     batchopts=s
     test=s
-    out_dir|outdir|outDir=s
+    out_dir|outdir=s
     conf=s
-    index_file|indexfile|indexFile=s
-    ref_dir|refdir|refDir=s
+    index_file|indexfile=s
+    ref_dir|refdir=s
     fastq_prefix=s
-    keeptmp|keepTmp
-    keeplog|keepLog
-    numjobs=i
-    nowait
+    keeptmp
+    keeplog
+    verbose
+    numjobspersample|numjobs=i
+    numconcurrentsamples|numcs=i
 )) || die "Failed to parse options\n";
 
 #   Simple help if requested, sanity check input options
@@ -146,7 +151,6 @@ if ($opts {test}) {
     exit;
 }
 if ($opts{batchtype} eq 'flux') { $opts{batchtype} = 'pbs'; }
-if ($opts{batchtype} eq 'pbs') { $opts{nowait} = 1; }
 $opts{runcluster} = abs_path($opts{runcluster});    # Make sure this is fully qualified
 
 if ((! $opts{conf}) || (! -r $opts{conf})) {
@@ -541,9 +545,9 @@ foreach my $tmpmerge (keys %mergeToFq1)
   print STDERR "Created $makef\n";
 
   my $s = "make -f $makef";
-  if($opts{numjobs})
+  if($opts{numjobspersample})
   {
-    $s .= " -j ".$opts{numjobs};
+    $s .= " -j ".$opts{numjobspersample};
   }
   $s .= " > $makef.log";
   push @mkcmds, $s;
@@ -554,54 +558,30 @@ foreach my $tmpmerge (keys %mergeToFq1)
 #   Normal case is to run these, either locally or in batch mode
 #--------------------------------------------------------------
 print STDERR '-' x 69 . "\n";
-my $n = 0;
-my $cmd;
-my @pids = ();
+my @runcmds = ();                   # Build complete commands in here
+foreach my $c (@mkcmds) {
+    if (! $opts{batchtype} ) { push @runcmds,$c; next; }
+    #   Batch command, figure out the complete command
+    $c =~ s/\'/\\'/g;                     # Escape single quotes
+    my $cmd = $opts{runcluster};
+    if ($opts{batchopts}) { $cmd .= " -opts '" . $opts{batchopts} . "'"; }
+    $cmd .= ' ' . $opts{batchtype} . " '" . $c . "'";
+    push @runcmds,$cmd;
+}
+
 if ($opts{'dry-run'}) {
-    print STDERR "#  These commands would have been run:\n";
+    print STDERR "#  These commands would have been run:\n" .
+        '  ' . join("\n  ",@runcmds) . "\n";
+    exit;
 }
-my $t = time();
-foreach (@mkcmds) {
-    if ($opts{batchtype} ) {
-        s/\'/\\'/g;                     # Escape single quotes
-        $cmd = $opts{runcluster};
-        if ($opts{batchopts}) {
-            $cmd .= " -opts '" . $opts{batchopts} . "'";
-        }
-        $cmd .= ' ' . $opts{batchtype} . " '" . $_ . "'";
-    }
-    else { $cmd = $_; }
-    if ($opts{'dry-run'}) { print STDERR $cmd . "\n"; }
-    else {                              # Issue command in forked process
-         if($pids[$n] = fork()){ $n++; }
-        else {                          # Child process, issue command
-            my $rc = 0xffff & system($cmd);
-            exit($rc);
-        }
-    }
-}
-my $rc = 0;
-if ($opts{nowait}) {
-    print STDERR "Option -nowait specified, $n commands were submitted locally\n" .
-        "Watch for these commands to complete\n";
-}
-else {
-    if ($n) {
-        print STDERR "Submitted $n $opts{batchtype} commands\n";
-        print STDERR "Waiting for commands to complete... ";
-        foreach my $pid (@pids) {
-            my $pid = wait();
-            $rc += ${^CHILD_ERROR_NATIVE};
-            if ($opts{verbose}) { print STDERR "PID=$pid status=${^CHILD_ERROR_NATIVE}"; }
-            print STDERR '. ';
-        }
-        $t = time() - $t;
-        print STDERR " Commands finished in $t secs";
-        if ($rc) { print STDERR " WITH ERRORS.  Check the logs\n"; }
-        else { print STDERR " with no errors reported\n"; }
-    }
-}
-exit($rc);
+
+#   We now have an array of commands to run launch and wait for them
+$_ = $Multi::VERBOSE;               # Avoid Perl warning
+if ($opts{verbose}) { $Multi::VERBOSE = 1; }
+Multi::QueueCommands(\@runcmds, $opts{numconcurrentsamples});
+my $errs = Multi::WaitForCommandsToComplete(\&Multi::RunNext);
+if ($errs || $opts{verbose}) { print STDERR "###### $errs processes failed ######\n" }
+exit($errs);
 
 #--------------------------------------------------------------
 #   setConf(key, value, force)
@@ -643,8 +623,8 @@ sub loadConf {
             ($key,$val) = ($1,$2);
             $key =~ s/^\s+//;  # remove leading whitespaces
             $key =~ s/\s+$//;  # remove trailing whitespaces
-	    $val =~ s/^\s+//;
-	    $val =~ s/\s+$//;
+        $val =~ s/^\s+//;
+        $val =~ s/\s+$//;
         }
         else {
             die "Unable to parse config line \n" .
@@ -939,10 +919,21 @@ The default is to remove the temporary files.
 Do not wait for the tasks that were submitted to the cluster to end.
 This is forced when B<batchtype pbs> is specified.
 
-=item B<-numjobs N>
+=item B<-numconcurrentsamples N>
 
-The value of the B<-j> flag for the make command.
+Specifies the number of samples to be processed concurrently.
+This effectively defaults to '2'.
+The number of processesors to be used at the same time on the local machine
+or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
+
+=item B<-numjobspersample N>
+
+Specifies the number of jobs to run per sample. In practice this is
+the value of the B<-j> flag for the make command.
+This effectively defaults to '1'.
 If not specified, the flag is not set on the make command to be executed.
+The number of processesors to be used at the same time on the local machine
+or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
 
 =item B<-out_dir dir>
 
@@ -966,6 +957,10 @@ command to be executed.
 =item B<-test out_dir>
 
 Run a small test case putting the output in the directory B<out_dir> and verify the output.
+
+=item B<-verbose>
+
+Specifies that additional details are to be printed out.
 
 =back
 
