@@ -30,14 +30,50 @@ elsif ( $ARGV[0] =~ /^([\-])*help$/ ) {
 }
 elsif ( $ARGV[0] eq "align") {
     shift(@ARGV);
-    exec("$bindir/align.pl",@ARGV);
+    if( -f "$bindir/align.pl" )
+    {
+      exec("$bindir/align.pl",@ARGV);
+    }
+    elsif( -f "$dir/align.pl" )
+    {
+      exec("$dir/align.pl",@ARGV);
+    }
+    else
+    {
+      die "ERROR: could not find align.pl"
+    }
 }
 elsif ( $ARGV[0] eq "snpcall") {
     shift(@ARGV);
+    if( -f "$bindir/umake.pl" )
+    {
+      $bindir = $bindir;
+    }
+    elsif ( -f "$dir/umake.pl" )
+    {
+      $bindir = $dir;
+    }
+    else
+    {
+      die "ERROR: could not find umake.pl for snp-calling"
+    }
     exec("$bindir/umake.pl", "--snpcall",@ARGV);
 }
 elsif ( $ARGV[0] eq "ldrefine") {
     shift(@ARGV);
+    if( -f "$bindir/umake.pl" )
+    {
+      $bindir = $bindir;
+    }
+    elsif ( -f "$dir/umake.pl" )
+    {
+      $bindir = $dir;
+    }
+    else
+    {
+      die "ERROR: could not find umake.pl for ldrefine";
+    }
+
     system("$bindir/umake.pl", "--beagle",@ARGV);
     my $rc = ${^CHILD_ERROR_NATIVE};
     die "failed the first step of ld genotype refinement: $?" if ($rc);
