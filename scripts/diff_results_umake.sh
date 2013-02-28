@@ -15,7 +15,16 @@ if [ "$2" = "" ]; then
 fi
 RESULTS_DIR=$1
 EXPECTED_DIR=$2
-DIFFRESULTS=$RESULTS_DIR/diff_logfiles_results_umake.txt
+DIFF_FILE=diff_logfiles_results_umake.txt
+DIFFRESULTS=$RESULTS_DIR/$DIFF_FILE
+
+if [ -d $RESULTS_DIR/umaketest ]; then
+    RESULTS_DIR=$RESULTS_DIR/umaketest;
+fi
+
+if [ -d $EXPECTED_DIR/umaketest ]; then
+    EXPECTED_DIR=$EXPECTED_DIR/umaketest;
+fi
 
 
 BAM_UTIL=$medir/../bin/bam
@@ -24,8 +33,8 @@ BAM_UTIL=$medir/../bin/bam
 #VCF_GZS_WITH_SUBDIR:=$(subst $(EXPECTED_DIR)/,,$(VCF_GZS_WITH_DIR))
 #VCF_GZS:=$(notdir $(VCF_GZS_WITH_DIR))
 
-EXPECTED_VCF_GZS=`find $EXPECTED_DIR/umaketest/ -name "*vcf.gz"`
-RESULTS_VCF_GZS=`find $RESULTS_DIR/umaketest/ -name "*vcf.gz"`
+EXPECTED_VCF_GZS=`find $EXPECTED_DIR/ -name "*vcf.gz"`
+RESULTS_VCF_GZS=`find $RESULTS_DIR/ -name "*vcf.gz"`
 
 SKIP_GZS=""
 for file in $EXPECTED_VCF_GZS
@@ -33,15 +42,15 @@ do
   SKIP_GZS+="-x $(basename $file) "
 done
 
-#SKIP_GZS=""; for file in `ls $EXPECTED_DIR/umaketest/pvcfs/chr20/*/*vcf.gz $EXPECTED_DIR/umaketest/vcfs/chr20/*.vcf.gz $EXPECTED_DIR/umaketest/split/chr20/*.vcf.gz`; do SKIP_GZS+="-x $(basename $file) "; done;
+#SKIP_GZS=""; for file in `ls $EXPECTED_DIR/pvcfs/chr20/*/*vcf.gz $EXPECTED_DIR/vcfs/chr20/*.vcf.gz $EXPECTED_DIR/split/chr20/*.vcf.gz`; do SKIP_GZS+="-x $(basename $file) "; done;
 #echo $SKIP_GZS
 
 TBI1=chr20.filtered.vcf.gz.tbi
 
 echo "Results from DIFF will be in $DIFFRESULTS"
 
-diff -r $RESULTS_DIR/umaketest $EXPECTED_DIR/umaketest \
-    $SKIP_GZS -x $TBI1 \
+diff -r $RESULTS_DIR $EXPECTED_DIR \
+    $SKIP_GZS -x $TBI1 -x $DIFF_FILE \
     -I "bin/samtools-hybrid view -q 20 -F 0x0704 -uh" \
     -I "^Analysis completed on " \
     -I "^Analysis finished on " \
@@ -64,7 +73,7 @@ diff -r $RESULTS_DIR/umaketest $EXPECTED_DIR/umaketest \
     -I '^bam index file\s*: .*bams/NA[0-9]*\.mapped.*\.bam\.bai$' \
     -I '^output VCF file\s*: .*pvcfs/chr20/20000001.25000000/NA[0-9]*\.mapped.*\.bam\.20\.20000001.25000000\.vcf\.gz (gzip)$' \
     -I '^NA[0-9]*\s*NA[0-9]*\s*0\s*0\s*2\s*.*glfs/samples/chr20/20000001.25000000/NA[0-9]*\.20\.20000001.25000000\.glf$' \
-    -I '^OUTPUT_DIR=.*umaketest$' \
+    -I '^OUTPUT_DIR=.*$' \
     -I '^UMAKE_ROOT=.*$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
@@ -101,13 +110,13 @@ for file in $VCF_GZS_WITH_SUBDIR; do
     fi
 done
 	
-if [ ! -f $RESULTS_DIR/umaketest/vcfs/chr20/$TBI1 ]; then \
-    echo "ERROR, Missing: $RESULTS_DIR/umaketest/vcfs/chr20/$TBI1"
+if [ ! -f $RESULTS_DIR/vcfs/chr20/$TBI1 ]; then \
+    echo "ERROR, Missing: $RESULTS_DIR/vcfs/chr20/$TBI1"
     exit 3
 fi
 
-if [ ! -f $EXPECTED_DIR/umaketest/vcfs/chr20/$TBI1 ]; then \
-    echo "ERROR, Missing: $EXPECTED_DIR/umaketest/vcfs/chr20/$TBI1"
+if [ ! -f $EXPECTED_DIR/vcfs/chr20/$TBI1 ]; then \
+    echo "ERROR, Missing: $EXPECTED_DIR/vcfs/chr20/$TBI1"
     exit 3
 fi
 

@@ -10,8 +10,8 @@
 #       rm -rf ~/outdataS
 #       d=/gotcloud/test/align
 #       /gotcloud/bin/align.pl -conf $d/test.conf \
-#          -index $d/indexFile.txt -ref $d/../chr20Ref/ref/gotcloud.ref \
-#          -fastq /gotcloud/test/align   -out ~/outdata
+#          -index $d/indexFile.txt -ref $d/../chr20Ref/ \
+#          -fastq $d   -out ~/outdata
 #
 #   You can verify the results on the test data are expected using:
 #       /gotcloud/scripts/diff_results_align.sh ~/outdata $d/expected

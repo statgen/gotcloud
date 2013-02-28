@@ -16,7 +16,8 @@ if [ "$2" = "" ]; then
 fi
 RESULTS_DIR=$1
 EXPECTED_DIR=$2
-DIFFRESULTS=$RESULTS_DIR/diff_logfiles_results.txt
+DIFF_FILE=diff_logfiles_results.txt
+DIFFRESULTS=$RESULTS_DIR/$DIFF_FILE
 
 if [ -d $RESULTS_DIR/aligntest ]; then
     RESULTS_DIR=$RESULTS_DIR/aligntest;
@@ -52,7 +53,7 @@ QEMP_SUBDIR=tmp/alignment.recal
 echo "Results from DIFF will be in $DIFFRESULTS"
 diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $BAI1 -x $BAI2 \
     -x $BAM1_1_FILE -x $BAM1_2_FILE -x $BAM2_1_FILE -x $BAM2_2_FILE $SKIP_QEMPS \
-    -x $MAKEFILE1 -x $MAKEFILE2 -x $MAKEFILE1.log -x $MAKEFILE2.log \
+    -x $MAKEFILE1 -x $MAKEFILE2 -x $MAKEFILE1.log -x $MAKEFILE2.log -x $DIFF_FILE\
     -I '--in \[.*tmp/alignment.bwa/fastq/Sample_[1-2]/File[1-2]_R1.bam\]$' \
     -I '--out \[.*tmp/alignment.pol/fastq/Sample_[1-2]/File[1-2]_R1.bam\]$' \
     -I '--log \[.*tmp/alignment.pol/fastq/Sample_[1-2]/File[1-2]_R1.bam.log\]$' \
