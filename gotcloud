@@ -56,7 +56,7 @@ gotcloud - sequencing and genotyping software pipelines that also work on the cl
 
 =head1 SYNOPSIS
 
-epacts [command] [options] 
+gotcloud [command] [options] 
 
  Command:
    help            Print out brief help message
@@ -85,6 +85,10 @@ Run the alignment pipeline. Type 'gotcloud align -help' for more detailed inform
 =item B<snpcall>
 
 Run the snp calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
+
+=item B<ldaware>
+
+Run the ld-aware calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
 
 =back
 
