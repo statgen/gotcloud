@@ -24,20 +24,13 @@ use Scalar::Util qw(looks_like_number);
 my %hConf = ();
 my @keys = ();
 
-#############################################################################
-## getMosixCmd() : convert a command to mosix command
-############################################################################
-sub getMosixCmd {
-    my $cmd = shift;
-    if ( &getConf("MOS_PREFIX") eq "" ) {
-	return $cmd;
-    }
-    else {
-	my $mosNodes = &getConf("MOS_NODES");
-	my $newcmd = &getConf("MOS_PREFIX")." -j$mosNodes sh -c '$cmd'";
-	return $newcmd;
-    }
-}
+# Set the umake base directory.
+$_ = abs_path($0);
+my($scriptName, $scriptPath) = fileparse($_);
+my $scriptDir = abs_path($scriptPath);
+if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
+my $umakeRoot = $1;
+$hConf{"UMAKE_ROOT"} = $umakeRoot;
 
 #############################################################################
 ## STEP 1 : Load configuration file
@@ -51,10 +44,14 @@ my $snpcallOpt = "";
 my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
-my $out = "";
+my $outprefix = "";
 my $override = "";
 my $localdefaults = "";
 my $callregion = "";
+
+my $batchtype = '';
+my $batchopts = '';
+my $runcluster = "$umakeRoot/scripts/runcluster.pl";
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -65,9 +62,11 @@ my $optResult = GetOptions("help",\$help,
 			   "extract",\$extractOpt,
 			   "beagle",\$beagleOpt,
 			   "thunder",\$thunderOpt,
-			   "out=s",\$out,
+			   "outprefix=s",\$outprefix,
 			   "override=s",\$override,
 			   "region=s",\$callregion,
+                           "batchtype|batch_type=s",\$batchtype,
+                           "batchopts|batch_opts=s",\$batchopts,
 			   "localdefaults=s",\$localdefaults
     );
 
@@ -78,14 +77,6 @@ die "Error in parsing options\n$usage\n" unless ( ($optResult) && (($conf) || ($
 if ($help) {
   die "$usage\n";
 }
-
-# Set the umake base directory.
-$_ = abs_path($0);
-my($scriptName, $scriptPath) = fileparse($_);
-my $scriptDir = abs_path($scriptPath);
-if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
-my $umakeRoot = $1;
-$hConf{"UMAKE_ROOT"} = $umakeRoot;
 
 my $here = getcwd();                # Where I am now
 
@@ -111,6 +102,11 @@ if($testdir ne "") {
     exit;
 }
 
+#-------------
+# Handle cluster setup.
+if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
+$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
+
 &loadOverride($override);
 &loadConf($conf);
 if($localdefaults ne "") {
@@ -118,11 +114,19 @@ if($localdefaults ne "") {
  }
 &loadConf($scriptPath."/umakeDefaults.conf");
 
-if ( $out ne "" ) {
-    $hConf{"OUT_PREFIX"} = $out;
+if ( $outprefix ne "" ) {
+    $hConf{"OUT_PREFIX"} = $outprefix;
 }
 if ( $outdir ne "" ) {
     $hConf{"OUT_DIR"} = $outdir;
+}
+
+# Pull batch info from config if not on command line.
+if ( $batchopts eq "" ) {
+  $batchopts = $hConf{"BATCH_OPTS"};
+}
+if ( $batchtype eq "" ) {
+  $batchtype = $hConf{"BATCH_TYPE"};
 }
 
 #### POSSIBLE FLOWS ARE
@@ -1597,6 +1601,29 @@ sub parseTarget {
 	$loci{$chr} = \@s;
     }
     return \%loci;
+}
+
+#############################################################################
+## getMosixCmd() : convert a command to mosix command
+############################################################################
+sub getMosixCmd {
+    my $cmd = shift;
+
+    if ( ($batchtype eq "") || ($batchtype eq "local") )
+    {
+	return $cmd;
+    }
+    else
+    {
+      $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
+      my $newcmd = $runcluster." ";
+      if($batchopts)
+      {
+        $newcmd .= "-opts '".$batchopts."' ";
+      }
+      $newcmd .= "$batchtype '$cmd'";
+      return $newcmd;
+    }
 }
 
 #==================================================================
