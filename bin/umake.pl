@@ -116,7 +116,7 @@ if($testdir ne "") {
 if($localdefaults ne "") {
  &loadConf($localdefaults);
  }
-&loadConf($scriptPath."/defaults.conf");
+&loadConf($scriptPath."/umakeDefaults.conf");
 
 if ( $out ne "" ) {
     $hConf{"OUT_PREFIX"} = $out;
@@ -1611,9 +1611,8 @@ umake.pl - Preform variant calling, generating VCF
 =head1 SYNOPSIS
 
   umake.pl -test ~/testumake    # Run short self check
-  umake.pl -conf ~/mydata.conf -out ~/testdir
-  umake.pl -batchtype slurm -conf ~/mydata.conf -index ~/mydata.index
-  umake.pl -conf ~/mydata.conf -index ~/mydata.index -ref /usr/local/ref
+  umake.pl -conf ~/mydata.conf -outdir ~/testdir
+  umake.pl -batchtype slurm -conf ~/mydata.conf
 
 
 =head1 DESCRIPTION
@@ -1644,13 +1643,14 @@ The B<configuration file> consists of a set of keyword = value lines which defin
 These variables can be referenced in the values of other lines.
 This short example will give you an idea of a configuration file:
 
-  INDEX_FILE = indexFile.txt
+  CHRS = 20
+  BAM_INDEX = indexFile.txt
   # References
   REF_ROOT = $(TEST_ROOT)/ref
   REF = $(REF_ROOT)/karma.ref/human.g1k.v37.chr20.fa
   INDEL_PREFIX = $(REF_ROOT)/indels/1kg.pilot_release.merged.indels.sites.hg19
-  DBSNP_PREFIX =  $(REF_ROOT)/dbSNP/dbsnp135_chr20.vcf.gz
-  HM3_PREFIX =  $(REF_ROOT)/HapMap3/hapmap_3.3.b37.sites.chr20.vcf.gz
+  DBSNP_VCF =  $(REF_ROOT)/dbSNP/dbsnp135_chr20.vcf.gz
+  HM3_VCF =  $(REF_ROOT)/HapMap3/hapmap_3.3.b37.sites.chr20.vcf.gz
 
 The B<bam index> file specifies information about individuals and paths to
 bam data. The data is tab delimited.
@@ -1662,7 +1662,7 @@ bam data. The data is tab delimited.
 =item B<-conf file>
 
 Specifies the configuration file to be used.
-The default configuration is B<pipelineDefaults.conf> found in the same directory
+The default configuration is B<umakeDefaults.conf> found in the same directory
 where this program resides.
 If this file is not found, you must specify this option on the command line.
 
@@ -1674,11 +1674,6 @@ the commands that would be run.
 =item B<-help>
 
 Generates this output.
-
-=item B<-bam_index str>
-
-Specifies the name of the bam index file containing the table of bams to process.
-This value must be set in the configuration file or specified by this option.
 
 =item B<-nowait>
 

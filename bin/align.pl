@@ -9,19 +9,14 @@
 #   You can run this program using the test data by the following:
 #       rm -rf ~/outdataS
 #       d=/gotcloud/test/align
-#       export BIOPIPE_TEST_DIR=~/outdata
 #       /gotcloud/bin/align.pl -conf $d/test.conf \
-#          -index $d/indexFile.txt -ref /data/local/ref/gotcloud.ref \
+#          -index $d/indexFile.txt -ref $d/../chr20Ref/ref/gotcloud.ref \
 #          -fastq /gotcloud/test/align   -out ~/outdata
 #
-#   This is the equivalent of doing  '/gotcloud/bin/align.pl -test ~/outdata'
-#   only the make commands are not executed for you and the output is not verified.
+#   You can verify the results on the test data are expected using:
+#       /gotcloud/scripts/diff_results.sh ~/outdata $d/expected
 #
-#   You can do a verify with
-#   cd $d
-#   for n in 1 2; do ../../bin/bam diff --all --in1 ~/outdata/alignment.recal/Sample$n.recal.bam \
-#       --in2 expected/biopipetest/alignment.recal/Sample$n.recal.bam > /dev/null;echo $?; done
-#
+#   This set of steps is the equivalent of doing  '/gotcloud/bin/align.pl -test ~/outdata'
 #
 # Todo:
 #   Rewrite conf handling to use a hash, rather than a mess of separate variables
@@ -92,7 +87,7 @@ my $recalFiles = '';
 #--------------------------------------------------------------
 my %opts = (
     runcluster => "$basepath/scripts/runcluster.pl",
-    pipelinedefaults => $scriptdir . '/pipelineDefaults.conf',
+    pipelinedefaults => $scriptdir . '/alignDefaults.conf',
     batchtype => '',
     batchopts => '',
     keeptmp => 0,
@@ -576,11 +571,17 @@ if ($opts{'dry-run'}) {
 }
 
 #   We now have an array of commands to run launch and wait for them
+print STDERR "Waiting while samples are processed...\n";
+my $t = time();
 $_ = $Multi::VERBOSE;               # Avoid Perl warning
 if ($opts{verbose}) { $Multi::VERBOSE = 1; }
 Multi::QueueCommands(\@runcmds, $opts{numconcurrentsamples});
 my $errs = Multi::WaitForCommandsToComplete(\&Multi::RunNext);
 if ($errs || $opts{verbose}) { print STDERR "###### $errs processes failed ######\n" }
+$t = time() - $t;
+print STDERR "Processing finished in $t secs";
+if ($errs) { print STDERR " WITH ERRORS.  Check the logs\n"; }
+else { print STDERR " with no errors reported\n"; }
 exit($errs);
 
 #--------------------------------------------------------------
@@ -840,7 +841,7 @@ This short example will give you an idea of a configuration file:
   AS = NCBI37
   FA_REF = $(REF_DIR)/human_g1k_v37_chr20.fa
   DBSNP_VCF =  $(REF_DIR)/dbsnp.b130.ncbi37.chr20.vcf.gz
-  PLINK = $(REF_DIR)/hapmap_3.3.b37.chr20
+  HM3_VCF = $(REF_DIR)/hapmap_3.3.b37.sites.vcf.gz
 
 The B<index file> file specifies information about individuals and paths to
 fastq data for a SNP. The data is tab delimited.
@@ -878,7 +879,7 @@ The default is B<local>.
 =item B<-conf file>
 
 Specifies the configuration file to be used.
-The default configuration is B<pipelineDefaults.conf> found in the same directory
+The default configuration is B<alignDefaults.conf> found in the same directory
 where this program resides.
 If this file is not found, you must specify this option on the command line.
 
