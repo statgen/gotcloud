@@ -63,6 +63,7 @@ gotcloud [command] [options]
    man             Print the full documentation in man page style
    align           Run the alignment pipeline
    snpcall         Run the snp calling pipeline
+   ldrefine        Run the LD-aware genotype refinement pipeline
 
  Visit http://genome.sph.umich.edu/wiki/GotCloud for more detailed documentation
 
@@ -88,7 +89,7 @@ Run the snp calling pipeline. Type 'gotcloud snpcall -help' for more detailed in
 
 =item B<ldaware>
 
-Run the ld-aware calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
+Run the LD-aware genotype refinement pipeline pipeline. Type 'gotcloud ldaware -help' for more detailed information
 
 =back
 
