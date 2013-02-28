@@ -1,5 +1,5 @@
 Initialize errormodel structure...
-Start iterating SAM/BAM file /net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.dedup/Sample2.dedup.bam
+Start iterating SAM/BAM file aligntest/tmp/alignment.dedup/Sample2.dedup.bam
 Start: Fri Feb 22 14:05:51 2013
 
 Open reference
@@ -13,6 +13,6 @@ End: Fri Feb 22 14:05:54 2013
 # Mapping Quality 255 Reads skipped: 0
 # Bases observed: 200498 - #match: 197378; #mismatch: 3120
 # Bases Skipped for DBSNP: 7612, for Map Qual = 0: 86, for MapQual = 255: 0, for BaseQual < 5: 299
-Writing recalibration table /net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.recal/Sample2.recal.bam.qemp
-Writing recalibrated file /net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.recal/Sample2.recal.bam
+Writing recalibration table aligntest/tmp/alignment.recal/Sample2.recal.bam.qemp
+Writing recalibrated file aligntest/tmp/alignment.recal/Sample2.recal.bam
 Recalibration successfully finished

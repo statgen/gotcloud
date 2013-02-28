@@ -1,9 +1,9 @@
 .DELETE_ON_ERROR:
 
-PIPELINE_DIR = /home/mktrost/gotcloud
-OUT_DIR = /home/mktrost/gotcloud/test/align/T3/biopipetest
-INDEX_FILE = /home/mktrost/gotcloud/test/align/indexFile.txt
-REF_DIR = /home/mktrost/gotcloud/test/align/chr20Ref
+PIPELINE_DIR = gotcloud
+OUT_DIR = aligntest
+INDEX_FILE = gotcloud/test/align/indexFile.txt
+REF_DIR = gotcloud/test/chr20Ref
 AS = NCBI37
 FA_REF = $(REF_DIR)/human_g1k_v37_chr20.fa
 DBSNP_VCF = $(REF_DIR)/dbsnp135_chr20.vcf.gz
@@ -11,7 +11,7 @@ HM3_VCF = $(REF_DIR)/hapmap_3.3.b37.sites.chr20.vcf.gz
 VERIFY_BAM_ID_OPTIONS = 
 RUN_QPLOT = 1
 RUN_VERIFY_BAM_ID = 1
-RECAL_DIR = $(OUT_DIR)/alignment.recal
+FINAL_BAM_DIR = $(OUT_DIR)/bams
 BIN_DIR = $(PIPELINE_DIR)/bin
 MD5SUM_EXE = md5sum
 SAMTOOLS_EXE = $(BIN_DIR)/samtools
@@ -33,25 +33,25 @@ QC_DIR = $(OUT_DIR)/QCFiles
 
 all: $(OUT_DIR)/Sample1.OK
 
-$(OUT_DIR)/Sample1.OK: $(RECAL_DIR)/Sample1.recal.bam.done $(QC_DIR)/Sample1.genoCheck.done $(QC_DIR)/Sample1.qplot.done
+$(OUT_DIR)/Sample1.OK: $(FINAL_BAM_DIR)/Sample1.recal.bam.done $(QC_DIR)/Sample1.genoCheck.done $(QC_DIR)/Sample1.qplot.done
 	rm -f $(SAI_FILES) $(ALN_FILES) $(POL_FILES) $(DEDUP_FILES) $(RECAL_FILES)
 	touch $@
 
-$(QC_DIR)/Sample1.genoCheck.done: $(RECAL_DIR)/Sample1.recal.bam.done
+$(QC_DIR)/Sample1.genoCheck.done: $(FINAL_BAM_DIR)/Sample1.recal.bam.done
 	mkdir -p $(@D)
 	@echo "$(VERIFY_BAM_ID_EXE) --verbose --vcf $(HM3_VCF) --bam $(basename $^) --out $(basename $@) $(VERIFY_BAM_ID_OPTIONS) 2> $(basename $@).log"
 	@$(VERIFY_BAM_ID_EXE) --verbose --vcf $(HM3_VCF) --bam $(basename $^) --out $(basename $@) $(VERIFY_BAM_ID_OPTIONS) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed VerifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
-$(QC_DIR)/Sample1.qplot.done: $(RECAL_DIR)/Sample1.recal.bam.done
+$(QC_DIR)/Sample1.qplot.done: $(FINAL_BAM_DIR)/Sample1.recal.bam.done
 	mkdir -p $(@D)
 	@echo "$(QPLOT_EXE) --reference $(FA_REF) --dbsnp $(DBSNP_VCF) --gccontent $(FA_REF).GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample1_recal,Sample1_dedup $(basename $^) $(DEDUP_TMP)/Sample1.dedup.bam 2> $(basename $@).log"
 	@$(QPLOT_EXE) --reference $(FA_REF) --dbsnp $(DBSNP_VCF) --gccontent $(FA_REF).GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample1_recal,Sample1_dedup $(basename $^) $(DEDUP_TMP)/Sample1.dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\nFailed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
-$(RECAL_DIR)/Sample1.recal.bam.done: $(DEDUP_TMP)/Sample1.dedup.bam.done
+$(FINAL_BAM_DIR)/Sample1.recal.bam.done: $(DEDUP_TMP)/Sample1.dedup.bam.done
 	mkdir -p $(@D)
 	mkdir -p $(RECAL_TMP)
 	@echo "$(BAM_EXE) recab --refFile $(FA_REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ --in $(basename $^) --out $(RECAL_TMP)/Sample1.recal.bam $(MORE_RECAB_PARAMS) 2> $(basename $@).log"

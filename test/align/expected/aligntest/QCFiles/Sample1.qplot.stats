@@ -1,4 +1,4 @@
-Stats\BAM	/net/wonderland/home/mktrost/gotcloud/TA/biopipetest/alignment.recal/Sample1.recal.bam	/net/wonderland/home/mktrost/gotcloud/TA/biopipetest/tmp/alignment.dedup/Sample1.dedup.bam
+Stats\BAM	aligntest/bams/Sample1.recal.bam	aligntest/tmp/alignment.dedup/Sample1.dedup.bam
 TotalReads(e6)	0.01	0.01
 MappingRate(%)	59.80	59.80
 MapRate_MQpass(%)	59.80	59.80

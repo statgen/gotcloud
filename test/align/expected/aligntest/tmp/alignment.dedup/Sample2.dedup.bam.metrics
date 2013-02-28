@@ -6,17 +6,17 @@ Reading ReferenceID -1
 SUMMARY STATISTICS OF THE READS
 Total number of reads: 10000
 Total number of paired-end reads: 10000
-Total number of properly paired reads: 5014
-Total number of unmapped reads : 4020
-Total number of reverse strand mapped reads: 3385
+Total number of properly paired reads: 2118
+Total number of unmapped reads : 6726
+Total number of reverse strand mapped reads: 1847
 Total number of QC-failed reads : 0
 Size of singleKeyMap (must be zero) : 0
 Size of pairedKeyMap (must be zero) : 0
 Total number of missing mates: 0
 --------------------------------------------------------------------------
-Sorting the indices of 82 duplicated records
+Sorting the indices of 1 duplicated records
 
-Writing biopipetest/tmp/alignment.dedup/Sample1.dedup.bam
-Successfully marked 24 unpaired and 29 paired duplicate reads
+Writing aligntest/tmp/alignment.dedup/Sample2.dedup.bam
+Successfully marked 1 unpaired and 0 paired duplicate reads
 
 Dedup complete!

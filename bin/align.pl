@@ -14,7 +14,7 @@
 #          -fastq /gotcloud/test/align   -out ~/outdata
 #
 #   You can verify the results on the test data are expected using:
-#       /gotcloud/scripts/diff_results.sh ~/outdata $d/expected
+#       /gotcloud/scripts/diff_results_align.sh ~/outdata $d/expected
 #
 #   This set of steps is the equivalent of doing  '/gotcloud/bin/align.pl -test ~/outdata'
 #
@@ -128,7 +128,7 @@ if ($opts {test}) {
     my $outdir=abs_path($opts{test});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
-    my $testoutdir = $outdir . '/biopipetest';
+    my $testoutdir = $outdir . '/aligntest';
     print "Removing any previous results from: $testoutdir\n";
     system("rm -rf $testoutdir") &&
         die "Unable to clear the test output directory '$testoutdir'\n";
@@ -139,7 +139,7 @@ if ($opts {test}) {
         "-batchtype local";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
-    $cmd = "$basepath/scripts/diff_results.sh $outdir $basepath/test/align/expected";
+    $cmd = "$basepath/scripts/diff_results_align.sh $outdir $basepath/test/align/expected";
     system($cmd) &&
         die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
     print "Successfully ran the test case, congratulations!\n";
@@ -404,7 +404,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
   # Open the output Makefile for this merge file.
   system("mkdir -p $out_dir/Makefiles") &&
     die "Unable to create directory '$out_dir/Makefiles'\n";
-  my $makef = "$out_dir/Makefiles/biopipe_$mergeName.Makefile";
+  my $makef = "$out_dir/Makefiles/align_$mergeName.Makefile";
   open(MAK,">$makef") || die "Cannot open $makef for writing.  $!\n";
 
   print MAK ".DELETE_ON_ERROR:\n\n";
@@ -420,7 +420,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
   #Start
   print MAK "all: \$(OUT_DIR)/$mergeName.OK\n\n";
 
-  print MAK "\$(OUT_DIR)/$mergeName.OK: \$(RECAL_DIR)/$mergeName.recal.bam.done \$(QC_DIR)/$mergeName.genoCheck.done " .
+  print MAK "\$(OUT_DIR)/$mergeName.OK: \$(FINAL_BAM_DIR)/$mergeName.recal.bam.done \$(QC_DIR)/$mergeName.genoCheck.done " .
     "\$(QC_DIR)/$mergeName.qplot.done\n";
   if(! getConf("KEEP_TMP"))
   {
@@ -431,7 +431,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
   if($hConf{RUN_VERIFY_BAM_ID} eq "1")
   {
     # Verify Bam ID
-    print MAK "\$(QC_DIR)/$mergeName.genoCheck.done: \$(RECAL_DIR)/$mergeName.recal.bam.done\n";
+    print MAK "\$(QC_DIR)/$mergeName.genoCheck.done: \$(FINAL_BAM_DIR)/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
     my $verifyCommand = "\$(VERIFY_BAM_ID_EXE) --verbose --vcf \$(HM3_VCF) --bam \$(basename \$^) --out \$(basename \$\@) \$(VERIFY_BAM_ID_OPTIONS) 2> \$(basename \$\@).log";
     print MAK logCatchFailure("VerifyBamID", $verifyCommand, "\$(basename \$\@).log");
@@ -442,7 +442,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
   if($hConf{RUN_QPLOT} eq "1")
   {
     # qplot
-    print MAK "\$(QC_DIR)/$mergeName.qplot.done: \$(RECAL_DIR)/$mergeName.recal.bam.done\n";
+    print MAK "\$(QC_DIR)/$mergeName.qplot.done: \$(FINAL_BAM_DIR)/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
     my $qplotCommand = "\$(QPLOT_EXE) --reference \$(FA_REF) --dbsnp \$(DBSNP_VCF) --gccontent \$(FA_REF).GCcontent " .
         "--stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel " .
@@ -453,7 +453,7 @@ foreach my $tmpmerge (keys %mergeToFq1)
   }
 
   # Recalibrate the Deduped/Merged BAM
-  print MAK "\$(RECAL_DIR)/$mergeName.recal.bam.done: \$(DEDUP_TMP)/$mergeName.dedup.bam.done\n";
+  print MAK "\$(FINAL_BAM_DIR)/$mergeName.recal.bam.done: \$(DEDUP_TMP)/$mergeName.dedup.bam.done\n";
   print MAK "\tmkdir -p \$(\@D)\n";
   print MAK "\tmkdir -p \$(RECAL_TMP)\n";
   if ( !defined($hConf{ALT_RECAB}))
