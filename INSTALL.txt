@@ -6,6 +6,8 @@ The complete installation consists of these packages
   hs37-db132.tar.gz  - reference files of possible interest
   gotcloud-bin       - aligner and umake executables
 
+Note that the reference package name will vary based on the desired reference.
+
 Packages exist for Ubuntu (lucid and precise compatible) and in time
 packages will be made available for Redhat/CentOS. These packages 
 require root authority to install everything in /usr/local/gotcloud.
@@ -17,8 +19,7 @@ users can install GotCloud in their HOME directories.
 You may find it convenient to provide a symlink for your users so the keys scripts
 are in the normal user's PATH.  E.g.
 
- ln -s /usr/local/gotcloud/bin/gen_biopipeline.pl /usr/local/bin/gen_biopipeline.pl
- ln -s /usr/local/gotcloud/bin/umake.pl /usr/local/bin/umake.pl
+ ln -s /usr/local/gotcloud/bin/gotcloud /usr/local/bin/gotcloud
 
 
 
@@ -40,9 +41,9 @@ Dependencies - not forced by the packages, but actually required for a successfu
 A complete test is available and you are encouraged to run it once,
 just to prove everything is correct. Run the test case with
 
-  /usr/local/gotcloud/bin/gen_biopipeline.pl --test /your/testdir/path
-  /usr/local/gotcloud/bin/umake.pl           --test /your/testdir/path
+  /usr/local/gotcloud/bin/gotcloud align    --test /your/testdir/path
+  /usr/local/gotcloud/bin/gotcloud snpcall  --test /your/testdir/path
 
-The first will take about 2 minutes, the second about 15 minutes. Both
+The first will take about 2 minutes, the second about 10 minutes. Both
 are self checking. Errors will be reported and it will be obvious that
 the test failed or was successful.

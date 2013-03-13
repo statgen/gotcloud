@@ -3,7 +3,7 @@
 #======================================================================
 To test the GotCloud aligner, run:
 
-  bin/gen_biopipeline.pl --test ~/testalign
+  gotcloud align --test ~/testalign
 
   This will create/clear the output directory ~/testalign.
   Test results and a log file are put in this directory.
@@ -12,17 +12,17 @@ To test the GotCloud aligner, run:
 
 To test the GotCloud umake, run:
 
-  bin/umake.pl --test ~/testumake
+  gotcloud snpcall --test ~/testsnp
 
-  This will create/clear the output directory ~/testumake.
+  This will create/clear the output directory ~/testsnp.
   Test results and a log file are put in this directory.
   Results are self-checked and if errors should occur, it will be obvious.
 
 
 
-General Help for UMAKE:
+General Help for Variant Calling:
 
-UMAKE requires three types of input files:
+Variant Calling requires three types of input files:
   (1) a set of BAM files
       For high quality SNP calls BAM files should already be:
       * duplicate-marked 
@@ -47,7 +47,7 @@ Optional input files:
    * Pedigree files (PED format) (to specify gender information in chrX calling)
    * Target information (UCSC's BED format) in targeted or whole exome capture sequencing
 
-Once these files are configured, to run umake and process the data:
-   {path}/umake/bin/umake.pl --conf {conf_file} --snpcall \
-      --outdir {output_directory} --numJobs {# of threads to use for processing}
+Once these files are configured, to run snp calling and process the data:
+   {path}gotcloud snpcall --conf {conf_file} \
+      --outdir {output_directory} --numjobs {# of threads to use for processing}
 
