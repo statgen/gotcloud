@@ -48,6 +48,7 @@ my $outprefix = "";
 my $override = "";
 my $localdefaults = "";
 my $callregion = "";
+my $verbose = "";
 
 my $batchtype = '';
 my $batchopts = '';
@@ -67,7 +68,8 @@ my $optResult = GetOptions("help",\$help,
 			   "region=s",\$callregion,
                            "batchtype|batch_type=s",\$batchtype,
                            "batchopts|batch_opts=s",\$batchopts,
-			   "localdefaults=s",\$localdefaults
+			   "localdefaults=s",\$localdefaults,
+                           "verbose", \$verbose
     );
 
 my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
@@ -1173,10 +1175,10 @@ foreach my $chr (@chrs) {
 		    }
 
 		    if ( $baqFlag == 0 ) {
-			$cmd .= &getMosixCmd(&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf");
+			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
 		    else {
-			$cmd .= &getMosixCmd(&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf");
+			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
                     $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		}
@@ -1228,10 +1230,10 @@ foreach my $chr (@chrs) {
 		}
                 $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		if ( &getConf("RUN_INDEX") eq "TRUE" ) {
-		    push(@cmds,"$bamGlf.OK: bai\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd($cmd)."\n\ttouch $bamGlf.OK\n");
+		    push(@cmds,"$bamGlf.OK: bai\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
 		}
 		else {
-		    push(@cmds,"$bamGlf.OK:\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd($cmd)."\n\ttouch $bamGlf.OK\n");
+		    push(@cmds,"$bamGlf.OK:\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
 		}
 	    }
 	}
@@ -1277,7 +1279,7 @@ print STDERR "Finished creating makefile $makef\n\n";
 my $rc = 0;
 if($numjobs != 0) {
   print STDERR "Running $makef\n\n";
-  my $cmd = "make -f $makef -j $numjobs";
+  my $cmd = "make -f $makef -j $numjobs > $makef.log";
   my $t = time();
  #           my $rc = 0xffff & system($cmd);
  #           exit($rc);

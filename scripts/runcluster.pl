@@ -76,9 +76,9 @@ die "runcluster.pl: Unknown cluster engine type: '$engine'\n";
 sub Run_Local {
     my ($e) = @_;
 
-    my $cmd = join(' ', @ARGV);
+    my $cmd = 'bash -c "set -o pipefail; '.join(' ', @ARGV).'"';
     if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = 0xffff & system($cmd);
+    my $rc = (0xffff & system($cmd)) >> 8;
     exit($rc);
 }
 
@@ -100,22 +100,24 @@ sub Run_MOSIX_Engine {
     #   If new version of mosix, use mosbatch
     if (-x '/bin/mosbatch') { $opts{mosix_cmd} = $opts{mosixbatch_cmd}; }
 
-    my $cmd2 = $opts{mosix_cmd} . ' ' . $opts{mosix_opts} . ' ' . $opts{opts} . ' ' .
-        join(' ', @ARGV);
+    my $cmd2 = $opts{mosix_cmd} . ' ' . $opts{mosix_opts} . ' ' . $opts{opts} . ' bash -c "set -o pipefail; ' .
+        join(' ', @ARGV).'"';
     if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd2\n"; }
-    my $rc2 = 0xffff & system($cmd2);
+    my $rc2 = (0xffff & system($cmd2)) >> 8;
+
     exit($rc2);
 
     #   Write the command to a shell script so pipes and such do not get confused
     my $f = $ENV{HOME} . "/z$$.sh";
     open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/sh\n" . join(' ', @ARGV) . "\n";
+    print OUT "#!/bin/bash\nset -o pipefail\n" . join(' ', @ARGV) . "\n";
     close(OUT);
     chmod(0755, $f);
+
     my $cmd = $opts{mosix_cmd} . ' ' . $opts{mosix_opts} . ' ' . $opts{opts} . ' ';
     $cmd .= $f;
     if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = 0xffff & system($cmd);
+    my $rc = (0xffff & system($cmd)) >> 8;
     unlink($f);
     exit($rc);
 }
@@ -143,13 +145,13 @@ sub Run_Sun_Grid_Engine {
     #   so we add -'now n' to allow the command to be queued
     my $f = $ENV{HOME} . "/z$$.sh";
     open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/sh\n" . join(' ', @ARGV) . "\n";
+    print OUT "#!/bin/bash\nset -o pipefail\n" . join(' ', @ARGV) . "\n";
     close(OUT);
     chmod(0755, $f);
     my $cmd = $opts{sge_cmd} . ' ' . $opts{sge_opts} . ' ' . $opts{opts} . ' ';
     $cmd .= $f;
     if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = 0xffff & system($cmd);
+    my $rc = (0xffff & system($cmd)) >> 8;
     unlink($f);
     exit($rc);
 }
@@ -178,7 +180,7 @@ sub Run_PBS_Engine {
     #   that will be built to run your command.
     my $f = $ENV{HOME} . "/z$$.sh";
     open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/sh\n";
+    print OUT "#!/bin/bash\nset -o pipefail\n";
     if ($opts{opts}) { $opts{pbs_opts} = $opts{opts}; }
     if ($opts{pbs_opts} !~ /pbsfile=\s*(.+)\s*$/) {
         die "Invalid PBS options: $opts{pbs_opts}\n";
@@ -194,7 +196,7 @@ sub Run_PBS_Engine {
     my $cmd = $opts{pbs_cmd} . ' ';
     $cmd .= $f;
     if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = 0xffff & system($cmd);
+    my $rc = (0xffff & system($cmd)) >> 8;
     ####unlink($f);
     exit($rc);
 }
@@ -217,13 +219,13 @@ sub Run_SLURM_Engine {
     #   Write the command to a shell script so pipes and such do not get confused
     my $f = $ENV{HOME} . "/z$$.sh";
     open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/sh\n" . join(' ', @ARGV) . "\n";
+    print OUT "#!/bin/bash\nset -o pipefail\n" . join(' ', @ARGV) . "\n";
     close(OUT);
     chmod(0755, $f);
     my $cmd = $opts{slurm_cmd} . ' ' . $opts{slurm_opts} . ' ' . $opts{opts} . ' ';
     $cmd .= $f;
     if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = 0xffff & system($cmd);
+    my $rc = (0xffff & system($cmd)) >> 8;
     unlink($f);
     exit($rc);
 }
