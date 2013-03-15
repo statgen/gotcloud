@@ -45,18 +45,19 @@ done
 #SKIP_GZS=""; for file in `ls $EXPECTED_DIR/pvcfs/chr20/*/*vcf.gz $EXPECTED_DIR/vcfs/chr20/*.vcf.gz $EXPECTED_DIR/split/chr20/*.vcf.gz`; do SKIP_GZS+="-x $(basename $file) "; done;
 #echo $SKIP_GZS
 
-TBI1=chr20.filtered.vcf.gz.tbi
+TBI1=chr20.hardfiltered.vcf.gz.tbi
+TBI2=chr20.filtered.vcf.gz.tbi
 
 echo "Results from DIFF will be in $DIFFRESULTS"
 
 diff -r $RESULTS_DIR $EXPECTED_DIR \
-    $SKIP_GZS -x $TBI1 -x $DIFF_FILE -x umake_test.Makefile.log\
+    $SKIP_GZS -x $TBI1 -x $TBI2 -x $DIFF_FILE -x umake_test.Makefile.log\
     -I "bin/samtools-hybrid view -q 20 -F 0x0704 -uh" \
     -I "^Analysis completed on " \
     -I "^Analysis finished on " \
     -I "^Analysis started on " \
     -I "^##filedate=" \
-    -I '^Writing to VCF file .*vcfs/chr20/chr20\.filtered\.sites\.vcf$' \
+    -I '^Writing to VCF file .*vcfs/chr20/chr20.*filtered\.sites\.vcf$' \
     -I '^INDEL5 : INDEL >= 5 bp with .*chr20Ref/1kg\.pilot_release\.merged\.indels\.sites\.hg19\.chr20\.vcf$'\
     -I '^\s*Pedigree File : --ped \[.*glfs/samples/chr20/20000001.25000000/glfIndex\.ped\]$' \
     -I '^\s*Input Options : --anchor \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf\],$' \
@@ -64,8 +65,8 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^\s*--index \[.*umake_test\.index\]$' \
     -I '^\s*Output Options : --outvcf \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.stats\.vcf\],$' \
     -I '^\s*Base Call File : .*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf (-bname)$' \
-    -I '^Opening /.*split/chr20/chr20\.filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \
-    -I '^[^[:space:]]*split/chr20/chr20\.filtered\.PASS\.split\.[1-6]\.vcf\.gz$' \
+    -I '^Opening /.*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \
+    -I '^[^[:space:]]*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.gz$' \
     -I '^[^[:space:]]*pvcfs/chr20/20000001.25000000/NA[0-9]*\.mapped.*\.bam\.20\.20000001.25000000\.vcf\.gz$' \
     -I '^[^[:space:]]*glfs/samples/chr20/20000001.25000000/NA[0-9]*\.20\.20000001.25000000\.glf$' \
     -I '^bam file\s* : .*bams/NA[0-9]*\.mapped.*\.bam$' \
@@ -75,6 +76,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^NA[0-9]*\s*NA[0-9]*\s*0\s*0\s*2\s*.*glfs/samples/chr20/20000001.25000000/NA[0-9]*\.20\.20000001.25000000\.glf$' \
     -I '^OUTPUT_DIR=.*$' \
     -I '^UMAKE_ROOT=.*$' \
+    -I '^Reading Input File .*chr20.filtered.sites.vcf.raw$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
@@ -117,6 +119,16 @@ fi
 
 if [ ! -f $EXPECTED_DIR/vcfs/chr20/$TBI1 ]; then \
     echo "ERROR, Missing: $EXPECTED_DIR/vcfs/chr20/$TBI1"
+    exit 3
+fi
+
+if [ ! -f $RESULTS_DIR/vcfs/chr20/$TBI2 ]; then \
+    echo "ERROR, Missing: $RESULTS_DIR/vcfs/chr20/$TBI2"
+    exit 3
+fi
+
+if [ ! -f $EXPECTED_DIR/vcfs/chr20/$TBI2 ]; then \
+    echo "ERROR, Missing: $EXPECTED_DIR/vcfs/chr20/$TBI2"
     exit 3
 fi
 

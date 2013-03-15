@@ -132,11 +132,11 @@ if ( $batchtype eq "" ) {
 }
 
 #### POSSIBLE FLOWS ARE
-## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SPLIT : 1,2,3,4,6
-## Extract : PILEUP -> GLFEXTRACT -> SPLIT : 1,5,6
-## BEAGLE  : BEAGLE -> SUBSET : 7,8
-## THUNDER : THUNDER -> 9
-my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_EXTRACT RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER);
+## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
+## Extract : PILEUP -> GLFEXTRACT -> SPLIT : 1,6,7
+## BEAGLE  : BEAGLE -> SUBSET : 8,9
+## THUNDER : THUNDER -> 10 
+my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_SVM RUN_EXTRACT RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER);
 my @orderFlags = ();
 
 ## if --snpcall --beagle --subset or --thunder
@@ -146,25 +146,25 @@ if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ) {
 	$hConf{$o} = "FALSE";
     }
     if ( $snpcallOpt ) {
-	foreach my $i (1,2,3,4,6) { # PILEUP to SPLIT
+	foreach my $i (1,2,3,4,5,7) { # PILEUP to SPLIT
 	    $orderFlags[$i] = 1;
 	    $hConf{$orders[$i]} = "TRUE";
 	}
     }
     if ( $extractOpt ) {
-	foreach my $i (1,5,6) { # PILEUP, EXTRACT, SPLIT
+	foreach my $i (1,6,7) { # PILEUP, EXTRACT, SPLIT
 	    $orderFlags[$i] = 1;
 	    $hConf{$orders[$i]} = "TRUE";
 	}
     }
     if ( $beagleOpt ) {
-	foreach my $i (7,8) {
+	foreach my $i (8,9) {
 	    $orderFlags[$i] = 1;
 	    $hConf{$orders[$i]} = "TRUE";
 	}
     }
     if ( $thunderOpt ) {
-	foreach my $i (9) {
+	foreach my $i (10) {
 	    $orderFlags[$i] = 1;
 	    $hConf{$orders[$i]} = "TRUE";
 	}
@@ -177,7 +177,7 @@ else {
 }
 
 ## check if the current orders are compatible with any of the valid orders
-my @validOrders = ([0,1,2,3,4,6],[0,1,5,6],[7,8],[9]);
+my @validOrders = ([0,1,2,3,4,5,7],[0,1,6,7],[8,9],[10]);
 my $validFlag = 0;
 foreach my $v (@validOrders) {
     my @vjs = ();
@@ -395,6 +395,7 @@ if($sleepMultiplier eq "")
   $sleepMultiplier = 0;
 }
 
+
 #############################################################################
 ## STEP 6 : PARSE TARGET INFORMATION
 ############################################################################
@@ -522,12 +523,19 @@ foreach my $chr (@chrs) {
     print MAK " beagle$chr" if ( &getConf("RUN_BEAGLE") eq "TRUE" );
     print MAK " split$chr" if ( &getConf("RUN_SPLIT") eq "TRUE" );
     print MAK " filt$chr" if ( &getConf("RUN_EXTRACT") eq "TRUE" );
+    print MAK " svm$chr" if ( &getConf("RUN_SVM") eq "TRUE" );
     print MAK " filt$chr" if ( &getConf("RUN_FILTER") eq "TRUE" );
     print MAK " pvcf$chr" if ( &getConf("RUN_VCFPILEUP") eq "TRUE" );
     print MAK " vcf$chr" if ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" );
     print MAK " glf$chr" if ( &getConf("RUN_PILEUP") eq "TRUE" );
     print MAK " bai" if ( &getConf("RUN_INDEX") eq "TRUE" );
     print MAK "\n\n";
+
+    # Use a filter prefix for hard filtering if running SVM
+    my $filterPrefix = "";
+    if ( &getConf("RUN_SVM") eq "TRUE") {
+      $filterPrefix = "hard";
+    }
 
     #############################################################################
     ## STEP 10-9 : RUN MaCH GENOTYPE REFINEMENT
@@ -816,6 +824,56 @@ foreach my $chr (@chrs) {
 	}
     }
 
+	#############################################################################
+	## STEP 10.5 : RUN SVM FILTERING
+	#############################################################################
+	if ( &getConf("RUN_SVM") eq "TRUE") {
+	    my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
+	    my $svcf = "$vcfParent/chr$chr.${filterPrefix}filtered.sites.vcf";
+	    my $vcf = "$vcfParent/chr$chr.merged.vcf";
+
+	    my $expandFlag = ( &getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
+
+	    my @cmds = ();
+
+	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
+
+	    print MAK "svm$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+
+	    if ( $expandFlag == 1 ) {
+			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: filt$chr\n";
+	    }
+	    else {
+			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: \n";
+	    }
+
+		my $cmd = "";
+		if (&getConf("USE_SVMMODEL") eq "TRUE")
+		{
+			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --model ".&getConf("SVMMODEL")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
+            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+			print MAK "$cmd";
+		}
+		else
+		{
+			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --pos ".&getConf("POS_SAMPLE")." --neg ".&getConf("NEG_SAMPLE")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
+            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+			print MAK "$cmd";
+		}
+	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz\n";
+            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            print MAK "$cmd";
+	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
+            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            print MAK "$cmd";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
+            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            print MAK "$cmd";
+	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+	    print MAK join("\n",@cmds);
+	    print MAK "\n";
+	}
+
     if ( &getConf("MERGE_BEFORE_FILTER") eq "TRUE" ) {
 	#############################################################################
 	## STEP 10-4B : VCF PILEUP after MERGING
@@ -860,7 +918,7 @@ foreach my $chr (@chrs) {
 	}
 
 	#############################################################################
-	## STEP 10-5B : FILTERING AFTER MERGING
+	## STEP 10-5B : HARD FILTERING AFTER MERGING
 	#############################################################################
 	if ( &getConf("RUN_FILTER") eq "TRUE" ) {
 	    my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
@@ -884,26 +942,26 @@ foreach my $chr (@chrs) {
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 
 	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
-	    print MAK "filt$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+	    print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
 	    if ( $expandFlag == 1 ) {
-		print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $gvcf.OK pvcf$chr\n";
+		print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK pvcf$chr\n";
 	    }
 	    else {
-		print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $gvcf.OK\n";
+		print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK\n";
 	    }
-	    $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.filtered.sites.vcf --in-vcf $gvcf\n";
+	    $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz\n";
+	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
+	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+	    print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
 	    print MAK join("\n",@cmds);
 	    print MAK "\n";
 	}
@@ -955,7 +1013,7 @@ foreach my $chr (@chrs) {
 	}
 
 	#############################################################################
-	## STEP 10-5A : FILTERING before MERGING
+	## STEP 10-5A : HARD FILTERING before MERGING
 	#############################################################################
 	if ( &getConf("RUN_FILTER") eq "TRUE" ) {
 	    my $expandFlag = ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
@@ -999,8 +1057,8 @@ foreach my $chr (@chrs) {
 	    }
 	    
 	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
-	    print MAK "filt$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
-	    print MAK "$mvcfPrefix.filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
+	    print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+	    print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
 	    if ( $#uniqBeds < 0 ) {
               my $cmd = "\t".&getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf\n";
               $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
@@ -1009,19 +1067,19 @@ foreach my $chr (@chrs) {
 	    else {
 		print MAK "\t(cat $gvcfs[0] | head -100 | grep ^#; cat @gvcfs | grep -v ^#;) > $mvcfPrefix.merged.stats.vcf\n";
 	    }
-	    my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
+	    my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz\n";
+	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
+	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
+	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+	    print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
 	    print MAK join("\n",@cmds);
 	    print MAK "\n";
 	}

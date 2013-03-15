@@ -14,15 +14,18 @@ my $bin = "/net/fantasia/home/hmkang/code/working/umake/invNorm/bin/invNorm";
 my @ignores = qw(AC AF);
 my @bfiles = ();
 my @nfiles = ();
-my $svmlearn = "/net/fantasia/home/gjun/bin/svm_learn";
-my $svmclassify = "/net/fantasia/home/gjun/bin/svm_classify";
+my $svmlearn = "/net/fantasia/home/gjun/bin/svm-train";
+my $svmclassify = "/net/fantasia/home/gjun/bin/svm-predict";
 my $subsample = 100;
 my $possample = 100;
 my $negsample = 100;
 my @includes = ();
-my $checkNA = "";
+my $checkNA = 1;
 my $keepData = "";
 my $numFilter = 3;
+my $model = "";
+my $ignoreALL = "";
+my $cutoff = 0;
 my $keyword = "SVM";
 my $result = GetOptions("invcf=s",\$invcf,
 		"out=s",\$out,
@@ -39,7 +42,10 @@ my $result = GetOptions("invcf=s",\$invcf,
 		"numFilter=i",\$numFilter,
 		"checkNA",\$checkNA,
 		"keepData",\$keepData,
-		"keyword=s",\$keyword
+		"keyword=s",\$keyword,
+		"model=s",\$model,
+		"threshold=i",\$cutoff,
+		"ignoreALL",\$ignoreALL
 		);
 
 #my $usage = "Usage: perl run_svm.pl --invcf [$invcf] --out [$out] --ignore [@ignores] --include [@includes] --checkNA\n";
@@ -54,36 +60,35 @@ program appends a corresponding INFO field inverse-normal transformed as INFO
 field key "IN_[NAME]". A C++ binary 'invNorm' is required for execution
 --------------------------------------------------------------------------------
 Usage: perl run_svm.pl --invcf [input VCF file] --out [output VCF] \
-		--ignore [INFO-field-to-ignore] --bin [invNorm binary path]\
-		--include [INFO-field,default-value to include] --checkNA
-		Options:
-		--invcf : Input VCF file with rich set of INFO fields to be inverse normalized
-		--out : Output VCF file with SVM score appended to INFO fields 
-		--checkNA : Check if the value is numeric and convert them into default value
-		(0, or value given by --include) if the value is non-numeric
+	--ignore [INFO-field-to-ignore] --bin [invNorm binary path]\
+	--include [INFO-field,default-value to include] --checkNA
+	Options:
+	--invcf : Input VCF file with rich set of INFO fields to be inverse normalized
+	--out : Output VCF file with SVM score appended to INFO fields 
+	--checkNA : Check if the value is numeric and convert them into default value
+	(0, or value given by --include) if the value is non-numeric
 	--keepData : keep intermediate files
 	--numFilter : number of filters to be used for negative examples (default: 3)
---bin : filepath of invNorm C++ binary. (default: ../invNorm/bin/invNorm)
+	--bin : filepath of invNorm C++ binary. (default: ../invNorm/bin/invNorm)
 	--bfile : list of VCF.gz files that contains positive example sites
---nfile : list of VCF.gz files that contains negative example sites (set --numFilter 0 to use nfile only)
+	--nfile : list of VCF.gz files that contains negative example sites (set --numFilter 0 to use nfile only)
 	--svmlearn : file path of svm_learn binary
 	--svmclassify : file path of svm_classify binary
 	--subsample : subsample rate (%),  default is 100
 	--pos : subsample rate (%) for positive class,  default is 100
 	--neg : subsample rate (%) for negative class,  default is 100
---ignore : INFO field entries to ignore (default: AC, AF)
+	--ignore : INFO field entries to ignore (default: AC, AF)
 	--keyword : Keyword to be used with filter score in the final VCF
 	--include : INFO field (possible with [,default-value]) to always include
-	This option is helpful when certain INFO field entries occasionally
-	exists onlu in some variant. Default value (zero or given followed by 
-			comma) will be added for the variant without the field
+		This option is helpful when certain INFO field entries occasionally
+		exists onlu in some variant. Default value (zero or given followed by 
+		comma) will be added for the variant without the field
 --------------------------------------------------------------------------------
 END
 
 unless ( ( $result ) && ( ( $invcf ) || ( $out ) ) ) {
 	die "Error in parsing options\n$usage\n";
 }
-
 
 if (@bfiles == 0)
 {
@@ -95,6 +100,11 @@ if ($possample == 100 && $negsample == 100 && $subsample < 100)
 {
 	$possample = $subsample;
 	$negsample = $subsample;
+}
+
+if ($ignoreALL)
+{
+	push(@includes, "QUAL");
 }
 
 my @names = ();
@@ -113,7 +123,6 @@ for(my $i=0; $i < @includes; ++$i) {
 my $nIncludes = $#includes + 1;
 
 open(OUT,">$out.raw") || die "Cannot open file\n";
-
 if ($invcf =~ m/\.gz$/)
 {
 	open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
@@ -137,7 +146,7 @@ while(<IN>) {
 
 	for(my $i=0; $i < @infos; ++$i) {
 		my ($key,$val) = split(/=/,$infos[$i]);
-		next if ( defined($hIgnores{$key}) ); ## skip if ignored
+		next if ( defined($hIgnores{$key})  || ($ignoreALL && !defined($hIncludes{$key}))); ## skip if ignored, or not in includes key
 			next unless defined($val); ## skip keys without any values
 
 # check if exist in the includes flag
@@ -147,6 +156,10 @@ while(<IN>) {
 				}
 			}
 			else {
+				if ($ignoreALL)
+				{
+					die "Error. --ignoreALL is set but $key is not in include list";
+				}
 				if ( !($checkNA) || ( $val =~ /^([+-]?)(?=\d|\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/ ) ) {
 					push(@values,$val);
 				}
@@ -173,7 +186,7 @@ while(<IN>) {
 	print OUT "\n";
 }
 close IN;
-
+close OUT;
 
 
 $cmd = "$bin --in $out.raw --out $out.norm";
@@ -181,51 +194,53 @@ print "$cmd\n";
 print `$cmd`;
 
 # Make SVM features
-my %valid = ();
-my %invalid = ();
-my $pos_count = 0;
-my $neg_count = 0;
-
-for my $bfile (@bfiles)
+unless($model)
 {
-	print "Reading positive examples from $bfile \n";
-	open(IN,"zcat $bfile | grep -v ^# | cut -f 1,2 |") || die "Cannot open $bfile \n";
-	while(<IN>)
-	{
-		my ($chr, $pos) = split;
+	my %valid = ();
+	my %invalid = ();
+	my $pos_count = 0;
+	my $neg_count = 0;
 
-		$valid{"$chr:$pos"} = 1;
-	}
-	close(IN);
-}
-
-if (@nfiles > 0)
-{
-	for my $nfile (@nfiles)
+	for my $bfile (@bfiles)
 	{
-		print "Reading negative examples from $nfile \n";
-		open(IN, "zcat $nfile | grep -v ^# |cut -f 1,2|") || die "Cannot open $nfile \n";
+		print "Reading positive examples from $bfile \n";
+		open(IN,"zcat $bfile | grep -v ^# | cut -f 1,2 |") || die "Cannot open $bfile \n";
 		while(<IN>)
 		{
 			my ($chr, $pos) = split;
 
-			$invalid{"$chr:$pos"} = 1;
+			$valid{"$chr:$pos"} = 1;
 		}
-		close IN;
+		close(IN);
 	}
-}
 
-if ($invcf =~ m/\.gz$/)
-{
-	open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
-}
-else
-{
-	open(IN,$invcf) || die "Cannot open $invcf\n";
-}
-open(RST,"$out.norm") || die "Cannot open file $out.norm\n";
-open(SVM,">$out.svm") || die "Cannot open file $out.svm to write\n";
-open(LBL,">$out.labeled.svm") || die "Cannot open $out.labeled.svm to write\n";
+	if (@nfiles > 0)
+	{
+		for my $nfile (@nfiles)
+		{
+			print "Reading negative examples from $nfile \n";
+			open(IN, "zcat $nfile | grep -v ^# |cut -f 1,2|") || die "Cannot open $nfile \n";
+			while(<IN>)
+			{
+				my ($chr, $pos) = split;
+
+				$invalid{"$chr:$pos"} = 1;
+			}
+			close IN;
+		}
+	}
+
+	if ($invcf =~ m/\.gz$/)
+	{
+		open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
+	}
+	else
+	{
+		open(IN,$invcf) || die "Cannot open $invcf\n";
+	}
+	open(RST,"$out.norm") || die "Cannot open file $out.norm\n";
+	open(SVM,">$out.svm") || die "Cannot open file $out.svm to write\n";
+	open(LBL,">$out.labeled.svm") || die "Cannot open $out.labeled.svm to write\n";
 
 	while(<IN>) {
 		unless (/^#/)
@@ -267,11 +282,11 @@ open(LBL,">$out.labeled.svm") || die "Cannot open $out.labeled.svm to write\n";
 				if (@filts>=$numFilter)
 				{
 					print SVM "-1 $ln\n";
-					if (rand()*100 <= $negsample)
-					{
-						print LBL "-1 $ln\n";
-						$neg_count++;
-					}
+						if (rand()*100 <= $negsample)
+						{
+							print LBL "-1 $ln\n";
+							$neg_count++;
+						}
 				}
 				else
 				{
@@ -284,42 +299,80 @@ open(LBL,">$out.labeled.svm") || die "Cannot open $out.labeled.svm to write\n";
 			}
 		}
 	}
-close IN;
+	close IN;
 
-if ($keepData)
-{
-	close OUT;
-}
-else
-{
-	unlink("$out.raw");
-	unlink("$out.norm");
-}
+	unless ($keepData)
+	{
+		unlink("$out.raw");
+		unlink("$out.norm");
+	}
 
-print STDOUT "Positive samples: $pos_count, Negative samples: $neg_count\n";
-
-print STDOUT join("\t",@names)."\n";
-my $gamma = 1/(scalar @names);
-
-$cmd = "$svmlearn -t 2 -g $gamma $out.labeled.svm $out.svm.model";
-print "$cmd\n";
-print `$cmd`;
-
-$cmd = "$svmclassify $out.svm $out.svm.model $out.svm.pred";
-print "$cmd\n";
-print `$cmd`;
-
-if ($keepData)
-{
 	close SVM;
 	close LBL;
-}
+
+	print STDOUT "Positive samples: $pos_count, Negative samples: $neg_count\n";
+
+	print STDOUT join("\t",@names)."\n";
+	my $gamma = 1/(scalar @names);
+
+	$cmd = "$svmlearn -s 0 -t 2 $out.labeled.svm $out.svm.model";
+	print "$cmd\n";
+	print `$cmd`;
+
+	$cmd = "$svmclassify $out.svm $out.svm.model $out.svm.pred";
+	print "$cmd\n";
+	print `$cmd`;
+
+	unless ($keepData)
+	{
+		unlink("$out.svm");
+		unlink("$out.labeled.svm");
+	}
+} # unless($model)
+
 else
 {
-	unlink("$out.svm");
-	unlink("$out.labeled.svm");
-}
+	if ($invcf =~ m/\.gz$/)
+	{
+		open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
+	}
+	else
+	{
+		open(IN,$invcf) || die "Cannot open $invcf\n";
+	}
 
+	open(RST,"$out.norm") || die "Cannot open file $out.norm\n";
+	open(SVM,">$out.svm") || die "Cannot open file $out.svm to write\n";
+
+	while(<IN>) 
+	{
+		unless (/^#/)
+		{
+			my ($chr,$pos,$id,$ref,$alt,$qual,$filter,$info) = split(/[\t\r\n]+/);
+			my @z = split(/[ \t\r\n]+/,<RST>);
+			my $ln = "";
+
+			for(my $i=0; $i < @names; ++$i) 
+			{
+				$ln .= " ".($i+1).":$z[$i]";
+			}
+			print SVM "0 $ln\n";
+		}
+	}
+	close IN;
+	close SVM;
+
+	$cmd = "$svmclassify $out.svm $model.svm.model $out.svm.pred";
+	print "$cmd\n";
+	print `$cmd`;
+
+	unless ($keepData)
+	{
+		unlink("$out.raw");
+		unlink("$out.norm");
+		unlink("$out.svm");
+	}
+}
 
 if ($invcf =~ m/\.gz$/)
 {
@@ -345,8 +398,31 @@ while (<IN>)
 		my (@F) = split;
 		my $pred = <PRED>;
 		chomp($pred);
+		my $filter = "";
 
+		if ($F[6] =~ /(INDEL\d+)/)
+		{
+			$filter = $1;
+		}
 		$F[7] .= ";$keyword=$pred";
+
+		if ($pred > $cutoff)
+		{
+			if ($filter eq "")
+			{
+				$filter = "PASS";
+			}
+		}
+		elsif ($filter eq "")
+		{
+			$filter = "SVM";
+		}
+		else
+		{
+			$filter .= ";SVM";
+		}
+		$F[6] = $filter;
+
 		print VCF join("\t",@F)."\n";
 	}
 }

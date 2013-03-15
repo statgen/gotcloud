@@ -1,7 +1,7 @@
 include Makefiles/Makefile.include
 
-STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID
-EXES = samtools-hybrid $(STAT_GEN_EXES)
+STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID invNorm
+EXES = samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)
 #SUBDIRS=glfMerge glfMultiples libStatGen vcfPileup samtools-hybrid infoCollector vcfCooker
@@ -68,6 +68,12 @@ samtools-hybrid:
 	$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
+
+libsvm-3.1:
+	$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)
+	mkdir --p bin/
+	cd bin/; ln -fs ../$@/svm-predict .; cd ..
+	cd bin/; ln -fs ../$@/svm-train .; cd ..
 
 
 $(LIBS): 

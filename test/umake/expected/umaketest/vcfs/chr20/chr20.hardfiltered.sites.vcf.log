@@ -12,6 +12,6 @@ AOI5 : AOI <= 5.00
 fic-20 : FIC >= -0.20
 INDEL5 : INDEL >= 5 bp with /gotcloud/test/umake/chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf
 
-Writing to VCF file /gotcloud/umaketest/vcfs/chr20/chr20.filtered.sites.vcf
+Writing to VCF file /gotcloud/umaketest/vcfs/chr20/chr20.hardfiltered.sites.vcf
 Analysis finished on Wed Jan 30 11:24:37 2013
 
