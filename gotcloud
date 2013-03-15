@@ -31,11 +31,11 @@ elsif ( $ARGV[0] =~ /^([\-])*help$/ ) {
 elsif ( $ARGV[0] =~ /^([\-])*version$/ ) {
   if( -f "$dir/release_version.txt")
   {
-    print "gotcloud Version: ".`cat release_version.txt`;
+    print "gotcloud Version: ".`cat $dir/release_version.txt`;
   }
   elsif( -f "$dir/../release_version.txt")
   {
-    print "gotcloud: version `cat release_version.txt`\n"
+    print "gotcloud: version `cat $dir/../release_version.txt`\n"
   }
 }
 elsif ( $ARGV[0] eq "align") {
