@@ -28,6 +28,16 @@ elsif ( $ARGV[0] =~ /^([\-])*man$/ ) {
 elsif ( $ARGV[0] =~ /^([\-])*help$/ ) {
     pod2usage(1);
 }
+elsif ( $ARGV[0] =~ /^([\-])*version$/ ) {
+  if( -f "$dir/release_version.txt")
+  {
+    print "gotcloud Version: ".`cat release_version.txt`;
+  }
+  elsif( -f "$dir/../release_version.txt")
+  {
+    print "gotcloud: version `cat release_version.txt`\n"
+  }
+}
 elsif ( $ARGV[0] eq "align") {
     shift(@ARGV);
     if( -f "$bindir/align.pl" )
@@ -97,6 +107,7 @@ gotcloud [command] [options]
  Command:
    help            Print out brief help message
    man             Print the full documentation in man page style
+   version         Print the gotcloud version
    align           Run the alignment pipeline
    snpcall         Run the snp calling pipeline
    ldrefine        Run the LD-aware genotype refinement pipeline
@@ -114,6 +125,10 @@ Print a brief help message and exits.
 =item B<man>
 
 Prints the manual page and exits.
+
+=item B<version>
+
+Prints the got cloud version and exits.
 
 =item B<align>
 
