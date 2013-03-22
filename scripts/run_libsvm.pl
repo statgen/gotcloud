@@ -123,16 +123,10 @@ for(my $i=0; $i < @includes; ++$i) {
 my $nIncludes = $#includes + 1;
 
 open(OUT,">$out.raw") || die "Cannot open file\n";
-if ($invcf =~ m/\.gz$/)
-{
-	open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
-}
-else
-{
-	open(IN,$invcf) || die "Cannot open $invcf\n";
-}
+
+my $in = openInFile($invcf);
 my $ncols = 0;
-while(<IN>) {
+while(<$in>) {
 	next if ( /^#/ );
 	my ($chrom,$pos,$id,$ref,$alt,$qual,$filt,$info) = split(/[\t\r\n]+/);
 	$info .= ";QUAL=$qual" unless ( $qual ne "." );
@@ -185,7 +179,7 @@ while(<IN>) {
 	print OUT join("\t",@values);
 	print OUT "\n";
 }
-close IN;
+close $in;
 close OUT;
 
 
@@ -204,14 +198,15 @@ unless($model)
 	for my $bfile (@bfiles)
 	{
 		print "Reading positive examples from $bfile \n";
-		open(IN,"zcat $bfile | grep -v ^# | cut -f 1,2 |") || die "Cannot open $bfile \n";
-		while(<IN>)
+		my $in = openInFile($bfile);
+		while(<$in>)
 		{
-			my ($chr, $pos) = split;
-
-			$valid{"$chr:$pos"} = 1;
+                    next if ( /^#/ );  # skip lines that start with #
+                    # Only use the first two columns
+                    my ($chr, $pos, $remainder) = split;
+                    $valid{"$chr:$pos"} = 1;
 		}
-		close(IN);
+		close($in);
 	}
 
 	if (@nfiles > 0)
@@ -219,30 +214,25 @@ unless($model)
 		for my $nfile (@nfiles)
 		{
 			print "Reading negative examples from $nfile \n";
-			open(IN, "zcat $nfile | grep -v ^# |cut -f 1,2|") || die "Cannot open $nfile \n";
-			while(<IN>)
-			{
-				my ($chr, $pos) = split;
+	                my $in = openInFile($nfile);
+		        while(<$in>)
+                        {
+                            next if ( /^#/ );  # skip lines that start with #
+                            # Only use the first two columns
+                            my ($chr, $pos, $remainder) = split;
 
-				$invalid{"$chr:$pos"} = 1;
-			}
-			close IN;
+                            $invalid{"$chr:$pos"} = 1;
+                        }
+                        close($in);
 		}
 	}
 
-	if ($invcf =~ m/\.gz$/)
-	{
-		open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
-	}
-	else
-	{
-		open(IN,$invcf) || die "Cannot open $invcf\n";
-	}
+        my $in = openInFile($invcf);
 	open(RST,"$out.norm") || die "Cannot open file $out.norm\n";
 	open(SVM,">$out.svm") || die "Cannot open file $out.svm to write\n";
 	open(LBL,">$out.labeled.svm") || die "Cannot open $out.labeled.svm to write\n";
 
-	while(<IN>) {
+	while(<$in>) {
 		unless (/^#/)
 		{
 			my ($chr,$pos,$id,$ref,$alt,$qual,$filter,$info) = split(/[\t\r\n]+/);
@@ -299,7 +289,7 @@ unless($model)
 			}
 		}
 	}
-	close IN;
+	close $in;
 
 	unless ($keepData)
 	{
@@ -332,19 +322,12 @@ unless($model)
 
 else
 {
-	if ($invcf =~ m/\.gz$/)
-	{
-		open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
-	}
-	else
-	{
-		open(IN,$invcf) || die "Cannot open $invcf\n";
-	}
+        my $in = openInFile($invcf);
 
 	open(RST,"$out.norm") || die "Cannot open file $out.norm\n";
 	open(SVM,">$out.svm") || die "Cannot open file $out.svm to write\n";
 
-	while(<IN>) 
+	while(<$in>)
 	{
 		unless (/^#/)
 		{
@@ -359,7 +342,7 @@ else
 			print SVM "0 $ln\n";
 		}
 	}
-	close IN;
+	close $in;
 	close SVM;
 
 	$cmd = "$svmclassify $out.svm $model.svm.model $out.svm.pred";
@@ -374,19 +357,12 @@ else
 	}
 }
 
-if ($invcf =~ m/\.gz$/)
-{
-	open(IN,"zcat $invcf|") || die "Cannot open $invcf\n";
-}
-else
-{
-	open(IN,$invcf) || die "Cannot open $invcf\n";
-}
+$in = openInFile($invcf);
 
 open(VCF,">$out") || die "Cannot open file $out to write\n";
 open(PRED,"$out.svm.pred") || die "Cannot open $out.svm.pred file to read\n";
 
-while (<IN>)
+while (<$in>)
 {
 	if (/^#/)
 	{
@@ -427,11 +403,42 @@ while (<IN>)
 	}
 }
 
-close IN;
+close $in;
 close VCF;
 
 unless ($keepData)
 {
 	unlink("$out.svm.pred");
 	unlink("$out.svm.model");
+}
+
+
+#---------------------------------
+# Subroutine for opening a file
+# that checks if it has a .gz extension
+#---------------------------------
+sub openInFile
+{
+    my $filename = shift;
+
+    die "Can't read $filename" unless( -f $filename and -r $filename);
+
+    my $openResult = 0;
+
+    local *IN;
+    if ($filename =~ m/\.gz$/)
+    {
+        $openResult = open(IN,"gunzip -c $filename|")
+    }
+    else
+    {
+	$openResult = open(IN,$filename) || die "Cannot open $filename\n";
+    }
+
+    if($openResult)
+    {
+        return *IN;
+    }
+    die "Cannot open $filename\n";
+    return undef;
 }

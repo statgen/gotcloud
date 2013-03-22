@@ -50,7 +50,7 @@ my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
 
-my $batchtype = '';
+my $batchtype = 'local';
 my $batchopts = '';
 my $runcluster = "$umakeRoot/scripts/runcluster.pl";
 
@@ -574,12 +574,10 @@ foreach my $chr (@chrs) {
 	    }
 	    
 	    print MAK "$thunderPrefix.vcf.gz.tbi: ".join(".vcf.gz.OK ",@thunderOuts).".vcf.gz.OK\n";
-            my $cmd = "\t".&getConf("LIGATEVCF")." ".join(".vcf.gz ",@thunderOuts).".vcf.gz 2> $thunderPrefix.vcf.gz.err | ".&getConf("BGZIP")." -c > $thunderPrefix.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-	    print MAK "$cmd";
-	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $thunderPrefix.vcf.gz\n\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-	    print MAK "$cmd";
+            my $cmd = &getConf("LIGATEVCF")." ".join(".vcf.gz ",@thunderOuts).".vcf.gz 2> $thunderPrefix.vcf.gz.err | ".&getConf("BGZIP")." -c > $thunderPrefix.vcf.gz";
+            writeLocalCmd($cmd);
+	    $cmd = &getConf("TABIX")." -f -pvcf $thunderPrefix.vcf.gz";
+            writeLocalCmd($cmd);
 
 	    for(my $i=0; $i < $nsplits; ++$i) {
 		my $j = $i+1;
@@ -672,12 +670,10 @@ foreach my $chr (@chrs) {
 	}
 
 	print MAK "$beaglePrefix.vcf.gz.tbi: ".join(".vcf.gz.tbi ",@beagleOuts).".vcf.gz.tbi\n";
-        my $cmd = "\t".&getConf("LIGATEVCF")." ".join(".vcf.gz ",@beagleOuts).".vcf.gz 2> $beaglePrefix.vcf.gz.err | ".&getConf("BGZIP")." -c > $beaglePrefix.vcf.gz\n";
-        $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-	print MAK "$cmd";
-	$cmd = "\t".&getConf("TABIX")." -f -pvcf $beaglePrefix.vcf.gz\n";
-        $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-	print MAK "$cmd";
+        my $cmd = &getConf("LIGATEVCF")." ".join(".vcf.gz ",@beagleOuts).".vcf.gz 2> $beaglePrefix.vcf.gz.err | ".&getConf("BGZIP")." -c > $beaglePrefix.vcf.gz";
+        writeLocalCmd($cmd);
+	$cmd = &getConf("TABIX")." -f -pvcf $beaglePrefix.vcf.gz";
+        writeLocalCmd($cmd);
 	print MAK "\n";
 
 	my $beagleLikeDir = "$beagleDir/chr$chr/like";
@@ -718,6 +714,7 @@ foreach my $chr (@chrs) {
 	# determine whether to expand to lower level target or not
 	my $expandFlag = ( &getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
 	$expandFlag = 1 if ( &getConf("RUN_EXTRACT") eq "TRUE" );
+	$expandFlag = 2 if ( &getConf("RUN_SVM") eq "TRUE" );
 	
 	print MAK "split$chr:";
 	my $splitPrefix = "$splitDir/chr$chr/chr$chr.filtered.PASS.split";
@@ -732,13 +729,15 @@ foreach my $chr (@chrs) {
 	if ( $expandFlag == 1 ) {
 	    print MAK "$splitDir/chr$chr/subset.OK: filt$chr\n";
 	}
+	elsif ( $expandFlag == 2 ) {
+	    print MAK "$splitDir/chr$chr/subset.OK: svm$chr\n";
+	}
 	else {
 	    print MAK "$splitDir/chr$chr/subset.OK:\n";
 	}
 	print MAK "\tmkdir --p $splitDir/chr$chr\n";
-        my $cmd = "\t(zcat $mvcf | head -100 | grep ^#; zcat $mvcf | grep -w PASS;) | ".&getConf("BGZIP")." -c > $subsetPrefix.PASS.vcf.gz\n";
-        $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-	print MAK $cmd;
+        my $cmd = "(zcat $mvcf | head -100 | grep ^#; zcat $mvcf | grep -w PASS;) | ".&getConf("BGZIP")." -c > $subsetPrefix.PASS.vcf.gz";
+        writeLocalCmd($cmd);
 	print MAK "\ttouch $splitDir/chr$chr/subset.OK\n\n";
 	
 	print MAK "$splitPrefix.vcflist: $splitDir/chr$chr/subset.OK\n";
@@ -772,16 +771,16 @@ foreach my $chr (@chrs) {
 	print MAK "$vcf.OK: ";
 	print MAK join(".OK ",@vcfs);
 	print MAK ".OK\n";
-	print MAK "\t(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) | ".&getConf("BGZIP")." -c > $vcf.gz\n";
+        my $cmd = "(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) | ".&getConf("BGZIP")." -c > $vcf.gz";
+        writeLocalCmd($cmd);
 	print MAK "\ttouch $vcf.OK\n\n";
 
 	for(my $j=0; $j < @unitStarts; ++$j) {
 	    $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
 	    print MAK "$svcfs[$j].OK:\n";
 	    print MAK "\tmkdir --p $vcfParent\n";
-	    my $cmd = "\t".&getConf("TABIX")." $invcf $chr:$unitStarts[$j]-$unitEnds[$j] | cut -f 1-8 > $svcfs[$j]\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-            print MAK "$cmd";
+	    $cmd = &getConf("TABIX")." $invcf $chr:$unitStarts[$j]-$unitEnds[$j] | cut -f 1-8 > $svcfs[$j]";
+            writeLocalCmd($cmd);
 	    print MAK "\ttouch $svcfs[$j].OK\n\n";
 
 	    my @glfs = ();
@@ -860,9 +859,8 @@ foreach my $chr (@chrs) {
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 			print MAK "$cmd";
 		}
-	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-            print MAK "$cmd";
+	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
+            writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
@@ -952,9 +950,8 @@ foreach my $chr (@chrs) {
 	    $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-            print MAK "$cmd";
+	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
+            writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
@@ -1065,14 +1062,14 @@ foreach my $chr (@chrs) {
               print MAK "$cmd";
 	    }
 	    else {
-		print MAK "\t(cat $gvcfs[0] | head -100 | grep ^#; cat @gvcfs | grep -v ^#;) > $mvcfPrefix.merged.stats.vcf\n";
+                my $cmd = "(cat $gvcfs[0] | head -100 | grep ^#; cat @gvcfs | grep -v ^#;) > $mvcfPrefix.merged.stats.vcf";
+                writeLocalCmd($cmd);
 	    }
 	    my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
-            print MAK "$cmd";
+	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
+            writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
             print MAK "$cmd";
@@ -1151,7 +1148,8 @@ foreach my $chr (@chrs) {
           print MAK "$cmd";
 	}
 	else {  ## targeted regions - rely on the loci info
-	    print MAK "\t(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) > $out.vcf\n";
+            my $cmd = "(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) > $out.vcf";
+            writeLocalCmd($cmd);
 	}
 	print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";
 	print MAK "\ttouch $out.vcf.OK\n\n";
@@ -1669,20 +1667,36 @@ sub parseTarget {
 sub getMosixCmd {
     my $cmd = shift;
 
-    if ( ($batchtype eq "") || ($batchtype eq "local") )
+    $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
+    my $newcmd = $runcluster." ";
+    if($batchopts)
     {
-	return $cmd;
+        $newcmd .= "-opts '".$batchopts."' ";
+    }
+    $newcmd .= "$batchtype '$cmd'";
+    return $newcmd;
+}
+
+#############################################################################
+## writeLocalCmd() : Write a local command to the makefile
+## This shoudl be used for short commands that can be executed on the local machine
+############################################################################
+sub writeLocalCmd {
+    my $cmd = shift;
+
+    # Replace umakeRoot with a Makefile variable.
+    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+
+    # Check for pipes in the command.
+    if( $cmd =~ /\|/)
+    {
+        $cmd =~ s/'/"/g;   # Avoid issues with single quotes in command
+        my $newcmd = 'bash -c "set -o pipefail; '.$cmd.'"';
+        print MAK "\t$newcmd\n";
     }
     else
     {
-      $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
-      my $newcmd = $runcluster." ";
-      if($batchopts)
-      {
-        $newcmd .= "-opts '".$batchopts."' ";
-      }
-      $newcmd .= "$batchtype '$cmd'";
-      return $newcmd;
+        print MAK "\t$cmd\n";
     }
 }
 
