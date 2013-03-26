@@ -1393,12 +1393,15 @@ sub getFilterArgs
         die "FILTER_FORMULA_MIN_SAMPLES must be < FILTER_FORMULA_MAX_SAMPLES, but $filterMinSamples >= $filterMaxSamples\n";
     }
 
-    # format of hash value is: 
-    # (CONF_NAME, useLogDefault, minDefault, maxDefault)
-    # if useLogDefault is set:
-    #    min default is the value to use for numSamples < min samples
-    #    max default is the value to use for numSamples > max samples
-    # if useLogDefault is "", then use minDefault as the default.
+    # This hash's key is the vcfCooker filter name
+    # and the value is the config file KEY name.
+    # The value in the config file can be specified in multiple ways:
+    #    1) as a single value - this is used as the filter value.
+    #    2) as "val1, val2"
+    #          val1 is used if numSamples < min samples
+    #          val2 is used if numSamples > max samples
+    #          a log formula is used if numSamples is between min & max samples
+    # Set the filter KEY to blank or "off" to disable a default filter.
     my %filterArgHash = (
                          maxABL => "FILTER_MAX_ABL",
                          maxSTR => "FILTER_MAX_STR",
@@ -1407,7 +1410,8 @@ sub getFilterArgs
                          maxSTZ => "FILTER_MAX_STZ",
                          minSTZ => "FILTER_MIN_STZ",
                          maxAOI => "FILTER_MAX_AOI",
-                         minFIC => "FILTER_MIN_FIC"
+                         minFIC => "FILTER_MIN_FIC",
+                         minNS => "FILTER_MIN_NS"
                         );
     foreach my $key (sort(keys %filterArgHash))
     {
@@ -1463,6 +1467,11 @@ sub getFilterArgs
         }
     }
 
+    my $otherFilters = getConf("FILTER_ADDITIONAL");
+    if($otherFilters)
+    {
+        $filterArgs .= " $otherFilters";
+    }
     return $filterArgs;
 }
 
