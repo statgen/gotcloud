@@ -19,31 +19,35 @@ use strict;
 use warnings;
 use Getopt::Long;
 use File::Basename;
+use Cwd;
+use Cwd 'abs_path';
 
 my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 (my $version = '$Revision: 1.5 $ ') =~ tr/[0-9].//cd;
+$mepath = abs_path($mepath);
+if ($mepath !~ /(.*)\/scripts/) { die "No 'scripts' found in '$mepath'\n"; }
+push @INC,$1 . '/bin';                  # use lib is a BEGIN block and does not work
+require Multi;
 
 my %opts = (
-    sge_cmd => 'qrsh -now n',           # Cmds for various engines
-    mosix_cmd => 'mosrun -e -t -E/tmp',
-    mosixbatch_cmd => 'mosbatch -E/tmp',        # For newer version of MOSIX
-    slurm_cmd => 'srun ',
-    pbs_cmd => 'qsub',
-    sge_opts => '',                     # Default options for each engine
-    mosix_opts => '',
-    slurm_opts => '',
-    pbs_opts => "pbsfile=$ENV{HOME}/.pbsfile",  # if provided, is pbsfile=file
     opts => '',
+    engine => 'slurm',
+    concurrent => 1,
+    verbose => 0,
 );
+
 Getopt::Long::GetOptions( \%opts,qw(
     help
     verbose
+    concurrent=n
+    engine=s
     opts=s
+    file=s
 )) || die "Failed to parse options\n";
 
 #   Simple help if requested, sanity check input options
 if ($opts{help}) {
-    warn "$me$mesuffix [options] type command\n" .
+    warn "$me$mesuffix [options] [type command]\n" .
         "Version $version\n" .
         "Use this to run a command for GotCloud in your local cluster.\n" .
         "This is typically called by Perl scripts in GotCloud\n" .
@@ -51,186 +55,57 @@ if ($opts{help}) {
     if ($opts{help}) { system("perldoc $0"); }
     exit 1;
 }
-my $engine = shift(@ARGV) || '';
-
-if ($engine =~ /^local/) { Run_Local($engine); }
-if ($engine =~ /^sge/)   { Run_Sun_Grid_Engine($engine); }
-if ($engine =~ /^slurm/) { Run_SLURM_Engine($engine); }
-if ($engine =~ /^mosix/) { Run_MOSIX_Engine($engine); }
-if ($engine =~ /^pbs/)   { Run_PBS_Engine($engine); }
-
-die "runcluster.pl: Unknown cluster engine type: '$engine'\n";
-
-#==================================================================
-# Subroutine:
-#   Run_Local($e)
-#
-# Arguments:
-#   e - engine name (could specify a subset of possibilities)
-#   Also uses @ARGV for commands to execute
-#
-# Return:
-#   Does not return
-#
-#==================================================================
-sub Run_Local {
-    my ($e) = @_;
-
-    my $cmd = 'bash -c "set -o pipefail; '.join(' ', @ARGV).'"';
-    if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = (0xffff & system($cmd)) >> 8;
-    exit($rc);
-}
-
-#==================================================================
-# Subroutine:
-#   Run_MOSIX_Engine($e)
-#
-# Arguments:
-#   e - engine name (could specify a subset of possibilities)
-#   Also uses @ARGV for commands to execute
-#
-# Return:
-#   Does not return
-#
-#==================================================================
-sub Run_MOSIX_Engine {
-    my ($e) = @_;
-
-    #   If new version of mosix, use mosbatch
-    if (-x '/bin/mosbatch') { $opts{mosix_cmd} = $opts{mosixbatch_cmd}; }
-
-    my $cmd2 = $opts{mosix_cmd} . ' ' . $opts{mosix_opts} . ' ' . $opts{opts} . ' bash -c "set -o pipefail; ' .
-        join(' ', @ARGV).'"';
-    if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd2\n"; }
-    my $rc2 = (0xffff & system($cmd2)) >> 8;
-
-    exit($rc2);
-
-    #   Write the command to a shell script so pipes and such do not get confused
-    my $f = $ENV{HOME} . "/z$$.sh";
-    open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/bash\nset -o pipefail\n" . join(' ', @ARGV) . "\n";
-    close(OUT);
-    chmod(0755, $f);
-
-    my $cmd = $opts{mosix_cmd} . ' ' . $opts{mosix_opts} . ' ' . $opts{opts} . ' ';
-    $cmd .= $f;
-    if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = (0xffff & system($cmd)) >> 8;
-    unlink($f);
-    exit($rc);
-}
-
-#==================================================================
-# Subroutine:
-#   Run_Sun_Grid_Engine($e)
-#
-# Arguments:
-#   e - engine name (could specify a subset of possibilities)
-#   Also uses @ARGV for commands to execute
-#
-# Return:
-#   Does not return
-#
-#==================================================================
-sub Run_Sun_Grid_Engine {
-    my ($e) = @_;
-
-    #   Qrsh can fail with: error: commlib error: got read error (closing "node002/shepherd_ijs/1")
-    #   so we try writing the command to a shell script, minimizing the role
-    #   that qrsh actually does
-    #
-    #   QRSH can fail with: "Your "qrsh" request could not be scheduled, try again later."
-    #   so we add -'now n' to allow the command to be queued
-    my $f = $ENV{HOME} . "/z$$.sh";
-    open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/bash\nset -o pipefail\n" . join(' ', @ARGV) . "\n";
-    close(OUT);
-    chmod(0755, $f);
-    my $cmd = $opts{sge_cmd} . ' ' . $opts{sge_opts} . ' ' . $opts{opts} . ' ';
-    $cmd .= $f;
-    if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = (0xffff & system($cmd)) >> 8;
-    unlink($f);
-    exit($rc);
-}
-
-#==================================================================
-# Subroutine:
-#   Run_PBS_Engine($e)
-#
-# Arguments:
-#   e - engine name (could specify a subset of possibilities)
-#   Also uses @ARGV for commands to execute
-#
-# Return:
-#   Does not return
-#
-#==================================================================
-sub Run_PBS_Engine {
-    my ($e) = @_;
-
-    #   Added to support UMich FLUX cluster
-    #   This is SGE and some scheduling glue which uses comments
-    #   in the shell script being run.
-    #   Options to PBS would be very difficult if we used conventional
-    #   dash flags. Instead we'll expect to see pbsfile=pathtofile
-    #   and we expect this pbsfile to be the comments in the script
-    #   that will be built to run your command.
-    my $f = $ENV{HOME} . "/z$$.sh";
-    open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/bash\nset -o pipefail\n";
-    if ($opts{opts}) { $opts{pbs_opts} = $opts{opts}; }
-    if ($opts{pbs_opts} !~ /pbsfile=\s*(.+)\s*$/) {
-        die "Invalid PBS options: $opts{pbs_opts}\n";
+my $engine;
+my @c = ();
+if ($opts{file}) {                          # Special hook to submit a file of commands
+    open(IN, $opts{file}) ||
+        die "Unable to open file '$opts{file}': $!\n";
+    while (<IN>) {
+        chomp();
+        push @c,$_;
     }
-    my $ff = $1;
-    open(IN,$ff) ||
-        die "Unable to open PBS options file '$ff': $!\n";
-    while(<IN>) { print OUT $_; }
     close(IN);
-    print OUT join(' ', @ARGV) . "\n";
-    close(OUT);
-    chmod(0755, $f);
-    my $cmd = $opts{pbs_cmd} . ' ';
-    $cmd .= $f;
-    if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = (0xffff & system($cmd)) >> 8;
-    ####unlink($f);
-    exit($rc);
+    warn "Read commands from '$opts{file}'\n";
+    $engine = $opts{engine};                # How to submit this to run
 }
+else {
+    $engine = shift(@ARGV) || '';
+    @c = join(' ', @ARGV);
+    $opts{engine} = $engine;
+}
+
+
+#   Check the path to the cwd will be visible in the batch environment
+if ($opts{engine} ne 'mosix' && $opts{engine} ne 'batch') {
+    if (FixCWD()) { warn "Current working directory set to '" . getcwd() . "'\n"; }
+}
+if ($opts{verbose}) { $Multi::VERBOSE = 1; $Multi::VERBOSE = 1; }   # Twice avoids warning
+exit Multi::RunCluster($engine, $opts{opts}, \@c, $opts{concurrent});
 
 #==================================================================
 # Subroutine:
-#   Run_SLURM_Engine($e)
+#   FixCWD()
 #
-# Arguments:
-#   e - engine name (could specify a subset of possibilities)
-#   Also uses @ARGV for commands to execute
+#   Correct the path to the cwd so it will be visible in the batch environment
+#   Path does not start with net, problems in cluster
+#   Watch out for local surprise, /home/xyz might be /exports/home/xyz
 #
-# Return:
-#   Does not return
-#
+#   Returns:  boolean if CD was done
 #==================================================================
-sub Run_SLURM_Engine {
-    my ($e) = @_;
+sub FixCWD {
+    # my ($a, $b) = @_;
 
-    #   Write the command to a shell script so pipes and such do not get confused
-    my $f = $ENV{HOME} . "/z$$.sh";
-    open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/bash\nset -o pipefail\n" . join(' ', @ARGV) . "\n";
-    close(OUT);
-    chmod(0755, $f);
-    my $cmd = $opts{slurm_cmd} . ' ' . $opts{slurm_opts} . ' ' . $opts{opts} . ' ';
-    $cmd .= $f;
-    if ($opts{verbose}) { print STDERR "$me$mesuffix : " . uc($e) . " command=$cmd\n"; }
-    my $rc = (0xffff & system($cmd)) >> 8;
-    unlink($f);
-    exit($rc);
+    my $abs_path = abs_path('.');
+    if ($abs_path =~ /\/net/) { return 0; }
+    $abs_path =~ s/^\/exports//;                # Local network screw-up
+    my $host = `hostname`;
+    chomp($host);
+    my $cwd = "/net/$host" . $abs_path;
+    chdir($cwd) && return 1;
+    warn "Unable to CD to '$cwd' to correct local networking anomoly\n";
+    return 0;
 }
 
-exit;
 
 #==================================================================
 #   Perldoc Documentation
@@ -243,12 +118,9 @@ runcluster.pl - Run a command from GotCloud on your local cluster
 
 =head1 SYNOPSIS
 
-  runcluster.pl slurm 'echo this is a command to run'
-  runcluster.pl -opts "-w s03,s04 --mem 4g" slurm 'echo this is another command'
-  runcluster.pl -opts "-w s03,s04 --mem 4g" slurm echo this is another command
-
-  runcluster.pl pbs 'echo this is another command'
-  runcluster.pl -opts "pbsfile=/home/tpg/.pbsfile2" pbs echo this is a third command
+  runcluster.pl slurmi 'echo this is a command to run'
+  runcluster.pl -opts "-w s03,s04 --mem 4g" slurmb 'echo this is another command'
+  runcluster.pl -opts "-w s03,s04 --mem 4g" mosix echo this is another command
 
 =head1 DESCRIPTION
 
@@ -260,6 +132,26 @@ This script may need to be modified for your cluster environment.
 =head1 OPTIONS
 
 =over 4
+
+=item B<-concurrent N>
+
+Specifies the number of concurrent tasks that might be run at once.
+This defaults to '1'.
+It only makes sense to specify this if you should be using
+the file=path form for 'command' (see below).
+
+=item B<-engine string>
+
+Specifies the type of batch engine to use.
+Common choices are mosix, mosbatch, slurmi, and slurm, but your
+local installation might support others.
+This defaults to 'slurm'.
+
+=item B<-file path>
+
+Specifies a file of commands to submit to the batch system.
+You must either specify the B<-file> option or
+specify the batch system and command as arguments to this command (see below).
 
 =item B<-help>
 
@@ -284,16 +176,19 @@ Will generate additional messages about the running of this program.
 =back
 
 =head1 PARAMETERS
+#--------------------------------------------------------------
 
 =over 4
 
 =item B<engine_type>
 
+If B<-file> was not specified, you must specify this argument.
 Specifies the type of engine to submit the command to.
 This can be slurm, local, sge, mosix and pbs.
 
 =item B<command>
 
+If B<-file> was not specified, you must specify this argument.
 Specifies the command to be run in the cluster.
 This string can be specified as one quoted parameter
 (e.g. 'make -j 4 -f abc/Makefile') or
@@ -302,8 +197,7 @@ which will be assembled as the command to be executed.
 Avoid the use of single quotes if at all possible as it will
 be easy to get confused trying to escape the quotes.
 
-=over 4
-
+=back
 
 =head1 EXIT
 
