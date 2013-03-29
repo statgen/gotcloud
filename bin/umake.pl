@@ -50,7 +50,7 @@ my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
 
-my $batchtype = 'local';
+my $batchtype = '';
 my $batchopts = '';
 my $runcluster = "$umakeRoot/scripts/runcluster.pl";
 
