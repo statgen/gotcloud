@@ -1241,7 +1241,7 @@ foreach my $chr (@chrs) {
 			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
 		    else {
-			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
+			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
                     $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		}
@@ -1289,7 +1289,7 @@ foreach my $chr (@chrs) {
 		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
 		}
 		else {
-		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref  | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
 		}
                 $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		if ( &getConf("RUN_INDEX") eq "TRUE" ) {
