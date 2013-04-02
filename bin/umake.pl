@@ -130,6 +130,11 @@ if ( $batchopts eq "" ) {
 if ( $batchtype eq "" ) {
   $batchtype = $hConf{"BATCH_TYPE"};
 }
+if ($batchtype eq "")
+{
+  $batchtype = "local";
+  $hConf{"BATCH_TYPE"} = "local";
+}
 
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
