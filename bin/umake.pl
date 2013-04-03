@@ -50,7 +50,7 @@ my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
 
-my $batchtype = 'local';
+my $batchtype = '';
 my $batchopts = '';
 my $runcluster = "$umakeRoot/scripts/runcluster.pl";
 
@@ -129,6 +129,11 @@ if ( $batchopts eq "" ) {
 }
 if ( $batchtype eq "" ) {
   $batchtype = $hConf{"BATCH_TYPE"};
+}
+if ($batchtype eq "")
+{
+  $batchtype = "local";
+  $hConf{"BATCH_TYPE"} = "local";
 }
 
 #### POSSIBLE FLOWS ARE
@@ -452,7 +457,7 @@ foreach my $bed (@uniqBeds) {
 ## ITERATE EACH CHROMOSOME
 ############################################################################
 foreach my $chr (@chrs) {
-    print STDERR "Processing chr$chr...\n";
+    print STDERR "Generating commands for chr$chr...\n";
     die "Cannot find chromosome name $chr in the reference file\n" unless (defined($hChrSizes{$chr}));
     my @unitStarts = ();
     my @unitEnds = ();
@@ -490,26 +495,42 @@ foreach my $chr (@chrs) {
     #############################################################################
     ## STEP 9 : WRITE .loci file IF NECESSARY
     #############################################################################
-    if ( ( &getConf("WRITE_TARGET_LOCI") eq "TRUE" ) && ( &getConf("RUN_PILEUP") eq "TRUE" ) ) {
+    if ( ( ( &getConf("WRITE_TARGET_LOCI") eq "TRUE" ) ||
+           ( &getConf("WRITE_TARGET_LOCI") eq "ALWAYS" ) ) &&
+         ( &getConf("RUN_PILEUP") eq "TRUE" ) )
+    {
 	die "No target file is given but WRITE_TARGET_LOCI is TRUE\n" if ( $#uniqBeds < 0 );
 
 	## Generate target loci information
 	for(my $i=0; $i < @uniqBeds; ++$i) {
-	    print STDERR "Writing target loci for $uniqBeds[$i]..\n";
+            my $printBedName = 0;
 	    my $outDir = "$targetDirReal/$uniqBedFns[$i]/chr$chr";
 	    make_path($outDir);
 	    for(my $j=0; $j < @unitStarts; ++$j) {
-		print STDERR "Writing loci for $chr:$unitStarts[$j]-$unitEnds[$j]..\n";
-		open(LOCI,">$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") || die "Cannot create $outDir/$chr.loci\n";
-		foreach my $p (@{$targetIntervals[$i]->{$chr}}) {
+               if( ( &getConf("WRITE_TARGET_LOCI") eq "ALWAYS" ) ||
+                    (! -r "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") ||
+                    ( -M "$uniqBeds[$i]" < -M "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci" ) )
+                {
+                  if($printBedName == 0)
+                  {
+                    print STDERR "Writing target loci for $uniqBeds[$i]...\n";
+                    $printBedName = 1;
+                  }
+
+                  print STDERR "Writing loci for $chr:$unitStarts[$j]-$unitEnds[$j]...\n";
+                  open(LOCI,">$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") || die "Cannot create $outDir/$chr.loci\n";
+                  foreach my $p (@{$targetIntervals[$i]->{$chr}})
+                  {
 		    my $start = ( $p->[0] < $unitStarts[$j] ) ? $unitStarts[$j] : $p->[0];
 		    my $end = ( $p->[1] < $unitEnds[$j] ) ? $p->[1] : $unitEnds[$j];
 		    #die "@{$p} $start $end\n";
-		    for(my $k=$start; $k <= $end; ++$k) {
-			print LOCI "$chr\t$k\n";
-		    }
-		}
-		close LOCI;
+		    for(my $k=$start; $k <= $end; ++$k)
+                    {
+                      print LOCI "$chr\t$k\n";
+                    }
+                  }
+                  close LOCI;
+                }
 	    }
 	}
     }
@@ -791,15 +812,8 @@ foreach my $chr (@chrs) {
 		push(@glfs,$smGlf);
 	    }
 
-	    make_path($smGlfParent);
-	    open(AL,">$smGlfParent/".&getConf("GLF_INDEX")) || die "Cannot open file $smGlfParent/".&getConf("GLF_INDEX")." for writing\n";
-	    print STDERR "Creating glf INDEX at $chr:$unitStarts[$j]-$unitEnds[$j]..\n";
-	    for(my $i=0; $i < @allSMs; ++$i) {
-		my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-		my $smGlf = "$smGlfParent/$smGlfFn";
-		print AL "$allSMs[$i]\t$allSMs[$i]\t0\t0\t$hSM2sexs{$allSMs[$i]}\t$smGlf\n";
-	    }
-	    close AL;
+	    handleGlfIndexFile($smGlfParent, $chr,
+                               $unitStarts[$j], $unitEnds[$j]);
 
 	    my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
             $glfAlias =~ s/$outDir/\$(OUTPUT_DIR)/g;
@@ -1096,15 +1110,8 @@ foreach my $chr (@chrs) {
 	    my @glfs = ();
 	    my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
 
-	    make_path($smGlfParent);
-	    open(AL,">$smGlfParent/".&getConf("GLF_INDEX")) || die "Cannot open file $smGlfParent/".&getConf("GLF_INDEX")." for writing\n";
-	    print STDERR "Creating glf INDEX at $chr:$unitStarts[$j]-$unitEnds[$j]..\n";
-	    for(my $i=0; $i < @allSMs; ++$i) {
-		my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-		my $smGlf = "$smGlfParent/$smGlfFn";
-		print AL "$allSMs[$i]\t$allSMs[$i]\t0\t0\t$hSM2sexs{$allSMs[$i]}\t$smGlf\n";
-	    }
-	    close AL;
+            handleGlfIndexFile($smGlfParent, $chr, 
+                               $unitStarts[$j], $unitEnds[$j]);
 
 	    for(my $i=0; $i < @allSMs; ++$i) {	    
 		my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
@@ -1234,7 +1241,7 @@ foreach my $chr (@chrs) {
 			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
 		    else {
-			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
+			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
                     $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		}
@@ -1282,7 +1289,7 @@ foreach my $chr (@chrs) {
 		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
 		}
 		else {
-		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref 2> /dev/null | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref  | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
 		}
                 $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
 		if ( &getConf("RUN_INDEX") eq "TRUE" ) {
@@ -1356,6 +1363,38 @@ print STDERR "Run 'make -f $makef -j [#parallele jobs]'\n";
 print STDERR "--------------------------------------------------------------------\n";
 
 exit($rc);
+
+
+#--------------------------------------------------------------
+#   handleGlfIndexFile(path, chrom, regionStart, regionEnd)
+#
+#   Create the glf index file for the specified region if:
+#      * it does not exist
+#      * it is older than the bam index file
+#--------------------------------------------------------------
+sub handleGlfIndexFile
+{
+  my ($smGlfParent, $chr, $unitStart, $unitEnd) = @_;
+
+  # Ensure the path exists.
+  make_path($smGlfParent);
+
+  my $glfIndexFile = "$smGlfParent/".&getConf("GLF_INDEX");
+  # check if the glf index is already created.
+  if( (! -r "$glfIndexFile") ||
+      ( -M "$bamIndex" < -M "$glfIndexFile" ) )
+  {
+    open(AL,">$glfIndexFile") || die "Cannot open file $glfIndexFile for writing\n";
+    print STDERR "Creating glf INDEX at $chr:$unitStart-$unitEnd..\n";
+    for(my $i=0; $i < @allSMs; ++$i) {
+      my $smGlfFn = "$allSMs[$i].$chr.$unitStart.$unitEnd.glf";
+      my $smGlf = "$smGlfParent/$smGlfFn";
+      print AL "$allSMs[$i]\t$allSMs[$i]\t0\t0\t$hSM2sexs{$allSMs[$i]}\t$smGlf\n";
+    }
+    close AL;
+  }
+}
+
 
 #--------------------------------------------------------------
 #   getFilterArgs()
