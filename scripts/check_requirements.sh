@@ -76,8 +76,8 @@ fi
 
 if [ -d $TOP/test/umake ]; then
   echo "Good, you appear to have 'gotcloud-test' installed"
-  echo "Test this install:  $BIN/gen_biopipeline.pl --test ~/testaligner"
-  echo "                    $BIN/umake.pl --test ~/testumake"
+  echo "Test this install:  $BIN/gotcloud align --test ~/testaligner"
+  echo "                    $BIN/gotcloud snpcall --test ~/testsnpcall"
 else
   echo $banner
   echo "#   '$TOP/test/umake' does not exist so you cannot test this install"
