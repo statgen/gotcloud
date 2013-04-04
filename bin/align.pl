@@ -225,6 +225,31 @@ setConf('OUT_DIR', $out_dir);
 loadConf($opts{pipelinedefaults});
 
 #--------------------------------------------------------------
+#   Check required settings
+#--------------------------------------------------------------
+# Check to see if the old REF is set instead of the new one.
+if( getConf("FA_REF") )
+{
+    die "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
+}
+
+# Verify the REF file is readable.
+if(! -r getConf("REF"))
+{
+    die "ERROR: Could not read required REF: ".getConf("REF")."\n";
+}
+# Verify the DBSNP file is readable.
+if(! -r getConf("DBSNP_VCF"))
+{
+    die "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
+}
+
+if(($hConf{RUN_VERIFY_BAM_ID} eq "1") && !-r getConf("HM3_VCF"))
+{
+    die "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+}
+
+#--------------------------------------------------------------
 #   Read the Index File
 #--------------------------------------------------------------
 open(IN,$index_file) ||
