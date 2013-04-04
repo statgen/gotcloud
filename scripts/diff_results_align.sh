@@ -100,9 +100,35 @@ fi
 # Check the Makefiles
 diff -r $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -x "*.log" \
-    -I '$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(FA_REF) .*fastq/Sample_[1-2]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
-    -I '($(BWA_EXE) sampe -r .* $(FA_REF) $(basename $^) .*fastq/Sample_[1-2]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-2]/File[1-2]_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
-    -I '^[A-Z_][A-Z_]* = ' >> $DIFFRESULTS
+    -I '.* aln .* .*fastq/Sample_[1-2]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
+    -I '(.* sampe -r .* $(basename $^) .*fastq/Sample_[1-2]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-2]/File[1-2]_R2.fastq.gz | .* view -uhS - | .* sort -m .* - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
+    -I '^[A-Z_][A-Z_]* = '\
+    -I '^OUT_DIR=.*$'\
+    -I '^$(OUT_DIR)/Sample[1-2].OK: .*/Sample[1-2].recal.bam.done .*/Sample[1-2].genoCheck.done .*/Sample[1-2].qplot.done$' \
+    -I '^.*/Sample[1-2].genoCheck.done: .*/Sample[1-2].recal.bam.done$' \
+    -I '@echo ".* --verbose --vcf .* --bam $(basename $^) --out $(basename $@)  2> $(basename $@).log"$' \
+    -I '@.* --verbose --vcf .* --bam $(basename $^) --out $(basename $@)  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed VerifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '^.*/Sample[1-2].qplot.done: .*/Sample[1-2].recal.bam.done$' \
+    -I '@echo ".* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"$' \
+    -I '@.* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '^.*/fastq/Sample_[1-2]/File[1-2]_R[1-2].bam.done: .*/fastq/Sample_[1-2]/File[1-2]_R1.sai.done.*/fastq/Sample_[1-2]/File[1-2]_R2.sai.done$' \
+    -I '^.*/fastq/Sample_[1-2]/File[1-2]_R[1-2].sai.done:$' \
+    -I '^.*/fastq/Sample_[1-2]/File[1-2]_R1.bam.done: .*/fastq/Sample_[1-2]/File[1-2]_R1.bam.done$' \
+    -I '.* mergeBam --out $(basename $@) $(subst .*,--in .*,$(basename $^))$' \
+    -I '^.*/Sample[1-2].merged.bam.done: .*/fastq/Sample_[1-2]/File1_R1.bam.done .*/fastq/Sample_[1-2]/File2_R1.bam.done $' \
+    -I '@echo ".* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err"$' \
+    -I '@.* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err || (echo "`grep -i -e abort -e error -e failed $(basename $@).err`" >&2; echo "\\nFailed Deduping step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).err $(OUT_DIR)/failLogs/$(notdir $(basename $@).err); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).err) for more details" >&2; exit 1;)$' \
+    -I '^.*/Sample[1-2].dedup.bam.done: .*/Sample[1-2].merged.bam.done$' \
+    -I 'cp .*/Sample[1-2].recal.bam $(basename $@)$' \
+    -I '.* index $(basename $@)$' \
+    -I '.* $(basename $@) > $(basename $@).md5$' \
+    -I 'mkdir -p .*$' \
+    -I '@echo ".* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-2].recal.bam .* 2> $(basename $@).log"$' \
+    -I '@.* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-2].recal.bam .* 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed Recalibration step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '^.*/Sample[1-2].recal.bam.done: .*/Sample[1-2].dedup.bam.done$' \
+    -I '@echo ".* --reference .* --dbsnp .* --gccontent .*.GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-2]_recal,Sample[1-2]_dedup $(basename $^) .*/Sample[1-2].dedup.bam 2> $(basename $@).log"$' \
+-I '@.* --reference .* --dbsnp .* --gccontent .*.GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-2]_recal,Sample[1-2]_dedup $(basename $^) .*/Sample[1-2].dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed Makefile results validation. See mismatches in $DIFFRESULTS"
     exit 2

@@ -75,8 +75,8 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^bam index file\s*: .*bams/NA[0-9]*\.mapped.*\.bam\.bai$' \
     -I '^output VCF file\s*: .*pvcfs/chr20/20000001.25000000/NA[0-9]*\.mapped.*\.bam\.20\.20000001.25000000\.vcf\.gz (gzip)$' \
     -I '^NA[0-9]*\s*NA[0-9]*\s*0\s*0\s*2\s*.*glfs/samples/chr20/20000001.25000000/NA[0-9]*\.20\.20000001.25000000\.glf$' \
-    -I '^OUTPUT_DIR=.*$' \
-    -I '^UMAKE_ROOT=.*$' \
+    -I '^OUT_DIR=.*$' \
+    -I '^GOTCLOUD_ROOT=.*$' \
     -I '^Reading Input File .*chr20.filtered.sites.vcf.raw$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then

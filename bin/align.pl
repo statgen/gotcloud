@@ -20,7 +20,7 @@
 #
 # Todo:
 #   Rewrite conf handling to use a hash, rather than a mess of separate variables
-#   purge PIPELINE_DIR from use
+#   purge GOTCLOUD_ROOT from use
 #   Clean up parse of indexfile
 #   Clean up creation of Makefile
 #   FLUX and such engines will not work until we add batch dependencies
@@ -44,7 +44,6 @@ use Cwd;
 use Cwd 'abs_path';
 
 my %hConf = ();
-my @keys = ();
 
 #   Everything is relative to where this program lives
 #   so it must be in a 'bin' directory.  Symlinks are tricky
@@ -57,7 +56,7 @@ my $basepath = $1;
 push @INC,$scriptdir;                       # use lib is a BEGIN block and does not work
 require Multi;
 
-setConf("PIPELINE_DIR", $basepath);         # Get rid of this someday
+setConf("GOTCLOUD_ROOT", $basepath);         # Get rid of this someday
 
 (my $version = '$Revision: 1.1 $ ') =~ tr/[0-9].//cd;
 
@@ -87,7 +86,7 @@ my $recalFiles = '';
 #--------------------------------------------------------------
 my %opts = (
     runcluster => "$basepath/scripts/runcluster.pl",
-    pipelinedefaults => $scriptdir . '/alignDefaults.conf',
+    pipelinedefaults => $scriptdir . '/gotcloudDefaults.conf',
     batchtype => '',
     batchopts => '',
     keeptmp => 0,
@@ -407,21 +406,16 @@ foreach my $tmpmerge (keys %mergeToFq1)
   my $makef = "$out_dir/Makefiles/align_$mergeName.Makefile";
   open(MAK,">$makef") || die "Cannot open $makef for writing.  $!\n";
 
+  print MAK "OUT_DIR=".&getConf("OUT_DIR")."\n";
   print MAK ".DELETE_ON_ERROR:\n\n";
-
-  # Write the values from the configuration.
-  foreach my $key (@keys)
-  {
-    print MAK "$key = $hConf{$key}\n";
-  }
 
   print MAK "\n";
 
   #Start
   print MAK "all: \$(OUT_DIR)/$mergeName.OK\n\n";
 
-  print MAK "\$(OUT_DIR)/$mergeName.OK: \$(FINAL_BAM_DIR)/$mergeName.recal.bam.done \$(QC_DIR)/$mergeName.genoCheck.done " .
-    "\$(QC_DIR)/$mergeName.qplot.done\n";
+  print MAK "\$(OUT_DIR)/$mergeName.OK: ".&getConf("FINAL_BAM_DIR")."/$mergeName.recal.bam.done ".&getConf("QC_DIR")."/$mergeName.genoCheck.done " .
+    &getConf("QC_DIR")."/$mergeName.qplot.done\n";
   if(! getConf("KEEP_TMP"))
   {
     print MAK "\trm -f \$(SAI_FILES) \$(ALN_FILES) \$(POL_FILES) \$(DEDUP_FILES) \$(RECAL_FILES)\n";
@@ -431,9 +425,9 @@ foreach my $tmpmerge (keys %mergeToFq1)
   if($hConf{RUN_VERIFY_BAM_ID} eq "1")
   {
     # Verify Bam ID
-    print MAK "\$(QC_DIR)/$mergeName.genoCheck.done: \$(FINAL_BAM_DIR)/$mergeName.recal.bam.done\n";
+    print MAK &getConf("QC_DIR")."/$mergeName.genoCheck.done: ".&getConf("FINAL_BAM_DIR")."/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
-    my $verifyCommand = "\$(VERIFY_BAM_ID_EXE) --verbose --vcf \$(HM3_VCF) --bam \$(basename \$^) --out \$(basename \$\@) \$(VERIFY_BAM_ID_OPTIONS) 2> \$(basename \$\@).log";
+    my $verifyCommand = &getConf("VERIFY_BAM_ID_EXE")." --verbose --vcf ".&getConf("HM3_VCF")." --bam \$(basename \$^) --out \$(basename \$\@) ".&getConf("VERIFY_BAM_ID_OPTIONS")." 2> \$(basename \$\@).log";
     print MAK logCatchFailure("VerifyBamID", $verifyCommand, "\$(basename \$\@).log");
     print MAK "\ttouch \$\@\n\n";
   }
@@ -442,24 +436,24 @@ foreach my $tmpmerge (keys %mergeToFq1)
   if($hConf{RUN_QPLOT} eq "1")
   {
     # qplot
-    print MAK "\$(QC_DIR)/$mergeName.qplot.done: \$(FINAL_BAM_DIR)/$mergeName.recal.bam.done\n";
+    print MAK &getConf("QC_DIR")."/$mergeName.qplot.done: ".&getConf("FINAL_BAM_DIR")."/$mergeName.recal.bam.done\n";
     print MAK "\tmkdir -p \$(\@D)\n";
-    my $qplotCommand = "\$(QPLOT_EXE) --reference \$(FA_REF) --dbsnp \$(DBSNP_VCF) --gccontent \$(FA_REF).GCcontent " .
+    my $qplotCommand = &getConf("QPLOT_EXE")." --reference ".&getConf("REF")." --dbsnp ".&getConf("DBSNP_VCF")." --gccontent ".&getConf("REF").".GCcontent " .
         "--stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel " .
-            "$mergeName"."_recal,$mergeName"."_dedup \$(basename \$^) \$(DEDUP_TMP)/$mergeName.dedup.bam 2> " .
+            "$mergeName"."_recal,$mergeName"."_dedup \$(basename \$^) ".&getConf("DEDUP_TMP")."/$mergeName.dedup.bam 2> " .
             "\$(basename \$\@).log";
     print MAK logCatchFailure("QPLOT", $qplotCommand, "\$(basename \$\@).log");
     print MAK "\ttouch \$\@\n\n";
   }
 
   # Recalibrate the Deduped/Merged BAM
-  print MAK "\$(FINAL_BAM_DIR)/$mergeName.recal.bam.done: \$(DEDUP_TMP)/$mergeName.dedup.bam.done\n";
+  print MAK &getConf("FINAL_BAM_DIR")."/$mergeName.recal.bam.done: ".&getConf("DEDUP_TMP")."/$mergeName.dedup.bam.done\n";
   print MAK "\tmkdir -p \$(\@D)\n";
-  print MAK "\tmkdir -p \$(RECAL_TMP)\n";
+  print MAK "\tmkdir -p ".&getConf("RECAL_TMP")."\n";
   if ( !defined($hConf{ALT_RECAB}))
   {
-    print MAK logCatchFailure("Recalibration", "\$(BAM_EXE) recab --refFile \$(FA_REF) --dbsnp \$(DBSNP_VCF) " .
-        "--storeQualTag OQ --in \$(basename \$^) --out \$(RECAL_TMP)/$mergeName.recal.bam \$(MORE_RECAB_PARAMS) 2> " .
+    print MAK logCatchFailure("Recalibration", &getConf("BAM_EXE")." recab --refFile ".&getConf("REF")." --dbsnp ".&getConf("DBSNP_VCF").
+        " --storeQualTag OQ --in \$(basename \$^) --out ".&getConf("RECAL_TMP")."/$mergeName.recal.bam ".&getConf("MORE_RECAB_PARAMS")." 2> " .
         "\$(basename \$\@).log", "\$(basename \$\@).log");
   }
   else
@@ -467,18 +461,18 @@ foreach my $tmpmerge (keys %mergeToFq1)
     my $newRecab = $hConf{ALT_RECAB};
     eval($newRecab);
   }
-  print MAK "\tcp \$(RECAL_TMP)/$mergeName.recal.bam \$(basename \$\@)\n";
-  print MAK "\t\$(SAMTOOLS_EXE) index \$(basename \$\@)\n";
-  print MAK "\t\$(MD5SUM_EXE) \$(basename \$\@) > \$(basename \$\@).md5\n";
+  print MAK "\tcp ".&getConf("RECAL_TMP")."/$mergeName.recal.bam \$(basename \$\@)\n";
+  print MAK "\t".&getConf("SAMTOOLS_EXE")." index \$(basename \$\@)\n";
+  print MAK "\t".&getConf("MD5SUM_EXE")." \$(basename \$\@) > \$(basename \$\@).md5\n";
   print MAK "\ttouch \$\@\n\n";
 
 
   # Dedup the Merged BAM
-  print MAK "\$(DEDUP_TMP)/$mergeName.dedup.bam.done: \$(MERGE_TMP)/$mergeName.merged.bam.done\n";
+  print MAK &getConf("DEDUP_TMP")."/$mergeName.dedup.bam.done: ".&getConf("MERGE_TMP")."/$mergeName.merged.bam.done\n";
   print MAK "\tmkdir -p \$(\@D)\n";
   if ( !defined($hConf{ALT_DEDUP}))
   {
-    print MAK logCatchFailure("Deduping", "\$(BAM_EXE) dedup --in \$(basename \$^) --out \$(basename \$\@) " .
+    print MAK logCatchFailure("Deduping", &getConf("BAM_EXE")." dedup --in \$(basename \$^) --out \$(basename \$\@) " .
         "--log \$(basename \$\@).metrics 2> \$(basename \$\@).err", "\$(basename \$\@).err");
   }
   else
@@ -487,8 +481,8 @@ foreach my $tmpmerge (keys %mergeToFq1)
   }
   print MAK "\ttouch \$\@\n\n";
 
-  $dedupFiles .= "\$(DEDUP_TMP)/$mergeName.dedup.bam ";
-  $recalFiles .= "\$(RECAL_TMP)/$mergeName.recal.bam ";
+  $dedupFiles .= &getConf("DEDUP_TMP")."/$mergeName.dedup.bam ";
+  $recalFiles .= &getConf("RECAL_TMP")."/$mergeName.recal.bam ";
 
   # get the commands for each fastq that goes into this.
   foreach my $tmpfastq1 (@{$mergeToFq1{$mergeName}})
@@ -522,9 +516,9 @@ foreach my $tmpmerge (keys %mergeToFq1)
   # FOR EXAMPLE, SARDINIA, multiple runs for a sample have the same fastq names, so easiest to keep the subdirs.
 
   # Merge the Polished BAMs
-  print MAK "\$(MERGE_TMP)/$mergeName.merged.bam.done: $allPolish\n";
+  print MAK &getConf("MERGE_TMP")."/$mergeName.merged.bam.done: $allPolish\n";
   print MAK "\tmkdir -p \$(\@D)\n";
-  print MAK "\t\$(BAM_EXE) mergeBam --out \$(basename \$\@) \$(subst \$(POL_TMP),--in \$(POL_TMP),\$(basename \$^))\n";
+  print MAK "\t".&getConf("BAM_EXE")." mergeBam --out \$(basename \$\@) \$(subst ".&getConf("POL_TMP").",--in ".&getConf("POL_TMP").",\$(basename \$^))\n";
   print MAK "\ttouch \$\@\n\n";
 
   print MAK $allSteps;
@@ -598,8 +592,6 @@ sub setConf {
     if (! defined($force)) { $force = 0; }
 
     if ((! $force) && (defined($hConf{$key}))) { return; }
-    #   Why manage keys for a has manually ??
-    if (! defined($hConf{$key})) { push (@keys, $key); }
     $hConf{$key} = $value;
 }
 
@@ -714,9 +706,9 @@ sub logCatchFailure {
 sub align {
     my ($fastq, $sai) = @_;
 
-    my $alnCmd = "\$(BWA_EXE) aln \$(BWA_QUAL) \$(BWA_THREADS) \$(FA_REF) $fastq -f \$(basename \$\@) 2> " .
+    my $alnCmd = &getConf("BWA_EXE")." aln ".&getConf("BWA_QUAL")." ".&getConf("BWA_THREADS")." ".&getConf("REF")." $fastq -f \$(basename \$\@) 2> " .
         "\$(basename \$\@).log";
-    my $cmd = "\$(SAI_TMP)/".$sai.".done:\n" .
+    my $cmd = &getConf("SAI_TMP")."/".$sai.".done:\n" .
         "\tmkdir -p \$(\@D)\n" .
         logCatchFailure("aln", $alnCmd, "\$(basename \$\@).log") .
         "\ttouch \$\@\n\n";
@@ -734,33 +726,33 @@ sub pair_cmds {
     my $sai1 = $fastq1;
     $sai1 =~ s/fastq.gz$/sai/;
     $sai1 =~ s/fastq$/sai/;
-    $saiFiles .= "\$(SAI_TMP)/$sai1 ";
-    my $saiDone = "\$(SAI_TMP)/$sai1.done";
+    $saiFiles .= &getConf("SAI_TMP")."/$sai1 ";
+    my $saiDone = &getConf("SAI_TMP")."/$sai1.done";
 
     my $sai2 = $fastq2;
     if ($fastq2 ne ".") {
         $sai2 =~ s/fastq.gz$/sai/;
         $sai2 =~ s/fastq$/sai/;
-        $saiFiles .= "\$(SAI_TMP)/$sai2 ";
-        $saiDone .= " \$(SAI_TMP)/$sai2.done";
+        $saiFiles .= &getConf("SAI_TMP")."/$sai2 ";
+        $saiDone .= " ".&getConf("SAI_TMP")."/$sai2.done";
     }
 
     my $bam = $sai1;
     $bam =~ s/sai/bam/;
-    $alnFiles .= "\$(ALN_TMP)/$bam ";
-    $polFiles .= "\$(POL_TMP)/$bam ";
-    $allPolish .= "\$(POL_TMP)/$bam.done ";
+    $alnFiles .= &getConf("ALN_TMP")."/$bam ";
+    $polFiles .= &getConf("POL_TMP")."/$bam ";
+    $allPolish .= &getConf("POL_TMP")."/$bam.done ";
 
     #   TODO - maybe check if AS or
-    $allSteps .= "\$(POL_TMP)/$bam.done: \$(ALN_TMP)/$bam.done\n";
+    $allSteps .= &getConf("POL_TMP")."/$bam.done: ".&getConf("ALN_TMP")."/$bam.done\n";
     $allSteps .= "\tmkdir -p \$(\@D)\n";
 
-    my $polishCmd = "\$(BAM_EXE) polishBam -f \$(FA_REF) --AS \$(AS) --UR file:\$(FA_REF) ";
+    my $polishCmd = &getConf("BAM_EXE")." polishBam -f ".&getConf("REF")." --AS ".&getConf("AS")." --UR file:".&getConf("REF")." ";
     $polishCmd .= "--checkSQ -i \$(basename \$^) -o \$(basename \$\@) -l \$(basename \$\@).log";
     $allSteps .= logCatchFailure("polishBam", $polishCmd, "\$(basename \$\@).log");
     $allSteps .= "\ttouch \$\@\n\n";
 
-    $allSteps .= "\$(ALN_TMP)/".$bam.".done: $saiDone\n";
+    $allSteps .= &getConf("ALN_TMP")."/$bam.done: $saiDone\n";
     $allSteps .= "\tmkdir -p \$(\@D)\n";
 
     my $tmpFastq1 = getConf('FASTQ') . $fastq1;
@@ -770,15 +762,15 @@ sub pair_cmds {
         my $tmpFastq2 = getConf('FASTQ') . $fastq2;
         $absFastq2 = abs_path($tmpFastq2);
         my $sampeLog = "\$(basename \$(basename \$\@)).sampe.log";
-        $allSteps .= "\t(\$(BWA_EXE) sampe $rgCommand \$(FA_REF) \$(basename \$^) $absFastq1 $absFastq2 | " .
-            "\$(SAMTOOLS_EXE) view -uhS - | \$(SAMTOOLS_EXE) sort -m \$(BWA_MAX_MEM) - \$(basename \$(basename " .
+        $allSteps .= "\t(".&getConf("BWA_EXE")." sampe $rgCommand ".&getConf("REF")." \$(basename \$^) $absFastq1 $absFastq2 | " .
+            &getConf("SAMTOOLS_EXE")." view -uhS - | ".&getConf("SAMTOOLS_EXE")." sort -m ".&getConf("BWA_MAX_MEM")." - \$(basename \$(basename " .
             "\$\@))) 2> $sampeLog\n";
         $allSteps .= logCatchFailure("sampe", "(grep -q -v -i -e abort -e error -e failed $sampeLog || exit 1)", $sampeLog);
     }
     else {
         my $samseLog = "\$(basename \$(basename \$\@)).samse.log";
-        $allSteps .= "\t(\$(BWA_EXE) samse $rgCommand \$(FA_REF) \$(basename \$^) $absFastq1 | " .
-            "\$(SAMTOOLS_EXE) view -uhS - | \$(SAMTOOLS_EXE) sort -m \$(BWA_MAX_MEM) - " .
+        $allSteps .= "\t(".&getConf("BWA_EXE")." samse $rgCommand ".&getConf("REF")." \$(basename \$^) $absFastq1 | " .
+            &getConf("SAMTOOLS_EXE")." view -uhS - | ".&getConf("SAMTOOLS_EXE")." sort -m ".&getConf("BWA_MAX_MEM")." - " .
             "\$(basename \$(basename \$\@))) 2> $samseLog\n";
         $allSteps .= logCatchFailure("samse", "(grep -q -v -i -e abort -e error -e failed $samseLog || exit 1)", $samseLog);
     }
@@ -839,7 +831,7 @@ This short example will give you an idea of a configuration file:
   # References
   REF_DIR = /gotcloud/test/align/chr20Ref
   AS = NCBI37
-  FA_REF = $(REF_DIR)/human_g1k_v37_chr20.fa
+  REF = $(REF_DIR)/human_g1k_v37_chr20.fa
   DBSNP_VCF =  $(REF_DIR)/dbsnp.b130.ncbi37.chr20.vcf.gz
   HM3_VCF = $(REF_DIR)/hapmap_3.3.b37.sites.vcf.gz
 
@@ -879,7 +871,7 @@ The default is B<local>.
 =item B<-conf file>
 
 Specifies the configuration file to be used.
-The default configuration is B<alignDefaults.conf> found in the same directory
+The default configuration is B<gotcloudDefaults.conf> found in the same directory
 where this program resides.
 If this file is not found, you must specify this option on the command line.
 

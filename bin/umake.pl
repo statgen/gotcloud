@@ -22,15 +22,14 @@ use Cwd 'abs_path';
 use Scalar::Util qw(looks_like_number);
 
 my %hConf = ();
-my @keys = ();
 
 # Set the umake base directory.
 $_ = abs_path($0);
 my($scriptName, $scriptPath) = fileparse($_);
 my $scriptDir = abs_path($scriptPath);
 if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
-my $umakeRoot = $1;
-$hConf{"UMAKE_ROOT"} = $umakeRoot;
+my $gotcloudRoot = $1;
+$hConf{"GOTCLOUD_ROOT"} = $gotcloudRoot;
 
 #############################################################################
 ## STEP 1 : Load configuration file
@@ -52,7 +51,7 @@ my $verbose = "";
 
 my $batchtype = '';
 my $batchopts = '';
-my $runcluster = "$umakeRoot/scripts/runcluster.pl";
+my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -92,12 +91,12 @@ if($testdir ne "") {
     system("rm -rf $testoutdir") &&
         die "Unable to clear the test output directory '$testoutdir'\n";
     print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
-    $testdir = $umakeRoot . '/test/umake';
+    $testdir = $gotcloudRoot . '/test/umake';
     my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall " .
         "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
-    $cmd = "$umakeRoot/scripts/diff_results_umake.sh $outdir $umakeRoot/test/umake/expected";
+    $cmd = "$gotcloudRoot/scripts/diff_results_umake.sh $outdir $gotcloudRoot/test/umake/expected";
     system($cmd) &&
         die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
     print "Successfully ran the test case, congratulations!\n";
@@ -114,7 +113,7 @@ $runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 if($localdefaults ne "") {
  &loadConf($localdefaults);
  }
-&loadConf($scriptPath."/umakeDefaults.conf");
+&loadConf($scriptPath."/gotcloudDefaults.conf");
 
 if ( $outprefix ne "" ) {
     $hConf{"OUT_PREFIX"} = $outprefix;
@@ -125,10 +124,10 @@ if ( $outdir ne "" ) {
 
 # Pull batch info from config if not on command line.
 if ( $batchopts eq "" ) {
-  $batchopts = $hConf{"BATCH_OPTS"};
+  $batchopts = getConf("BATCH_OPTS");
 }
 if ( $batchtype eq "" ) {
-  $batchtype = $hConf{"BATCH_TYPE"};
+  $batchtype = getConf("BATCH_TYPE");
 }
 if ($batchtype eq "")
 {
@@ -231,6 +230,11 @@ if ( $numSteps == 0 ) {
 }
 
 #############################################################################
+## Check for required files
+############################################################################
+#TODO
+
+#############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
 ############################################################################
 my $bamIndex = &getConf("BAM_INDEX");
@@ -329,17 +333,9 @@ my @nobaqSubstrings = split(/\s+/,&getConf("NOBAQ_SUBSTRINGS"));
 `mkdir --p $outDir`;
 
 open(MAK,">$makef") || die "Cannot open $makef for writing\n";
-print MAK "OUTPUT_DIR=$outDir\n";
-print MAK "UMAKE_ROOT=$umakeRoot\n\n";
+print MAK "OUT_DIR=$outDir\n";
+print MAK "GOTCLOUD_ROOT=$gotcloudRoot\n\n";
 print MAK ".DELETE_ON_ERROR:\n\n";
-
-# Write the values from the configuration.
-#foreach my $key (@keys)
-#{
-#  print MAK "$key = $hConf{$key}\n";
-#}
-#
-#print MAK "\n";
 
 print MAK "all:";
 foreach my $chr (@chrs) {
@@ -348,11 +344,11 @@ foreach my $chr (@chrs) {
 print MAK "\n\n";
 
 #############################################################################
-## STEP 4 : Read FASTA INDEX file to determin chromosome size
+## STEP 4 : Read FASTA INDEX file to determine chromosome size
 ############################################################################
 my %hChrSizes = ();
-my $reference = &getConf("REF");
-open(IN,&getConf("REF").".fai") || die "Cannot open ".&getConf("REF").".fai file for reading";
+my $ref = &getConf("REF");
+open(IN,$ref.".fai") || die "Cannot open $ref.fai file for reading";
 while(<IN>) {
     my ($chr,$len) = split;
     $hChrSizes{$chr} = $len;
@@ -377,20 +373,19 @@ if ( $callregion ) {
 ## STEP 5 : CONFIGURE PARAMETERS
 ############################################################################
 my $unitChunk = &getConf("UNIT_CHUNK");
-my $bamGlfDir = "\$(OUTPUT_DIR)/".&getConf("BAM_GLF_DIR");
-my $smGlfDir = "\$(OUTPUT_DIR)/".&getConf("SM_GLF_DIR");
+my $bamGlfDir = "\$(OUT_DIR)/".&getConf("BAM_GLF_DIR");
+my $smGlfDir = "\$(OUT_DIR)/".&getConf("SM_GLF_DIR");
 my $smGlfDirReal = "$outDir/".&getConf("SM_GLF_DIR");
-my $vcfDir = "\$(OUTPUT_DIR)/".&getConf("VCF_DIR");
-my $pvcfDir = "\$(OUTPUT_DIR)/".&getConf("PVCF_DIR");
-my $splitDir = "\$(OUTPUT_DIR)/".&getConf("SPLIT_DIR");
+my $vcfDir = "\$(OUT_DIR)/".&getConf("VCF_DIR");
+my $pvcfDir = "\$(OUT_DIR)/".&getConf("PVCF_DIR");
+my $splitDir = "\$(OUT_DIR)/".&getConf("SPLIT_DIR");
 my $splitDirReal = "$outDir/".&getConf("SPLIT_DIR");
-my $targetDir = "\$(OUTPUT_DIR)/".&getConf("TARGET_DIR");
+my $targetDir = "\$(OUT_DIR)/".&getConf("TARGET_DIR");
 my $targetDirReal = "$outDir/".&getConf("TARGET_DIR");
-my $beagleDir = "\$(OUTPUT_DIR)/".&getConf("BEAGLE_DIR");
-my $thunderDir = "\$(OUTPUT_DIR)/".&getConf("THUNDER_DIR");
+my $beagleDir = "\$(OUT_DIR)/".&getConf("BEAGLE_DIR");
+my $thunderDir = "\$(OUT_DIR)/".&getConf("THUNDER_DIR");
 my $thunderDirReal = "$outDir/".&getConf("THUNDER_DIR");
 my $remotePrefix = &getConf("REMOTE_PREFIX");
-my $ref = &getConf("REF");
 
 my $bamIndexRemote = ($bamIndex =~ /^\//) ? "$remotePrefix$bamIndex" : ($remotePrefix.&getcwd()."/".$bamIndex);
 
@@ -503,7 +498,7 @@ foreach my $chr (@chrs) {
 
 	## Generate target loci information
 	for(my $i=0; $i < @uniqBeds; ++$i) {
-            my $printBedName = 0;
+        my $printBedName = 0;
 	    my $outDir = "$targetDirReal/$uniqBedFns[$i]/chr$chr";
 	    make_path($outDir);
 	    for(my $j=0; $j < @unitStarts; ++$j) {
@@ -606,7 +601,7 @@ foreach my $chr (@chrs) {
 		print MAK "$thunderOut.vcf.gz.OK:\n";
 		print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/thunder\n";
 		my $cmd = &getConf("THUNDER")." --shotgun $splitVcfs[$i] -o $remotePrefix$thunderOut > $remotePrefix$thunderOut.out 2> $remotePrefix$thunderOut.err";
-                $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		print MAK "\t".&getMosixCmd($cmd)."\n";
 		$cmd = "touch $thunderOut.vcf.gz.OK";
 		print MAK "\t$cmd\n";
@@ -640,12 +635,12 @@ foreach my $chr (@chrs) {
 	my $beaglePrefix = "$beagleDir/chr$chr/chr$chr.filtered.PASS.beagled";
 	if ( $#pops > 0 ) {
 	    my $cmd = &getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamIndexRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n";
 	    print MAK "\n";
 	    foreach my $pop (@pops) {
 		$cmd = "\t".&getConf("TABIX")." -f -pvcf $remotePrefix$beaglePrefix.$pop.vcf.gz\n";
-                $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 print MAK "$cmd";
 	    }
 	}
@@ -660,7 +655,7 @@ foreach my $chr (@chrs) {
 	    print MAK "$splitPrefix.vcflist: $beagleDir/chr$chr/subset.OK\n";
 	    print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/split/\n";
 	    my $cmd = &getConf("VCFSPLIT")." --in $remotePrefix$beaglePrefix.$pop.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n\n";
 	}
     }
@@ -710,19 +705,19 @@ foreach my $chr (@chrs) {
               print MAK "\tsleep ".$sleepSecs."\n";
             }
 	    my $cmd = &getConf("VCF2BEAGLE")." --in $splitVcfs[$i] --out $remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n";
 	    $cmd = &getConf("BEAGLE")." like=$remotePrefix$beagleLikeDir/chr$chr.PASS.".($i+1).".gz out=$remotePrefix$beagleOutPrefix.$j >$remotePrefix$beagleOutPrefix.$j.out 2>$remotePrefix$beagleOutPrefix.$j.err";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n";
 	    $cmd = &getConf("BEAGLE2VCF"). " --filter --beagle $remotePrefix$beagleOut.gz --invcf $splitVcfs[$i] --outvcf $remotePrefix$beagleOut.vcf";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n";
 	    $cmd = &getConf("BGZIP"). " -f $remotePrefix$beagleOut.vcf";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n";
 	    $cmd = &getConf("TABIX"). " -f -pvcf $remotePrefix$beagleOut.vcf.gz";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "\t".&getMosixCmd($cmd)."\n";
 	    print MAK "\n";
 	}
@@ -764,7 +759,7 @@ foreach my $chr (@chrs) {
 	print MAK "$splitPrefix.vcflist: $splitDir/chr$chr/subset.OK\n";
 	print MAK "\tmkdir --p $splitDir/chr$chr\n";
         $cmd = &getConf("VCFSPLIT")." --in $remotePrefix$subsetPrefix.PASS.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
-        $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+        $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	print MAK "\t".&getMosixCmd($cmd)."\n\n";
     }
 
@@ -816,11 +811,11 @@ foreach my $chr (@chrs) {
                                $unitStarts[$j], $unitEnds[$j]);
 
 	    my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
-            $glfAlias =~ s/$outDir/\$(OUTPUT_DIR)/g;
+            $glfAlias =~ s/$outDir/\$(OUT_DIR)/g;
 
 	    my $sleepSecs = ($j % 10)*$sleepMultiplier;
 	    $cmd = &getConf("GLFEXTRACT")." --invcf $svcfs[$j] --ped $glfAlias -b $vcfs[$j] > $vcfs[$j].log 2> $vcfs[$j].err";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    print MAK "$vcfs[$j].OK: $svcfs[$j].OK ";
 	    if ( $expandFlag == 1 ) {
 		print MAK join(".OK ",@glfs);
@@ -864,22 +859,22 @@ foreach my $chr (@chrs) {
 		if (&getConf("USE_SVMMODEL") eq "TRUE")
 		{
 			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --model ".&getConf("SVMMODEL")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 			print MAK "$cmd";
 		}
 		else
 		{
 			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --pos ".&getConf("POS_SAMPLE")." --neg ".&getConf("NEG_SAMPLE")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 			print MAK "$cmd";
 		}
 	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
             writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
 	    print MAK join("\n",@cmds);
@@ -915,7 +910,7 @@ foreach my $chr (@chrs) {
 		push(@pvcfs,$pvcf);
 		#my $cmd = &getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
 		my $cmd = &getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".&getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
 	    }
 
@@ -951,7 +946,7 @@ foreach my $chr (@chrs) {
 	    my $expandFlag = ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
 	    my @cmds = ();
 	    my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/ --suffix .$chr.vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 
 	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
 	    print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
@@ -962,15 +957,15 @@ foreach my $chr (@chrs) {
 		print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK\n";
 	    }
 	    $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
             writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
 	    print MAK join("\n",@cmds);
@@ -1009,7 +1004,7 @@ foreach my $chr (@chrs) {
 		    push(@pvcfs,$pvcf);
 		    #my $cmd = &getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
 		    my $cmd = &getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".&getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
 		}
 	    }
@@ -1055,12 +1050,12 @@ foreach my $chr (@chrs) {
 		    }
 		    
 		    my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
-                    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".&getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
 		}
 		else {
 		    my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
-                    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".&getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
 		}
 		push(@gvcfs,$gvcf);
@@ -1072,7 +1067,7 @@ foreach my $chr (@chrs) {
 	    print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
 	    if ( $#uniqBeds < 0 ) {
               my $cmd = "\t".&getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf\n";
-              $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+              $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
               print MAK "$cmd";
 	    }
 	    else {
@@ -1080,15 +1075,15 @@ foreach my $chr (@chrs) {
                 writeLocalCmd($cmd);
 	    }
 	    my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
             writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
 	    print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
 	    print MAK join("\n",@cmds);
@@ -1119,11 +1114,11 @@ foreach my $chr (@chrs) {
 		push(@glfs,$smGlf);
 	    }
 	    my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
-            $glfAlias =~ s/$outDir/\$(OUTPUT_DIR)/g;
+            $glfAlias =~ s/$outDir/\$(OUT_DIR)/g;
 	    push(@vcfs,$vcf);
 	    my $sleepSecs = ($j % 10)*$sleepMultiplier;
 	    my $cmd = &getConf("GLFMULTIPLES")." --ped $glfAlias -b $vcf > $vcf.log 2> $vcf.err";
-            $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 	    if ( $expandFlag == 1 ) {
                 my $newcmd = "$vcf.OK: ".join(".OK ",@glfs).".OK\n\tmkdir --p $vcfParent\n";
                 if($sleepSecs != 0)
@@ -1131,7 +1126,7 @@ foreach my $chr (@chrs) {
                   $newcmd .= "\tsleep $sleepSecs\n";
                 }
                 $newcmd .= "\t".&getMosixCmd($cmd)."\n\ttouch $vcf.OK\n";
-                $newcmd =~ s/$outDir/\$(OUTPUT_DIR)/g;
+                $newcmd =~ s/$outDir/\$(OUT_DIR)/g;
 	 	push(@cmds,"$newcmd");
 	    }
 	    else {
@@ -1151,7 +1146,7 @@ foreach my $chr (@chrs) {
 	print MAK ".OK\n";
 	if ( $#uniqBeds < 0 ) {
           my $cmd = "\t".&getConf("VCFMERGE")." $unitChunk @vcfs > $out.vcf\n";
-          $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+          $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
           print MAK "$cmd";
 	}
 	else {  ## targeted regions - rely on the loci info
@@ -1210,7 +1205,7 @@ foreach my $chr (@chrs) {
 		    #unlink("$smGlf.OK");
 
 		    $cmd .= &getMosixCmd(&getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
-                    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		}
 		else {
 		    #$cmd .= "ln -f -s $bamGlfs[0] $smGlf";
@@ -1243,7 +1238,7 @@ foreach my $chr (@chrs) {
 		    else {
 			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
 		    }
-                    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		}
 		$cmd .= "\n\ttouch $smGlf.OK\n";
 		push(@cmds,$cmd);
@@ -1291,7 +1286,7 @@ foreach my $chr (@chrs) {
 		else {
 		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref  | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
 		}
-                $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+                $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 		if ( &getConf("RUN_INDEX") eq "TRUE" ) {
 		    push(@cmds,"$bamGlf.OK: bai\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
 		}
@@ -1328,7 +1323,7 @@ if ( &getConf("RUN_INDEX") eq "TRUE" ) {
     print MAK "\n\n";
     foreach my $bam (@bamsToIndex) {
 	my $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." index $bam";
-        $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+        $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
 	print MAK "$bam.bai.OK:\n\t".&getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n";
     }
@@ -1529,8 +1524,6 @@ sub setConf {
     if (! defined($force)) { $force = 0; }
 
     if ((! $force) && (defined($hConf{$key}))) { return; }
-    #   Why manage keys for a has manually ??
-    if (! defined($hConf{$key})) { push (@keys, $key); }
     $hConf{$key} = $value;
 }
 
@@ -1554,7 +1547,7 @@ sub loadLine
         $val =~ s/\s+$//;
     }
     else {
-        die "Cannot parse line $_ at line $.\n"; # removed "in $conf"
+        die "Cannot parse line $_ at line $.\n";
     }
 
     # Skip if the key has already been defined.
@@ -1564,15 +1557,16 @@ sub loadLine
         $val = "";     # if value is undefined, set it as empty string
     }
 
-    # check if predefined key exist and substitute it if needed
-    while ( $val =~ /\$\((\S+)\)/ ) {
-        my $subkey = $1;
-        my $subval = &getConf($subkey);
-        if ($subval eq "") {
-            die "Cannot parse configuration value $val at line $., $subkey not previously defined\n";
-        }
-        $val =~ s/\$\($subkey\)/$subval/;
-    }
+#TODO - remove
+#    # check if predefined key exist and substitute it if needed
+#    while ( $val =~ /\$\((\S+)\)/ ) {
+#        my $subkey = $1;
+#        my $subval = &getConf($subkey);
+#        if ($subval eq "") {
+#            die "Cannot parse configuration value $val at line $., $subkey not previously defined\n";
+#        }
+#        $val =~ s/\$\($subkey\)/$subval/;
+#    }
     setConf($key, $val);
 }
 
@@ -1732,8 +1726,8 @@ sub getMosixCmd {
 sub writeLocalCmd {
     my $cmd = shift;
 
-    # Replace umakeRoot with a Makefile variable.
-    $cmd =~ s/$umakeRoot/\$(UMAKE_ROOT)/g;
+    # Replace gotcloudRoot with a Makefile variable.
+    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 
     # Check for pipes in the command.
     if( $cmd =~ /\|/)
@@ -1773,7 +1767,7 @@ There are many inputs to this script which are most often specified in a
 configuration file.
 
 The official documentation for this program can be found at
-B<http://genome.sph.umich.edu/wiki/Variant_Calling_Pipeline_(UMAKE)>
+B<http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline>
 
 There are command line options which may be used to specify certain values
 in the configuration file.
@@ -1811,7 +1805,7 @@ bam data. The data is tab delimited.
 =item B<-conf file>
 
 Specifies the configuration file to be used.
-The default configuration is B<umakeDefaults.conf> found in the same directory
+The default configuration is B<gotcloudDefaults.conf> found in the same directory
 where this program resides.
 If this file is not found, you must specify this option on the command line.
 
