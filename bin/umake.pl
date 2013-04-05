@@ -229,10 +229,104 @@ if ( $numSteps == 0 ) {
     die "ERROR IN CONF FILE : No option is given. Manually configure STEPS_TO_RUN section in the configuration file, or use --snpcall, --extract, --beagle, --thunder or compatible subsets\n";
 }
 
-#############################################################################
-## Check for required files
-############################################################################
-#TODO
+#--------------------------------------------------------------
+#   Check required settings
+#--------------------------------------------------------------
+my $failReqFile = "0";
+# Check to see if the old REF is set instead of the new one.
+if( getConf("FA_REF") )
+{
+    warn "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
+    $failReqFile = "1";
+}
+
+if( getConf("DBSNP_PREFIX") )
+{
+    warn "ERROR: DBSNP_PREFIX is deprecated and has been replaced by DBSNP_VCF, please update your configuration file and rerun\n";
+    $failReqFile = "1";
+}
+
+if( getConf("HM3_PREFIX") )
+{
+    warn "ERROR: HM3_PREFIX is deprecated and has been replaced by HM3_VCF, please update your configuration file and rerun\n";
+    $failReqFile = "1";
+}
+
+if( getConf("OUTPUT_DIR") )
+{
+    warn "ERROR: OUTPUT_DIR is deprecated and has been replaced by OUT_DIR, please update your configuration file and rerun\n";
+    $failReqFile = "1";
+}
+
+
+if($failReqFile eq "1")
+{
+    die "Exiting pipeline due to deprecated settings, please fix & rerun\n";
+}
+
+
+
+# Verify the REF file is readable.
+if(! -r getConf("REF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
+                            (&getConf("RUN_FILTER") eq "TRUE") ||
+                            (&getConf("RUN_PILEUP") eq "TRUE") ) )
+{
+    warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
+    $failReqFile = "1";
+}
+# Verify the DBSNP file is readable.
+if(! -r getConf("DBSNP_VCF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
+                                  (&getConf("RUN_FILTER") eq "TRUE") ) )
+{
+    warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
+    $failReqFile = "1";
+}
+if(! -r getConf("DBSNP_VCF").".tbi" && ( (&getConf("RUN_SVM") eq "TRUE") ||
+                                         (&getConf("RUN_FILTER") eq "TRUE") ) )
+{
+    warn "ERROR: Could not read required DBSNP_VCF.tbi: ".getConf("DBSNP_VCF").".tbi\n";
+    $failReqFile = "1";
+}
+
+if(! -r getConf("HM3_VCF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
+                               (&getConf("RUN_FILTER") eq "TRUE") ) )
+{
+    warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+    $failReqFile = "1";
+}
+if(! -r getConf("HM3_VCF").".tbi" && ( (&getConf("RUN_SVM") eq "TRUE") ||
+                                       (&getConf("RUN_FILTER") eq "TRUE") ) )
+{
+    warn "ERROR: Could not read required HM3_VCF.tbi: ".getConf("HM3_VCF").".tbi\n";
+    $failReqFile = "1";
+}
+
+if(! -r getConf("OMNI_VCF") && (&getConf("RUN_SVM") eq "TRUE") )
+{
+    warn "ERROR: Could not read required OMNI_VCF: ".getConf("OMNI_VCF")."\n";
+    $failReqFile = "1";
+}
+
+my @chrs = split(/\s+/,&getConf("CHRS"));
+if ( &getConf("RUN_FILTER") eq "TRUE" )
+{
+    # check for the INDEL files for each chromosome
+    foreach my $chr (@chrs)
+    {
+        if(! -r getConf("INDEL_PREFIX").".chr$chr.vcf")
+        {
+            warn "ERROR: Could not read required indel file based on INDEL_PREFIX for chr $chr: ".getConf("INDEL_PREFIX").".chr$chr.vcf\n";
+            $failReqFile = "1";
+        }
+    }
+}
+
+if($failReqFile eq "1")
+{
+    die "Exiting pipeline due to required file(s) missing\n";
+}
+
+
 
 #############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
@@ -327,7 +421,6 @@ unless ( $outDir =~ /^\// ) {
 ## STEP 3 : Create MAKEFILE
 ############################################################################
 my $makef = &getConf("OUT_DIR")."/".&getConf("OUT_PREFIX").".Makefile";
-my @chrs = split(/\s+/,&getConf("CHRS"));
 my @nobaqSubstrings = split(/\s+/,&getConf("NOBAQ_SUBSTRINGS"));
 
 `mkdir --p $outDir`;

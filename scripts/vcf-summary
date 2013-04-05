@@ -83,10 +83,12 @@ if ( $dbSNPf ) {
 	print STDERR "loading $dbSNPf as a VCF input..\n";
 	if ( $dbSNPf =~ /.vcf.gz$/ ) {
 	    if ( $chr ) {
+                die "Can't read $dbSNPf.tbi" unless ( -f "$dbSNPf.tbi" and -r "$dbSNPf.tbi");
 		open(DBSNP,"$tabix $dbSNPf $chr:0 |") || die "Cannot open file\n";
 	    }
 	    else {
-		open(DBSNP,"zcat $dbSNPf |") || die "Cannot open file\n";
+                die "Can't read $dbSNPf" unless( -f $dbSNPf and -r $dbSNPf);
+                open(DBSNP,"zcat $dbSNPf |") || die "Cannot open file\n";
 	    }
 	}
 	else {
@@ -158,9 +160,11 @@ if ( $FNRbfile ) {
 elsif ( $FNRvcf ) {
     if ( $FNRvcf =~ /\.gz$/ ) {
 	if ( ($chr) && ( -s "$FNRvcf.tbi" ) ) {
+            die "Can't read $FNRvcf.tbi" unless( -f "$FNRvcf.tbi" and -r "$FNRvcf.tbi");
 	    open(IN,"$tabix -h $FNRvcf $chr:0 |") || die "Cannot open file\n";
 	}
 	else {
+            die "Can't read $FNRvcf" unless( -f $FNRvcf and -r $FNRvcf);
 	    open(IN,"zcat $FNRvcf|") || die "Cannot open file\n";
 	}
     }
@@ -212,6 +216,7 @@ if ( $vcf eq "" ) {
     *IN = *STDIN;
 }
 elsif ( $vcf =~ /\.gz$/ ) {
+    die "Can't read $vcf" unless( -f $vcf and -r $vcf);
     open(IN,"zcat $vcf|") || die "Cannot open file\n";
     #tie (*IN, "IO::Zlib", $vcf, "rb") || die "Cannot open file $vcf\n";
 }

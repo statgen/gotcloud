@@ -227,26 +227,57 @@ loadConf($opts{pipelinedefaults});
 #--------------------------------------------------------------
 #   Check required settings
 #--------------------------------------------------------------
+my $missingReqFile = "0";
 # Check to see if the old REF is set instead of the new one.
 if( getConf("FA_REF") )
 {
-    die "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
+    warn "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
+    $missingReqFile = "1";
 }
 
 # Verify the REF file is readable.
 if(! -r getConf("REF"))
 {
-    die "ERROR: Could not read required REF: ".getConf("REF")."\n";
+    warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
+    $missingReqFile = "1";
 }
+
 # Verify the DBSNP file is readable.
 if(! -r getConf("DBSNP_VCF"))
 {
-    die "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
+    warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
+    $missingReqFile = "1";
 }
 
-if(($hConf{RUN_VERIFY_BAM_ID} eq "1") && !-r getConf("HM3_VCF"))
+if(($hConf{RUN_VERIFY_BAM_ID} eq "1") && ! -r getConf("HM3_VCF"))
 {
-    die "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+    warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+    $missingReqFile = "1";
+}
+
+if(($hConf{RUN_QPLOT} eq "1") && ! -r getConf("REF").".GCcontent")
+{
+    warn "ERROR: Could not read required file derived from REF: ".getConf("REF").".GCcontent\n";
+    warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_GCContent_File for information about building this file\n";
+    $missingReqFile = "1";
+}
+
+# Check for the required sub REF files.
+# TODO - in the future when BWA is optional, only check if doing BWA.
+my @bwaExtensions = qw(amb ann bwt fai pac rbwt rpac rsa sa);
+for my $extension (@bwaExtensions)
+{
+    if(! -r getConf("REF").".$extension")
+    {
+        warn "ERROR: Could not read required file derived from REF: ".getConf("REF").".$extension\n";
+        warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_BWA_Reference_Files for information about building this file\n";
+        $missingReqFile = "1";
+    }
+}
+
+if($missingReqFile eq "1")
+{
+    die "Exiting alignment pipeline due to required file(s) missing\n";
 }
 
 #--------------------------------------------------------------
