@@ -36,6 +36,7 @@ if [ "$#" -le "1" ]; then
   echo "Create a Debian and/or RPM package"
   echo ""
   echo "Syntax:   makedeb.sh  [-rpm] [-replace] [ bin | test ] version"
+  echo "          makedeb.sh  [-rpm] [-replace] [ bin | test ] ="
   exit 1
 fi
 
@@ -45,6 +46,9 @@ v=`cat $vf`
 if [ "$v" = "" ]; then
   echo "Version is not set in '$vf'.  Something is messed up"
   exit 3
+fi
+if [ "$version" = "=" ]; then       # If version is =, use what we have
+  version=$v
 fi
 if [ "$v" != "$version" ]; then
   echo "Is this a new version for the package?"

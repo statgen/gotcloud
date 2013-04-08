@@ -20,7 +20,7 @@ Multi.pm
   'ls /tmp', 'lxs -la /usr', 'head /etc/rc.xlocal', 'sleep 5', 'sleep 3');
  $Multi::VERBOSE = 1;
  Multi::QueueCommands(\@cmds, 3);    # Run three at a time
- $errs = Multi::WaitForCommandsToComplete(\&Multi::RunNext);
+ $errs = Multi::WaitForCommandsToComplete();
  warn "$errs commands failed\n";
 
 =head1 DESCRIPTION
@@ -41,7 +41,26 @@ our %PIDS;                              # Keep track of what is running
 our @COMMANDS;                          # Save array of commands to run here
 our $NEXTCMD;                           # Index into @COMMANDS
 our $PIDCMD = 0;                        # Index in %PIDS{key} array
-our $PIDTAG = 1;
+
+#   Define known types of clusters.  Array is command to queue with and extra options to use
+#   First field indicates if the command will run to completion (wait)
+#   or not (n)
+#   Second field is the command to use to run the command
+#   Third  field are options for the second field
+our %ClusterTypes = (
+    # name     wait?  scommand  opts for command
+    sgei     => ['w', 'qrsh',    ' -now n'],
+    sge      => ['w', 'qsub',    ''],
+    mosix    => ['w', 'mosrun',  ' -e -t'],
+    mosbatch => ['w', 'mosbatch', '-E/tmp'],
+    slurm    => ['n', 'sbatch',  ''],
+    slurmi   => ['w', 'srun',    ''],
+    pbs      => ['n', 'qsub',    "pbsfile=$ENV{HOME}/.pbsfile"],
+    flux     => ['n', 'qsub',    "pbsfile=$ENV{HOME}/.pbsfile"],
+    local    => ['w', '',        ''],
+);
+our $BASHNAME = 'tmp_cluster_remove_whendone';  # When we create a script to be run
+our $BASHDIR = '.';                     # Create BASHNAME scripts here
 
 #==================================================================
 # Subroutine:
@@ -51,23 +70,19 @@ our $PIDTAG = 1;
 =head1 NAME
 
  #=============================================
- #  RunCommand ( cmd, tag )
+ #  RunCommand ( cmd )
  #=============================================
 
 =head1 SYNOPSIS
 
  $cmd = 'merlin -d a.dat -p a.ped -m a.map --fastAssoc';
  Multi::RunCommand($cmd);
- Multi::RunCommand($cmd, 'a');
 
 =head1 DESCRIPTION
 
 Use this to issue a Unix command in a child process.
 You'll probably want to use B<WaitForCommandsToComplete();> later in your code.
 This sets %PIDS with details about the process that is running.
-
-The B<tag> is a simple scalar which will be passed to the function
-you provide to B<CommandComplete()>.
 
 This function returns nothing. If the command cannot be launched
 the command fails with a B<die> message.
@@ -86,18 +101,12 @@ wait for a specific child to complete without a lot of work.
 
 A command to run. Any '&' are removed.
 
-=item B<tag>
-
-A simple scalar that is passed to WaitForCommandsToComplete which could
-be used to do something more complex than just run the next command.
-
 =back
 
 =cut
 
 sub RunCommand {
-    my ($cmd, $tag) = @_;
-    if (! defined($tag)) { $tag = ''; }
+    my ($cmd) = @_;
     if ($PAUSE) { sleep $PAUSE; }           # Avoid submitting too fast
     if ($cmd =~ /\s+&\s*\"?$/) {            # " Commands may not have fork in them
         if ($VERBOSE) { warn "Removing fork meta character from cmd: $cmd\n"; }
@@ -106,7 +115,6 @@ sub RunCommand {
     my $p;
     if ($p = fork) {
         $PIDS{$p}[$PIDCMD] = $cmd;          # Remember stuff about child command
-        $PIDS{$p}[$PIDTAG] = $tag;
         return;
     }
     if (defined($p)) {                      # Child code here
@@ -135,8 +143,8 @@ sub RunCommand {
     'merlin -d c.dat -p c.ped -m c.map --fastAssoc',
     'merlin -d d.dat -p d.ped -m d.map --fastAssoc',
     'merlin -d e.dat -p e.ped -m e.map --fastAssoc');
- Multi::QueueCommands($cmds, 2);            # Run three at a time
- Multi::WaitForCommandsToComplete(\@cmds);
+ Multi::QueueCommands($cmds, 2);            # Run two at a time
+ Multi::WaitForCommandsToComplete();
 
 =head1 DESCRIPTION
 
@@ -182,34 +190,23 @@ sub QueueCommands {
 =head1 NAME
 
  #=============================================
- #  WaitForCommandsToComplete( \&callbackref )
+ #  WaitForCommandsToComplete()
  #=============================================
 
 =head1 SYNOPSIS
 
- n = Multi::WaitForCommandsToComplete(\&Multi::RunNext);
+ n = Multi::WaitForCommandsToComplete();
 
 =head1 DESCRIPTION
 
 This routine waits for a child process to complete and then
-calls the callback routine (e.g. RunNext) to launch the next.
+calls the callback routine, RunNext, to launch the next.
 When all commands have been run, the routine returns
 with the count of processes that ended with a non-zero return code.
-
-=head1 PARAMETERS
-
-=over 4
-
-=item B<rtn>
-
-This is the address of a function to be called when each child ends.
-
-=back
 
 =cut
 
 sub WaitForCommandsToComplete {
-    my ($callbackref) = @_;
     my $errs = 0;
     while (%PIDS) {
         my $p = waitpid(-1, 0);                 # Wait for child to terminate
@@ -221,62 +218,122 @@ sub WaitForCommandsToComplete {
             if ($rc) { $st = 'failed  '; }
             warn "Process $p $st RC=${rc}: CMD=$PIDS{$p}[$PIDCMD]\n";
         }
-        #   If a callback was provided, call user routine. This sets %PIDS
-        #   The callback is typically RunNext
-        if (defined($callbackref)) {
-            $callbackref->($PIDS{$p}[$PIDTAG]);
+        #   If the command was one we made up for interactive tasks, remove it
+        if ($PIDS{$p}[$PIDCMD] =~ /\s(\S+$BASHNAME\S+~w\S+)/) {
+            my $f = $1;
+            unlink($f);
+            if ($VERBOSE) { warn "Removed script '$f'\n"; }
         }
-        undef($PIDS{$p});                       #
+        undef($PIDS{$p});
         delete($PIDS{$p});                      # No longer interested in this
+        #   Launch the next command to run
+        if ($NEXTCMD <= $#COMMANDS) {
+            RunCommand($COMMANDS[$NEXTCMD]);
+            $NEXTCMD++;
+        }
     }
     return $errs;
 }
 
 #==================================================================
 # Subroutine:
-#   RunNext
+#   RunCluster
 #==================================================================
 
 =head1 NAME
 
  #=============================================
- #  RunNext( tag )
+ #  RunCluster( engine, opts, cmdsaref, maxconcurrent, bashdir )
  #=============================================
 
 
 =head1 SYNOPSIS
 
- Multi::RunNext( \%keeptrack );
+ $boolean = Multi::RunCluster( 'slurmi', $engine_opts, \@cmds, maxconcurrent, bashdir );
 
 =head1 DESCRIPTION
 
-Launches a command in a new process.  Sets %PIDS so other code can keep
-track of the process.
+Runs an array of commands 'acmdsref' on a cluster of type 'engine'.
+The queuing command is passed the options 'opts'.
+This function returns a boolean if the commands were submitted without error.
+Warnings are issued detailing problems.
+This returns a nonzero if anything was in error.
 
 =head1 PARAMETERS
 
 =over 4
 
-=item B<tag>
+=item B<engine>
 
-Specifies a tag passed to a user-cloned version of this code which
-might manage something else as each command completes.
+Specifies the type of cluster to submit the jobs to.
+Valid values can be found in ClusterTypes at the top of this code.
+
+=item B<opts>
+
+When a job is submitted the command will be passed these options.
+
+=item B<cmdsaref>
+
+Is a reference to an array of commands to be submitted to the cluster.
+These should not have an ampersand at the end of the line.
+
+=item B<maxconcurrent>
+
+Specifies the number of commands to run concurrently.
+This defaults to '1'.
+
+=item B<bashdir>
+
+When a shell script must be created to submit a command, create it
+in this directory.
+This defaults to the current working directory.
+Be careful this path can also resolve properly when the command runs on another host.
 
 =back
 
 =cut
 
-sub RunNext {
-    my ($tag) = @_;
-    if (! defined($tag)) { $tag = ''; }
+sub RunCluster {
+    my ($engine, $opts, $cmdsaref, $maxconcurrent, $bashdir) = @_;
+    if (! defined($maxconcurrent)) { $maxconcurrent = 1; }
+    if (! defined($bashdir)) { $bashdir = $BASHDIR; }
+    if ($BASHDIR eq '.' || $BASHDIR eq '') { $_ = `pwd`; chomp($_); $BASHDIR = $_; }
 
     #   Pick next command to run
-    for ( ;$NEXTCMD<=$#COMMANDS; $NEXTCMD++) {
-        if ($COMMANDS[$NEXTCMD] !~ /^\s*#/) { last; }
+    if (! $ClusterTypes{$engine}) {
+        warn "Cluster type '$engine' is not supported - no jobs started\n";
+        return 1;
     }
-    if ($NEXTCMD > $#COMMANDS) { return; }  # No more to run
-    RunCommand($COMMANDS[$NEXTCMD], $tag);
-    $NEXTCMD++;                             # Look here next
+    if (! $#{$cmdsaref} < 0) {
+        warn "No commands were provided to submit to '$engine' - no jobs started\n";
+        return 1;
+    }
+
+    #   Run through list of commands, create shell scripts as necessary
+    #   If the command looks like a shell script we support, run it directly
+    my $modelcmd = "$ClusterTypes{$engine}[1] $ClusterTypes{$engine}[2] $opts ";
+    my @commands = ();
+    my $index = 1;
+    foreach my $c (@{$cmdsaref}) {
+        if ($c =~ /^\s*$/) { next; }        # Skip blank lines and comments
+        if ($c =~ /^#/) { next; }
+        if ($c =~ /^\S+\.sh|pl|py/) {       # User script, run that directly
+            push @commands,$modelcmd . $c;
+            next;
+        }
+        #   User provided a command, wrap it in a BASH script
+        #   Bash script name contains : + n or w (wait or nowait)
+        my $f = $BASHDIR . '/' . $BASHNAME . '_' . $index . '_' . $$ . '~' . $ClusterTypes{$engine}[0] . '.sh';
+        $index++;
+        open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
+        print OUT "#!/bin/bash\nset -o pipefail\n$c\n";
+        close(OUT);
+        chmod(0755, $f) || exit 1;
+        push @commands,$modelcmd . $f;
+    }
+    if (! @commands) { warn "Found no commands to queue\n";  return 1; }
+    QueueCommands(\@commands, $maxconcurrent);
+    return WaitForCommandsToComplete();
 }
 
 #==================================================================
@@ -287,7 +344,8 @@ __END__
 
 =head1 AUTHOR
 
-This was written by Mary Kate Wing I<E<lt>mktrost@umich.eduE<gt>> in 2013.
+This was written by Mary Kate Wing I<E<lt>mktrost@umich.eduE<gt>>
+and Terry Gliedt I<E<lt>tpg@umich.eduE<gt>> in 2013.
 This code is made available under terms of the GNU General Public License.
 
 =cut
