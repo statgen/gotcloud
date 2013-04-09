@@ -317,7 +317,7 @@ sub RunCluster {
     foreach my $c (@{$cmdsaref}) {
         if ($c =~ /^\s*$/) { next; }        # Skip blank lines and comments
         if ($c =~ /^#/) { next; }
-        if ($c =~ /^\S+\.sh|pl|py/) {       # User script, run that directly
+        if ($c !~ /[|;(]/) {       # User script, run that directly
             push @commands,$modelcmd . $c;
             next;
         }
