@@ -488,6 +488,14 @@ if($sleepMultiplier eq "")
   $sleepMultiplier = 0;
 }
 
+my @wgsFilterDepSites;
+my $wgsFilterDepVcfs= "";
+
+# Use a filter prefix for hard filtering if running SVM
+my $filterPrefix = "";
+if ( &getConf("RUN_SVM") eq "TRUE") {
+    $filterPrefix = "hard";
+}
 
 #############################################################################
 ## STEP 6 : PARSE TARGET INFORMATION
@@ -639,12 +647,6 @@ foreach my $chr (@chrs) {
     print MAK " glf$chr" if ( &getConf("RUN_PILEUP") eq "TRUE" );
     print MAK " bai" if ( &getConf("RUN_INDEX") eq "TRUE" );
     print MAK "\n\n";
-
-    # Use a filter prefix for hard filtering if running SVM
-    my $filterPrefix = "";
-    if ( &getConf("RUN_SVM") eq "TRUE") {
-      $filterPrefix = "hard";
-    }
 
     #############################################################################
     ## STEP 10-9 : RUN MaCH GENOTYPE REFINEMENT
@@ -839,7 +841,7 @@ foreach my $chr (@chrs) {
 	    print MAK "$splitDir/chr$chr/subset.OK: filt$chr\n";
 	}
 	elsif ( $expandFlag == 2 ) {
-	    print MAK "$splitDir/chr$chr/subset.OK: svm$chr\n";
+	    print MAK "$splitDir/chr$chr/subset.OK: $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK\n";
 	}
 	else {
 	    print MAK "$splitDir/chr$chr/subset.OK:\n";
@@ -941,26 +943,29 @@ foreach my $chr (@chrs) {
 
 	    print MAK "svm$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
 
-	    if ( $expandFlag == 1 ) {
-			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: filt$chr\n";
-	    }
-	    else {
-			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: \n";
-	    }
+            my $cmd = "";
 
-		my $cmd = "";
-		if (&getConf("USE_SVMMODEL") eq "TRUE")
-		{
-			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --model ".&getConf("SVMMODEL")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-			print MAK "$cmd";
-		}
-		else
-		{
-			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --pos ".&getConf("POS_SAMPLE")." --neg ".&getConf("NEG_SAMPLE")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-			print MAK "$cmd";
-		}
+            if ( &getConf("WGS_SVM") eq "TRUE")
+            {
+			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $remotePrefix$vcfDir/filtered.vcf.gz.OK\n";
+                        push(@wgsFilterDepSites, "$mvcfPrefix.${filterPrefix}filtered.sites.vcf");
+                        $wgsFilterDepVcfs .= " $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK";
+            }
+	    else
+            {
+                if ( $expandFlag == 1 ) {
+                    print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n";
+                }
+                else
+                {
+                    print MAK "$mvcfPrefix.filtered.vcf.gz.OK: \n";
+                }
+
+                runSVM($svcf, "$mvcfPrefix.filtered.sites.vcf");
+            }
+
+            # The following is always done per chr
+
 	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
             writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
@@ -1009,7 +1014,7 @@ foreach my $chr (@chrs) {
 
 	    print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
 	    if ( $expandFlag == 1 ) {
-		print MAK " vcf$chr\n\n";
+		print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
 	    }
 	    else {
 		print MAK "\n\n";
@@ -1103,7 +1108,7 @@ foreach my $chr (@chrs) {
 	    }
 	    print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
 	    if ( $expandFlag == 1 ) {
-		print MAK " vcf$chr\n\n";
+		print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
 	    }
 	    else {
 		print MAK "\n\n";
@@ -1395,6 +1400,36 @@ foreach my $chr (@chrs) {
 }
 
 #############################################################################
+## Check for WGS_SVM and handle that
+############################################################################
+if ( &getConf("WGS_SVM") eq "TRUE")
+{
+    if( (scalar @wgsFilterDepSites) > 0 )
+    {
+        print MAK "$remotePrefix$vcfDir/filtered.vcf.gz.OK:$wgsFilterDepVcfs\n";
+
+        my $mergedSites = "$remotePrefix$vcfDir/${filterPrefix}filtered.sites.vcf";
+        my $outMergedVcf = "$remotePrefix$vcfDir/filtered.sites.vcf";
+
+        # Add the vcf header.
+        print MAK "\tcat $wgsFilterDepSites[0] | head -100 | grep ^# > $mergedSites\n";
+        # Merge the per chr files.
+        foreach my $chrFile (@wgsFilterDepSites)
+        {
+            # Cat all the chr files together
+            print MAK "\tcat $chrFile  | grep -v ^# >> $mergedSites\n";
+        }
+        
+        # Run SVM on the merged file.
+        runSVM($mergedSites, $outMergedVcf);
+        
+        # split svm file by chromosome.
+        print MAK "\t".&getConf("VCF_SPLIT_CHROM")." --in $outMergedVcf --out $remotePrefix$vcfDir/chrCHR/chrCHR.filtered.sites.vcf --chrKey CHR\n";
+    }
+}
+
+
+#############################################################################
 ## STEP 10-1 : INDEX BAMS IF NECESSARY
 #############################################################################
 if ( &getConf("RUN_INDEX") eq "TRUE" ) {
@@ -1600,6 +1635,29 @@ sub getFilterArgs
         $filterArgs .= " $otherFilters";
     }
     return $filterArgs;
+}
+
+
+#--------------------------------------------------------------
+#   runSVM()
+#
+#   Run SVM on the specified file.
+#--------------------------------------------------------------
+sub runSVM
+{
+    my ($inVcf, $outVcf) = @_;
+    my $cmd = "";
+    if (&getConf("USE_SVMMODEL") eq "TRUE")
+    {
+        $cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --model ".&getConf("SVMMODEL")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
+    }
+    else
+    {
+        $cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --pos ".&getConf("POS_SAMPLE")." --neg ".&getConf("NEG_SAMPLE")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
+    }
+
+    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+    print MAK "$cmd";
 }
 
 
