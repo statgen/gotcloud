@@ -76,7 +76,7 @@ else {
 
 
 #   Check the path to the cwd will be visible in the batch environment
-if ($opts{engine} ne 'mosix' && $opts{engine} ne 'batch') {
+if ($opts{engine} eq 'mosix' || $opts{engine} eq 'mosbatch') {
     if (FixCWD()) { warn "Current working directory set to '" . getcwd() . "'\n"; }
 }
 if ($opts{verbose}) { $Multi::VERBOSE = 1; $Multi::VERBOSE = 1; }   # Twice avoids warning
@@ -92,6 +92,8 @@ exit Multi::RunCluster($engine, $opts{opts}, \@c, $opts{concurrent});
 #
 #   Returns:  boolean if CD was done
 #==================================================================
+# TODO - we should make this a configurable option not hard-coded based
+# on our system.
 sub FixCWD {
     # my ($a, $b) = @_;
 
@@ -102,7 +104,7 @@ sub FixCWD {
     chomp($host);
     my $cwd = "/net/$host" . $abs_path;
     chdir($cwd) && return 1;
-    warn "Unable to CD to '$cwd' to correct local networking anomoly\n";
+#    warn "Unable to CD to '$cwd' to correct local networking anomoly\n";
     return 0;
 }
 

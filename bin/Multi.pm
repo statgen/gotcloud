@@ -51,7 +51,7 @@ our %ClusterTypes = (
     # name     wait?  scommand  opts for command
     sgei     => ['w', 'qrsh',    ' -now n'],
     sge      => ['w', 'qsub',    ''],
-    mosix    => ['w', 'mosrun',  ' -e -t'],
+    mosix    => ['w', 'mosbatch', '-E/tmp'],
     mosbatch => ['w', 'mosbatch', '-E/tmp'],
     slurm    => ['n', 'sbatch',  ''],
     slurmi   => ['w', 'srun',    ''],

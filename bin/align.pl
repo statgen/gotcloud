@@ -133,6 +133,10 @@ if ($opts {test}) {
         die "Unable to clear the test output directory '$testoutdir'\n";
     print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
     my $testdir = $basepath . '/test/align';
+    if(! -r $testdir)
+    {
+        die "ERROR, $testdir does not exist, please download the test data to that directory\n";
+    }
     my $cmd = "$0 -conf $testdir/test.conf -index $testdir/indexFile.txt " .
         "-ref $testdir/chr20Ref -fastq $testdir -out $testoutdir " .
         "-batchtype local";
@@ -171,7 +175,7 @@ if ($opts{ref_dir}) {
 }
 
 if ($opts{fastq_prefix}) {
-    setConf('FASTQ', $opts{fastq_prefix});
+    setConf('FASTQ_PREFIX', $opts{fastq_prefix});
 }
 
 # Check if index_file was specified on the command line prior to reading defaults.
@@ -234,6 +238,12 @@ if( getConf("FA_REF") )
     warn "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
     $missingReqFile = "1";
 }
+if( getConf("FASTQ") )
+{
+    warn "ERROR: FASTA is deprecated and has been replaced by FASTQ_PREFIX, please update your configuration file and rerun\n";
+    $missingReqFile = "1";
+}
+
 
 # Verify the REF file is readable.
 if(! -r getConf("REF"))
@@ -300,22 +310,22 @@ my %mergeToFq1 = ();
 #   Read the first line and check if it is a header or a reference
 my $line = <IN>;
 chomp($line);
-if ($line =~ /^#FASTQ_REF\s*=\s*(.+)\s*$/) {    # Provides reference path to fastq files
-    setConf('FASTQ', $1);
+if ($line =~ /^#FASTQ_PREFIX\s*=\s*(.+)\s*$/) {    # Provides reference path to fastq files
+    setConf('FASTQ_PREFIX', $1);
     $line = <IN>;
     chomp($line);
 }
 
 #   By now the FASTQ directory should be set if it ever will be
-my $fq = getConf('FASTQ');
+my $fq = getConf('FASTQ_PREFIX');
 if ((! $fq) || (! -d $fq)) {
-    warn "WARNING: FASTQ directory '$fq' does not exist or -fastq was not specified\n";
+#    warn "WARNING: FASTQ directory '$fq' does not exist or -fastq was not specified\n";
 }
 else {
     #   Make sure there's a trailing / on FASTQ and it is fully qualified
     $fq = abs_path($fq);
     if ($fq !~ /\/$/) { $fq .= '/'; }
-    setConf('FASTQ', $fq, 1);       # Force this to be set
+    setConf('FASTQ_PREFIX', $fq, 1);       # Force this to be set
 }
 
 # Track positions for each field.
@@ -811,12 +821,10 @@ sub pair_cmds {
     $allSteps .= &getConf("ALN_TMP")."/$bam.done: $saiDone\n";
     $allSteps .= "\tmkdir -p \$(\@D)\n";
 
-    my $tmpFastq1 = getConf('FASTQ') . $fastq1;
-    my $absFastq1 = abs_path($tmpFastq1);
+    my $absFastq1 = getAbsPath($fastq1, "FASTQ");
     my $absFastq2 = '';
     if($fastq2 ne ".") {
-        my $tmpFastq2 = getConf('FASTQ') . $fastq2;
-        $absFastq2 = abs_path($tmpFastq2);
+        $absFastq2 = getAbsPath($fastq2, "FASTQ");
         my $sampeLog = "\$(basename \$(basename \$\@)).sampe.log";
         $allSteps .= "\t(".&getConf("BWA_EXE")." sampe $rgCommand ".&getConf("REF")." \$(basename \$^) $absFastq1 $absFastq2 | " .
             &getConf("SAMTOOLS_EXE")." view -uhS - | ".&getConf("SAMTOOLS_EXE")." sort -m ".&getConf("BWA_MAX_MEM")." - \$(basename \$(basename " .
@@ -836,6 +844,68 @@ sub pair_cmds {
     if($fastq2 ne ".") {
         $allSteps .= align($absFastq2, $sai2);
     }
+}
+
+#--------------------------------------------------------------
+#   value = getAbsPath(file, type)
+#
+#   Get the absolute path for the specified file.
+#   Heirachy for determining absolute path from a relative path:
+#      1) Based on Type:
+#          a) FASTQ: FASTQ_PREFIX
+#      2) Based on BASE_PREFIX (if <TYPE>_PREFIX is not set)
+#      3) Relative to the current working directory,
+#--------------------------------------------------------------
+sub getAbsPath {
+    my ($file, $type) = @_;
+
+    # Check if the path is already absolute
+    if ( ($file =~ /^\//) )
+    {
+        return($file);
+    }
+
+    # Relative path.
+    my $newPath = "";
+    my $absPath = "";
+    # Check if type was set.
+    if( defined($type) && ($type ne "") )
+    {
+        # Check if a directory was defined for this type.
+        my $val1 = &getConf($type."_PREFIX");
+        if( defined($val1) && ($val1 ne "") )
+        {
+            $newPath = "$val1/$file";
+        }
+    }
+
+    if($newPath eq "")
+    {
+        # Type specific directory is not set,
+        # so check if BASE_PREFIX is set.
+        my $val = getConf("BASE_PREFIX");
+        if( defined($val) && ($val ne "") )
+        {
+            $newPath = "$val/$file";
+        }
+    }
+
+    if($newPath eq "")
+    {
+        $newPath = $file;
+    }
+
+    # Convert to absolute path
+    my $fullPath = abs_path($newPath);
+    if( !defined($fullPath) || ($fullPath eq '') )
+    {
+        if( ($newPath =~ /^\//) )
+        {
+            die("ERROR: Could not find $newPath\n");
+        }
+        die("ERROR: Could not find $newPath in ".getcwd()."\n");
+    }
+    return($fullPath);
 }
 
 #==================================================================
@@ -893,13 +963,13 @@ This short example will give you an idea of a configuration file:
 
 The B<index file> file specifies information about individuals and paths to
 fastq data for a SNP. The data is tab delimited.
-The first line (#FASTQ_REF=) is optional and will specify a path which is added to the path
+The first line (#FASTQ_PREFIX=) is optional and will specify a path which is added to the path
 for each FASTQ to provide the complete absolute path to the FASTQ
 (this is equivalent to setting the option B<fastq_prefix>).
 The next line is a header line which identifies this as a valid indexFile.
 A sample might look like this (tabs are not visible):
 
-  #FASTQ_REF=/net/gateway/home/myuser/Run_0601/Data/Intensities/Fastqs
+  #FASTQ_PREFIX=/net/gateway/home/myuser/Run_0601/Data/Intensities/Fastqs
   MERGE_NAME    FASTQ1  FASTQ2  RGID    SAMPLE  LIBRARY CENTER  PLATFORM
   Smp1 Smp_1/File1_R1.fastq.gz Smp_1/File1_R2.fastq.gz RGID1   SmpID1 Lib1 UM ILLUMINA
   Smp1 Smp_1/File2_R1.fastq.gz Smp_1/File2_R2.fastq.gz RGID1a  SmpID1 Lib1 UM ILLUMINA

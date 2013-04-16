@@ -49,6 +49,10 @@ my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
 
+my $baseprefix = '';
+my $bamprefix = '';
+#my $vcfdir = '';
+
 my $batchtype = '';
 my $batchopts = '';
 my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
@@ -67,6 +71,9 @@ my $optResult = GetOptions("help",\$help,
 			   "region=s",\$callregion,
                            "batchtype|batch_type=s",\$batchtype,
                            "batchopts|batch_opts=s",\$batchopts,
+                           "baseprefix|base_prefix=s",\$baseprefix,
+                           "bamprefix|bam_prefix=s",\$bamprefix,
+#                           "vcfdir|vcf_dir=s",\$vcfdir,
 			   "localdefaults=s",\$localdefaults,
                            "verbose", \$verbose
     );
@@ -92,6 +99,11 @@ if($testdir ne "") {
         die "Unable to clear the test output directory '$testoutdir'\n";
     print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
     $testdir = $gotcloudRoot . '/test/umake';
+    # First check that the test directory exists.
+    if(! -r $testdir)
+    {
+        die "ERROR, $testdir does not exist, please download the test data to that directory\n";
+    }
     my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall " .
         "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
     system($cmd) &&
@@ -103,16 +115,28 @@ if($testdir ne "") {
     exit;
 }
 
-#-------------
-# Handle cluster setup.
-if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
-$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
+#--------------------------------------------------------------
+#   Convert command line options to conf settings
+#--------------------------------------------------------------
+if( defined $bamprefix && ($bamprefix ne "") )
+{
+    setConf("BAM_PREFIX", $bamprefix);
+}
+if( defined $baseprefix && ($baseprefix ne "") )
+{
+    setConf("BASE_PREFIX");
+}
 
+#--------------------------------------------------------------
+#   Load configuration settings
+#--------------------------------------------------------------
 &loadOverride($override);
 &loadConf($conf);
-if($localdefaults ne "") {
- &loadConf($localdefaults);
- }
+
+if($localdefaults ne "")
+{
+    &loadConf($localdefaults);
+}
 &loadConf($scriptPath."/gotcloudDefaults.conf");
 
 if ( $outprefix ne "" ) {
@@ -122,6 +146,8 @@ if ( $outdir ne "" ) {
     $hConf{"OUT_DIR"} = $outdir;
 }
 
+#-------------
+# Handle cluster setup.
 # Pull batch info from config if not on command line.
 if ( $batchopts eq "" ) {
   $batchopts = getConf("BATCH_OPTS");
@@ -134,6 +160,9 @@ if ($batchtype eq "")
   $batchtype = "local";
   $hConf{"BATCH_TYPE"} = "local";
 }
+
+if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
+$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
@@ -369,9 +398,8 @@ while(<IN>) {
             # Check if there is just a relative path to the bams.
             if ( !( $bam =~ /^\// ) )
             {
-              # It is relative, so make it absolute.
-              my $bamPath = dirname(abs_path($bamIndex));
-              $bam = abs_path($bamPath .'/'. $bam);
+                # It is relative, so make it absolute.
+                $bam = getAbsPath($bam, "BAM");
             }
         }
 	push(@allbamSMs,$smID);
@@ -386,6 +414,7 @@ while(<IN>) {
     push(@allSMs,$smID);
     push(@allbams,@bams);
 }
+
 close IN;
 
 $numSamples = @allSMs;
@@ -1806,6 +1835,68 @@ sub getConf {
         $val =~ s/\$\($subkey\)/$subval/;
     }
     return $val;
+}
+
+#--------------------------------------------------------------
+#   value = getAbsPath(file, type)
+#
+#   Get the absolute path for the specified file.
+#   Heirachy for determining absolute path from a relative path:
+#      1) Based on Type:
+#          a) BAM: BAM_PREFIX
+#      2) Based on BASE_PREFIX (if <TYPE>_PREFIX is not set)
+#      3) Relative to the current working directory,
+#--------------------------------------------------------------
+sub getAbsPath {
+    my ($file, $type) = @_;
+
+    # Check if the path is already absolute
+    if ( ($file =~ /^\//) )
+    {
+        return($file);
+    }
+
+    # Relative path.
+    my $newPath = "";
+    my $absPath = "";
+    # Check if type was set.
+    if( defined($type) && ($type ne "") )
+    {
+        # Check if a directory was defined for this type.
+        my $val1 = &getConf($type."_PREFIX");
+        if( defined($val1) && ($val1 ne "") )
+        {
+            $newPath = "$val1/$file";
+        }
+    }
+
+    if($newPath eq "")
+    {
+        # Type specific directory is not set,
+        # so check if BASE_PREFIX is set.
+        my $val = getConf("BASE_PREFIX");
+        if( defined($val) && ($val ne "") )
+        {
+            $newPath = "$val/$file";
+        }
+    }
+
+    if($newPath eq "")
+    {
+        $newPath = $file;
+    }
+
+    # Convert to absolute path
+    my $fullPath = abs_path($newPath);
+    if( !defined($fullPath) || ($fullPath eq '') )
+    {
+        if( ($newPath =~ /^\//) )
+        {
+            die("ERROR: Could not find $newPath\n");
+        }
+        die("ERROR: Could not find $newPath in ".getcwd()."\n");
+    }
+    return($fullPath);
 }
 
 #--------------------------------------------------------------
