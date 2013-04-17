@@ -301,22 +301,14 @@ if($failReqFile eq "1")
     die "Exiting pipeline due to deprecated settings, please fix & rerun\n";
 }
 
-
-
-
+# convert the reference to absolute path.
+my $newpath = getAbsPath(getConf("REF"), "REF");
+$hConf{"REF"} = $newpath;
 # Verify the REF file is readable.
-if( (&getConf("RUN_SVM") eq "TRUE") ||
-    (&getConf("RUN_FILTER") eq "TRUE") ||
-    (&getConf("RUN_PILEUP") eq "TRUE") )
+if(! -r getConf("REF") )
 {
-    # convert the reference to absolute path.
-    my $newpath = getAbsPath(getConf("REF"), "REF");
-    $hConf{"REF"} = $newpath;
-    if(! -r getConf("REF") )
-    {
-        warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
-        $failReqFile = "1";
-    }
+    warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
+    $failReqFile = "1";
 }
 
 # RUN_SVM & RUN_FILTER need dbsnp & HM3 files
@@ -324,7 +316,7 @@ if( (&getConf("RUN_SVM") eq "TRUE") ||
     (&getConf("RUN_FILTER") eq "TRUE") )
 {
     # convert dbsnp & HM3 to absolute paths
-    my $newpath = getAbsPath(getConf("DBSNP_VCF"), "REF");
+    $newpath = getAbsPath(getConf("DBSNP_VCF"), "REF");
     $hConf{"DBSNP_VCF"} = $newpath;
     $newpath = getAbsPath(getConf("HM3_VCF"), "REF");
     $hConf{"HM3_VCF"} = $newpath;
@@ -356,7 +348,7 @@ if( (&getConf("RUN_SVM") eq "TRUE") ||
 if(&getConf("RUN_SVM") eq "TRUE")
 {
     # Convert OMNI to absolute path.
-    my $newpath = getAbsPath(getConf("OMNI_VCF"), "REF");
+    $newpath = getAbsPath(getConf("OMNI_VCF"), "REF");
     $hConf{"OMNI_VCF"} = $newpath;
     if(! -r getConf("OMNI_VCF"))
     {
@@ -369,7 +361,7 @@ my @chrs = split(/\s+/,&getConf("CHRS"));
 if ( &getConf("RUN_FILTER") eq "TRUE" )
 {
     # convert the INDEL_PREFIX to an absolute path.
-    my $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
+    $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
     $hConf{"INDEL_PREFIX"} = $newpath;
     # check for the INDEL files for each chromosome
     foreach my $chr (@chrs)
