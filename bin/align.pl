@@ -104,7 +104,9 @@ Getopt::Long::GetOptions( \%opts,qw(
     conf=s
     index_file|indexfile=s
     ref_dir|refdir=s
-    fastq_prefix=s
+    ref_prefix|refprefix=s
+    fastq_prefix|fastqprefix=s
+    base_prefix|baseprefix=s
     keeptmp
     keeplog
     verbose
@@ -137,9 +139,7 @@ if ($opts {test}) {
     {
         die "ERROR, $testdir does not exist, please download the test data to that directory\n";
     }
-    my $cmd = "$0 -conf $testdir/test.conf -index $testdir/indexFile.txt " .
-        "-ref $testdir/chr20Ref -fastq $testdir -out $testoutdir " .
-        "-batchtype local";
+    my $cmd = "$0 -conf $testdir/test.conf -out $testoutdir";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
     $cmd = "$basepath/scripts/diff_results_align.sh $outdir $basepath/test/align/expected";
@@ -174,20 +174,21 @@ if ($opts{ref_dir}) {
     setConf('REF_DIR', $ref_dir);
 }
 
+if ($opts{ref_prefix}) {
+    setConf('REF_PREFIX', $opts{ref_prefix});
+}
+
 if ($opts{fastq_prefix}) {
     setConf('FASTQ_PREFIX', $opts{fastq_prefix});
 }
 
+if ($opts{base_prefix}) {
+    setConf('BASE_PREFIX', $opts{base_prefix});
+}
+
 # Check if index_file was specified on the command line prior to reading defaults.
-my $index_file = '';
 if ($opts{index_file}) {
-    #   If no full or partial path provided, default to conf file path
-    if ($opts{index_file} !~ /\//) {
-        if ($opts{conf} !~ /(.+)\/[^\/]+$/) { die "Unable to parse path from conf file '$opts{conf}'\n"; }
-        $opts{index_file} = $1 . '/' . $opts{index_file};
-    }
-    $index_file = abs_path($opts{index_file});
-    setConf('INDEX_FILE', $index_file);
+    setConf('INDEX_FILE', $opts{index_file});
 }
 
 if($opts{keeptmp})
@@ -213,11 +214,11 @@ if (! $ref_dir) {
 $ref_dir = abs_path($ref_dir);
 setConf('REF_DIR', $ref_dir);
 
-$index_file = getConf('INDEX_FILE');
+my $index_file = getConf('INDEX_FILE');
 if (! $index_file) {
     die "Index file (-indexfile file) was not specified\n";
 }
-$index_file = abs_path($index_file);    # If path not provided, use cwd
+$index_file = getAbsPath($index_file);    # If path not provided, use cwd
 setConf('INDEX_FILE', $index_file);
 
 $out_dir = abs_path($out_dir);
@@ -244,8 +245,9 @@ if( getConf("FASTQ") )
     $missingReqFile = "1";
 }
 
-
 # Verify the REF file is readable.
+my $newpath = getAbsPath(getConf("REF"), "REF");
+$hConf{"REF"} = $newpath;
 if(! -r getConf("REF"))
 {
     warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
@@ -253,16 +255,24 @@ if(! -r getConf("REF"))
 }
 
 # Verify the DBSNP file is readable.
+$newpath = getAbsPath(getConf("DBSNP_VCF"), "REF");
+$hConf{"DBSNP_VCF"} = $newpath;
 if(! -r getConf("DBSNP_VCF"))
 {
     warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
     $missingReqFile = "1";
 }
 
-if(($hConf{RUN_VERIFY_BAM_ID} eq "1") && ! -r getConf("HM3_VCF"))
+if($hConf{RUN_VERIFY_BAM_ID} eq "1")
 {
-    warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
-    $missingReqFile = "1";
+    $newpath = getAbsPath(getConf("HM3_VCF"), "REF");
+    $hConf{"HM3_VCF"} = $newpath;
+
+    if(! -r getConf("HM3_VCF"))
+    {
+        warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+        $missingReqFile = "1";
+    }
 }
 
 if(($hConf{RUN_QPLOT} eq "1") && ! -r getConf("REF").".GCcontent")

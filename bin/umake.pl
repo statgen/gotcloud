@@ -51,6 +51,7 @@ my $verbose = "";
 
 my $baseprefix = '';
 my $bamprefix = '';
+my $refprefix = '';
 #my $vcfdir = '';
 
 my $batchtype = '';
@@ -73,6 +74,7 @@ my $optResult = GetOptions("help",\$help,
                            "batchopts|batch_opts=s",\$batchopts,
                            "baseprefix|base_prefix=s",\$baseprefix,
                            "bamprefix|bam_prefix=s",\$bamprefix,
+                           "refprefix|ref_prefix=s",\$refprefix,
 #                           "vcfdir|vcf_dir=s",\$vcfdir,
 			   "localdefaults=s",\$localdefaults,
                            "verbose", \$verbose
@@ -122,9 +124,15 @@ if( defined $bamprefix && ($bamprefix ne "") )
 {
     setConf("BAM_PREFIX", $bamprefix);
 }
+
+if( defined $refprefix && ($refprefix ne "") )
+{
+    setConf("REF_PREFIX", $refprefix);
+}
+
 if( defined $baseprefix && ($baseprefix ne "") )
 {
-    setConf("BASE_PREFIX");
+    setConf("BASE_PREFIX", $baseprefix);
 }
 
 #--------------------------------------------------------------
@@ -295,50 +303,74 @@ if($failReqFile eq "1")
 
 
 
+
 # Verify the REF file is readable.
-if(! -r getConf("REF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                            (&getConf("RUN_FILTER") eq "TRUE") ||
-                            (&getConf("RUN_PILEUP") eq "TRUE") ) )
+if( (&getConf("RUN_SVM") eq "TRUE") ||
+    (&getConf("RUN_FILTER") eq "TRUE") ||
+    (&getConf("RUN_PILEUP") eq "TRUE") )
 {
-    warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
-    $failReqFile = "1";
-}
-# Verify the DBSNP file is readable.
-if(! -r getConf("DBSNP_VCF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                                  (&getConf("RUN_FILTER") eq "TRUE") ) )
-{
-    warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
-    $failReqFile = "1";
-}
-if(! -r getConf("DBSNP_VCF").".tbi" && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                                         (&getConf("RUN_FILTER") eq "TRUE") ) )
-{
-    warn "ERROR: Could not read required DBSNP_VCF.tbi: ".getConf("DBSNP_VCF").".tbi\n";
-    $failReqFile = "1";
+    # convert the reference to absolute path.
+    my $newpath = getAbsPath(getConf("REF"), "REF");
+    $hConf{"REF"} = $newpath;
+    if(! -r getConf("REF") )
+    {
+        warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
+        $failReqFile = "1";
+    }
 }
 
-if(! -r getConf("HM3_VCF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                               (&getConf("RUN_FILTER") eq "TRUE") ) )
+# RUN_SVM & RUN_FILTER need dbsnp & HM3 files
+if( (&getConf("RUN_SVM") eq "TRUE") ||
+    (&getConf("RUN_FILTER") eq "TRUE") )
 {
-    warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
-    $failReqFile = "1";
-}
-if(! -r getConf("HM3_VCF").".tbi" && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                                       (&getConf("RUN_FILTER") eq "TRUE") ) )
-{
-    warn "ERROR: Could not read required HM3_VCF.tbi: ".getConf("HM3_VCF").".tbi\n";
-    $failReqFile = "1";
+    # convert dbsnp & HM3 to absolute paths
+    my $newpath = getAbsPath(getConf("DBSNP_VCF"), "REF");
+    $hConf{"DBSNP_VCF"} = $newpath;
+    $newpath = getAbsPath(getConf("HM3_VCF"), "REF");
+    $hConf{"HM3_VCF"} = $newpath;
+
+    # Verify the DBSNP file is readable.
+    if(! -r getConf("DBSNP_VCF") )
+    {
+        warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
+        $failReqFile = "1";
+    }
+    if(! -r getConf("DBSNP_VCF").".tbi")
+    {
+        warn "ERROR: Could not read required DBSNP_VCF.tbi: ".getConf("DBSNP_VCF").".tbi\n";
+        $failReqFile = "1";
+    }
+
+    if(! -r getConf("HM3_VCF"))
+    {
+        warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+        $failReqFile = "1";
+    }
+    if(! -r getConf("HM3_VCF").".tbi")
+    {
+        warn "ERROR: Could not read required HM3_VCF.tbi: ".getConf("HM3_VCF").".tbi\n";
+        $failReqFile = "1";
+    }
 }
 
-if(! -r getConf("OMNI_VCF") && (&getConf("RUN_SVM") eq "TRUE") )
+if(&getConf("RUN_SVM") eq "TRUE")
 {
-    warn "ERROR: Could not read required OMNI_VCF: ".getConf("OMNI_VCF")."\n";
-    $failReqFile = "1";
+    # Convert OMNI to absolute path.
+    my $newpath = getAbsPath(getConf("OMNI_VCF"), "REF");
+    $hConf{"OMNI_VCF"} = $newpath;
+    if(! -r getConf("OMNI_VCF"))
+    {
+        warn "ERROR: Could not read required OMNI_VCF: ".getConf("OMNI_VCF")."\n";
+        $failReqFile = "1";
+    }
 }
 
 my @chrs = split(/\s+/,&getConf("CHRS"));
 if ( &getConf("RUN_FILTER") eq "TRUE" )
 {
+    # convert the INDEL_PREFIX to an absolute path.
+    my $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
+    $hConf{"INDEL_PREFIX"} = $newpath;
     # check for the INDEL files for each chromosome
     foreach my $chr (@chrs)
     {
@@ -360,7 +392,7 @@ if($failReqFile eq "1")
 #############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
 ############################################################################
-my $bamIndex = &getConf("BAM_INDEX");
+my $bamIndex = getAbsPath(getConf("BAM_INDEX"));
 my $pedIndex = &getConf("PED_INDEX");
 my %hSM2bams = ();  # hash mapping sample IDs to bams
 my %hSM2pops = ();  # hash mapping sample IDs to bams
@@ -420,6 +452,8 @@ close IN;
 $numSamples = @allSMs;
 
 if ( $pedIndex ne "" ) {
+    # Convert to absolute path.
+    $pedIndex = getAbsPath($pedIndex);
     open(IN,$pedIndex) || die "Cannot open $pedIndex file\n";
     while(<IN>) {
 	next if ( /^#/ );
