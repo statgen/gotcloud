@@ -49,6 +49,11 @@ my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
 
+my $baseprefix = '';
+my $bamprefix = '';
+my $refprefix = '';
+#my $vcfdir = '';
+
 my $batchtype = '';
 my $batchopts = '';
 my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
@@ -67,6 +72,10 @@ my $optResult = GetOptions("help",\$help,
 			   "region=s",\$callregion,
                            "batchtype|batch_type=s",\$batchtype,
                            "batchopts|batch_opts=s",\$batchopts,
+                           "baseprefix|base_prefix=s",\$baseprefix,
+                           "bamprefix|bam_prefix=s",\$bamprefix,
+                           "refprefix|ref_prefix=s",\$refprefix,
+#                           "vcfdir|vcf_dir=s",\$vcfdir,
 			   "localdefaults=s",\$localdefaults,
                            "verbose", \$verbose
     );
@@ -92,6 +101,11 @@ if($testdir ne "") {
         die "Unable to clear the test output directory '$testoutdir'\n";
     print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
     $testdir = $gotcloudRoot . '/test/umake';
+    # First check that the test directory exists.
+    if(! -r $testdir)
+    {
+        die "ERROR, $testdir does not exist, please download the test data to that directory\n";
+    }
     my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall " .
         "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
     system($cmd) &&
@@ -103,16 +117,34 @@ if($testdir ne "") {
     exit;
 }
 
-#-------------
-# Handle cluster setup.
-if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
-$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
+#--------------------------------------------------------------
+#   Convert command line options to conf settings
+#--------------------------------------------------------------
+if( defined $bamprefix && ($bamprefix ne "") )
+{
+    setConf("BAM_PREFIX", $bamprefix);
+}
 
+if( defined $refprefix && ($refprefix ne "") )
+{
+    setConf("REF_PREFIX", $refprefix);
+}
+
+if( defined $baseprefix && ($baseprefix ne "") )
+{
+    setConf("BASE_PREFIX", $baseprefix);
+}
+
+#--------------------------------------------------------------
+#   Load configuration settings
+#--------------------------------------------------------------
 &loadOverride($override);
 &loadConf($conf);
-if($localdefaults ne "") {
- &loadConf($localdefaults);
- }
+
+if($localdefaults ne "")
+{
+    &loadConf($localdefaults);
+}
 &loadConf($scriptPath."/gotcloudDefaults.conf");
 
 if ( $outprefix ne "" ) {
@@ -122,6 +154,8 @@ if ( $outdir ne "" ) {
     $hConf{"OUT_DIR"} = $outdir;
 }
 
+#-------------
+# Handle cluster setup.
 # Pull batch info from config if not on command line.
 if ( $batchopts eq "" ) {
   $batchopts = getConf("BATCH_OPTS");
@@ -134,6 +168,9 @@ if ($batchtype eq "")
   $batchtype = "local";
   $hConf{"BATCH_TYPE"} = "local";
 }
+
+if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
+$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
@@ -264,52 +301,68 @@ if($failReqFile eq "1")
     die "Exiting pipeline due to deprecated settings, please fix & rerun\n";
 }
 
-
-
+# convert the reference to absolute path.
+my $newpath = getAbsPath(getConf("REF"), "REF");
+$hConf{"REF"} = $newpath;
 # Verify the REF file is readable.
-if(! -r getConf("REF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                            (&getConf("RUN_FILTER") eq "TRUE") ||
-                            (&getConf("RUN_PILEUP") eq "TRUE") ) )
+if(! -r getConf("REF") )
 {
     warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
     $failReqFile = "1";
 }
-# Verify the DBSNP file is readable.
-if(! -r getConf("DBSNP_VCF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                                  (&getConf("RUN_FILTER") eq "TRUE") ) )
+
+# RUN_SVM & RUN_FILTER need dbsnp & HM3 files
+if( (&getConf("RUN_SVM") eq "TRUE") ||
+    (&getConf("RUN_FILTER") eq "TRUE") )
 {
-    warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
-    $failReqFile = "1";
-}
-if(! -r getConf("DBSNP_VCF").".tbi" && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                                         (&getConf("RUN_FILTER") eq "TRUE") ) )
-{
-    warn "ERROR: Could not read required DBSNP_VCF.tbi: ".getConf("DBSNP_VCF").".tbi\n";
-    $failReqFile = "1";
+    # convert dbsnp & HM3 to absolute paths
+    $newpath = getAbsPath(getConf("DBSNP_VCF"), "REF");
+    $hConf{"DBSNP_VCF"} = $newpath;
+    $newpath = getAbsPath(getConf("HM3_VCF"), "REF");
+    $hConf{"HM3_VCF"} = $newpath;
+
+    # Verify the DBSNP file is readable.
+    if(! -r getConf("DBSNP_VCF") )
+    {
+        warn "ERROR: Could not read required DBSNP_VCF: ".getConf("DBSNP_VCF")."\n";
+        $failReqFile = "1";
+    }
+    if(! -r getConf("DBSNP_VCF").".tbi")
+    {
+        warn "ERROR: Could not read required DBSNP_VCF.tbi: ".getConf("DBSNP_VCF").".tbi\n";
+        $failReqFile = "1";
+    }
+
+    if(! -r getConf("HM3_VCF"))
+    {
+        warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
+        $failReqFile = "1";
+    }
+    if(! -r getConf("HM3_VCF").".tbi")
+    {
+        warn "ERROR: Could not read required HM3_VCF.tbi: ".getConf("HM3_VCF").".tbi\n";
+        $failReqFile = "1";
+    }
 }
 
-if(! -r getConf("HM3_VCF") && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                               (&getConf("RUN_FILTER") eq "TRUE") ) )
+if(&getConf("RUN_SVM") eq "TRUE")
 {
-    warn "ERROR: Could not read required HM3_VCF: ".getConf("HM3_VCF")."\n";
-    $failReqFile = "1";
-}
-if(! -r getConf("HM3_VCF").".tbi" && ( (&getConf("RUN_SVM") eq "TRUE") ||
-                                       (&getConf("RUN_FILTER") eq "TRUE") ) )
-{
-    warn "ERROR: Could not read required HM3_VCF.tbi: ".getConf("HM3_VCF").".tbi\n";
-    $failReqFile = "1";
-}
-
-if(! -r getConf("OMNI_VCF") && (&getConf("RUN_SVM") eq "TRUE") )
-{
-    warn "ERROR: Could not read required OMNI_VCF: ".getConf("OMNI_VCF")."\n";
-    $failReqFile = "1";
+    # Convert OMNI to absolute path.
+    $newpath = getAbsPath(getConf("OMNI_VCF"), "REF");
+    $hConf{"OMNI_VCF"} = $newpath;
+    if(! -r getConf("OMNI_VCF"))
+    {
+        warn "ERROR: Could not read required OMNI_VCF: ".getConf("OMNI_VCF")."\n";
+        $failReqFile = "1";
+    }
 }
 
 my @chrs = split(/\s+/,&getConf("CHRS"));
 if ( &getConf("RUN_FILTER") eq "TRUE" )
 {
+    # convert the INDEL_PREFIX to an absolute path.
+    $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
+    $hConf{"INDEL_PREFIX"} = $newpath;
     # check for the INDEL files for each chromosome
     foreach my $chr (@chrs)
     {
@@ -331,7 +384,7 @@ if($failReqFile eq "1")
 #############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
 ############################################################################
-my $bamIndex = &getConf("BAM_INDEX");
+my $bamIndex = getAbsPath(getConf("BAM_INDEX"));
 my $pedIndex = &getConf("PED_INDEX");
 my %hSM2bams = ();  # hash mapping sample IDs to bams
 my %hSM2pops = ();  # hash mapping sample IDs to bams
@@ -369,9 +422,8 @@ while(<IN>) {
             # Check if there is just a relative path to the bams.
             if ( !( $bam =~ /^\// ) )
             {
-              # It is relative, so make it absolute.
-              my $bamPath = dirname(abs_path($bamIndex));
-              $bam = abs_path($bamPath .'/'. $bam);
+                # It is relative, so make it absolute.
+                $bam = getAbsPath($bam, "BAM");
             }
         }
 	push(@allbamSMs,$smID);
@@ -386,11 +438,14 @@ while(<IN>) {
     push(@allSMs,$smID);
     push(@allbams,@bams);
 }
+
 close IN;
 
 $numSamples = @allSMs;
 
 if ( $pedIndex ne "" ) {
+    # Convert to absolute path.
+    $pedIndex = getAbsPath($pedIndex);
     open(IN,$pedIndex) || die "Cannot open $pedIndex file\n";
     while(<IN>) {
 	next if ( /^#/ );
@@ -488,6 +543,14 @@ if($sleepMultiplier eq "")
   $sleepMultiplier = 0;
 }
 
+my @wgsFilterDepSites;
+my $wgsFilterDepVcfs= "";
+
+# Use a filter prefix for hard filtering if running SVM
+my $filterPrefix = "";
+if ( &getConf("RUN_SVM") eq "TRUE") {
+    $filterPrefix = "hard";
+}
 
 #############################################################################
 ## STEP 6 : PARSE TARGET INFORMATION
@@ -639,12 +702,6 @@ foreach my $chr (@chrs) {
     print MAK " glf$chr" if ( &getConf("RUN_PILEUP") eq "TRUE" );
     print MAK " bai" if ( &getConf("RUN_INDEX") eq "TRUE" );
     print MAK "\n\n";
-
-    # Use a filter prefix for hard filtering if running SVM
-    my $filterPrefix = "";
-    if ( &getConf("RUN_SVM") eq "TRUE") {
-      $filterPrefix = "hard";
-    }
 
     #############################################################################
     ## STEP 10-9 : RUN MaCH GENOTYPE REFINEMENT
@@ -839,7 +896,7 @@ foreach my $chr (@chrs) {
 	    print MAK "$splitDir/chr$chr/subset.OK: filt$chr\n";
 	}
 	elsif ( $expandFlag == 2 ) {
-	    print MAK "$splitDir/chr$chr/subset.OK: svm$chr\n";
+	    print MAK "$splitDir/chr$chr/subset.OK: $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK\n";
 	}
 	else {
 	    print MAK "$splitDir/chr$chr/subset.OK:\n";
@@ -941,26 +998,29 @@ foreach my $chr (@chrs) {
 
 	    print MAK "svm$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
 
-	    if ( $expandFlag == 1 ) {
-			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: filt$chr\n";
-	    }
-	    else {
-			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: \n";
-	    }
+            my $cmd = "";
 
-		my $cmd = "";
-		if (&getConf("USE_SVMMODEL") eq "TRUE")
-		{
-			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --model ".&getConf("SVMMODEL")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-			print MAK "$cmd";
-		}
-		else
-		{
-			$cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $svcf --out $mvcfPrefix.filtered.sites.vcf --pos ".&getConf("POS_SAMPLE")." --neg ".&getConf("NEG_SAMPLE")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-			print MAK "$cmd";
-		}
+            if ( &getConf("WGS_SVM") eq "TRUE")
+            {
+			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $remotePrefix$vcfDir/filtered.vcf.gz.OK\n";
+                        push(@wgsFilterDepSites, "$mvcfPrefix.${filterPrefix}filtered.sites.vcf");
+                        $wgsFilterDepVcfs .= " $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK";
+            }
+	    else
+            {
+                if ( $expandFlag == 1 ) {
+                    print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n";
+                }
+                else
+                {
+                    print MAK "$mvcfPrefix.filtered.vcf.gz.OK: \n";
+                }
+
+                runSVM($svcf, "$mvcfPrefix.filtered.sites.vcf");
+            }
+
+            # The following is always done per chr
+
 	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
             writeLocalCmd($cmd);
 	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
@@ -1009,7 +1069,7 @@ foreach my $chr (@chrs) {
 
 	    print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
 	    if ( $expandFlag == 1 ) {
-		print MAK " vcf$chr\n\n";
+		print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
 	    }
 	    else {
 		print MAK "\n\n";
@@ -1103,7 +1163,7 @@ foreach my $chr (@chrs) {
 	    }
 	    print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
 	    if ( $expandFlag == 1 ) {
-		print MAK " vcf$chr\n\n";
+		print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
 	    }
 	    else {
 		print MAK "\n\n";
@@ -1395,6 +1455,36 @@ foreach my $chr (@chrs) {
 }
 
 #############################################################################
+## Check for WGS_SVM and handle that
+############################################################################
+if ( &getConf("WGS_SVM") eq "TRUE")
+{
+    if( (scalar @wgsFilterDepSites) > 0 )
+    {
+        print MAK "$remotePrefix$vcfDir/filtered.vcf.gz.OK:$wgsFilterDepVcfs\n";
+
+        my $mergedSites = "$remotePrefix$vcfDir/${filterPrefix}filtered.sites.vcf";
+        my $outMergedVcf = "$remotePrefix$vcfDir/filtered.sites.vcf";
+
+        # Add the vcf header.
+        print MAK "\tcat $wgsFilterDepSites[0] | head -100 | grep ^# > $mergedSites\n";
+        # Merge the per chr files.
+        foreach my $chrFile (@wgsFilterDepSites)
+        {
+            # Cat all the chr files together
+            print MAK "\tcat $chrFile  | grep -v ^# >> $mergedSites\n";
+        }
+        
+        # Run SVM on the merged file.
+        runSVM($mergedSites, $outMergedVcf);
+        
+        # split svm file by chromosome.
+        print MAK "\t".&getConf("VCF_SPLIT_CHROM")." --in $outMergedVcf --out $remotePrefix$vcfDir/chrCHR/chrCHR.filtered.sites.vcf --chrKey CHR\n";
+    }
+}
+
+
+#############################################################################
 ## STEP 10-1 : INDEX BAMS IF NECESSARY
 #############################################################################
 if ( &getConf("RUN_INDEX") eq "TRUE" ) {
@@ -1604,6 +1694,29 @@ sub getFilterArgs
 
 
 #--------------------------------------------------------------
+#   runSVM()
+#
+#   Run SVM on the specified file.
+#--------------------------------------------------------------
+sub runSVM
+{
+    my ($inVcf, $outVcf) = @_;
+    my $cmd = "";
+    if (&getConf("USE_SVMMODEL") eq "TRUE")
+    {
+        $cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --model ".&getConf("SVMMODEL")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
+    }
+    else
+    {
+        $cmd = "\t".&getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --pos ".&getConf("POS_SAMPLE")." --neg ".&getConf("NEG_SAMPLE")." --svmlearn ".&getConf("SVMLEARN")." --svmclassify ".&getConf("SVMCLASSIFY")." --bin ".&getConf("INVNORM")." --threshold ".&getConf("SVM_CUTOFF")." --bfile ".&getConf("OMNI_VCF")." --bfile ".&getConf("HM3_VCF")." --checkNA \n";
+    }
+
+    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+    print MAK "$cmd";
+}
+
+
+#--------------------------------------------------------------
 #   setConf(key, value, force)
 #
 #   Sets a value in a global hash (%hConf) to save the value
@@ -1748,6 +1861,68 @@ sub getConf {
         $val =~ s/\$\($subkey\)/$subval/;
     }
     return $val;
+}
+
+#--------------------------------------------------------------
+#   value = getAbsPath(file, type)
+#
+#   Get the absolute path for the specified file.
+#   Heirachy for determining absolute path from a relative path:
+#      1) Based on Type:
+#          a) BAM: BAM_PREFIX
+#      2) Based on BASE_PREFIX (if <TYPE>_PREFIX is not set)
+#      3) Relative to the current working directory,
+#--------------------------------------------------------------
+sub getAbsPath {
+    my ($file, $type) = @_;
+
+    # Check if the path is already absolute
+    if ( ($file =~ /^\//) )
+    {
+        return($file);
+    }
+
+    # Relative path.
+    my $newPath = "";
+    my $absPath = "";
+    # Check if type was set.
+    if( defined($type) && ($type ne "") )
+    {
+        # Check if a directory was defined for this type.
+        my $val1 = &getConf($type."_PREFIX");
+        if( defined($val1) && ($val1 ne "") )
+        {
+            $newPath = "$val1/$file";
+        }
+    }
+
+    if($newPath eq "")
+    {
+        # Type specific directory is not set,
+        # so check if BASE_PREFIX is set.
+        my $val = getConf("BASE_PREFIX");
+        if( defined($val) && ($val ne "") )
+        {
+            $newPath = "$val/$file";
+        }
+    }
+
+    if($newPath eq "")
+    {
+        $newPath = $file;
+    }
+
+    # Convert to absolute path
+    my $fullPath = abs_path($newPath);
+    if( !defined($fullPath) || ($fullPath eq '') )
+    {
+        if( ($newPath =~ /^\//) )
+        {
+            die("ERROR: Could not find $newPath\n");
+        }
+        die("ERROR: Could not find $newPath in ".getcwd()."\n");
+    }
+    return($fullPath);
 }
 
 #--------------------------------------------------------------
