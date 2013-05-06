@@ -11,6 +11,11 @@ ifndef PFX
 PFX=usr/local/gotcloud
 endif
 
+#   Hack to skip Debian commands
+ifndef DEB
+DEB=yes
+endif
+
 PKG=${PACKAGE}_${PACKVER}
 INSTALLDIR=${PFX}
 #PREPOSTLIST=debian/postinst debian/postrm debian/preinst debian/prerm
@@ -18,7 +23,11 @@ PREPOSTLIST=debian/postinst debian/postrm
 DIRLIST=test
 
 binary-indep:
+	echo "Nothing to do for binary-indep"
+
 binary-arch:	
+	echo "Nothing to do for binary-indep"
+
 build:
 	echo "Generate package: cd ${PACKAGE}; dpkg-buildpackage -b -us -uc -rfakeroot"
 
@@ -39,8 +48,7 @@ binary:
 	cp debian/copyright debian/tmp/usr/share/doc/${PKG}
 	mkdir -p debian/tmp/${INSTALLDIR}
 	cp -rp ${DIRLIST} debian/tmp/${INSTALLDIR}
-	dpkg-gencontrol -isp
-	chown -R root.root debian/tmp
+	(test ${DEB} = yes && dpkg-gencontrol -isp) || true
+	(test ${DEB} = yes && chown -R root.root debian/tmp) || true
 	chmod -R o-s,go=u,go-ws debian/tmp
-	dpkg --build debian/tmp .
-	@rm -rf debian/tmp
+	(test ${DEB} = yes && dpkg --build debian/tmp .) || true
