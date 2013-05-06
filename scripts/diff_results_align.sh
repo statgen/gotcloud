@@ -114,7 +114,7 @@ diff -r $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -I '^.*/fastq/Sample_[1-2]/File[1-2]_R[1-2].bam.done: .*/fastq/Sample_[1-2]/File[1-2]_R1.sai.done.*/fastq/Sample_[1-2]/File[1-2]_R2.sai.done$' \
     -I '^.*/fastq/Sample_[1-2]/File[1-2]_R[1-2].sai.done:$' \
     -I '^.*/fastq/Sample_[1-2]/File[1-2]_R1.bam.done: .*/fastq/Sample_[1-2]/File[1-2]_R1.bam.done$' \
-    -I '.* mergeBam --out $(basename $@) $(subst .*,--in .*,$(basename $^))$' \
+    -I '.* mergeBam --out $(basename $@) $(subst .*,--in .*,$(basename $^))' \
     -I '^.*/Sample[1-2].merged.bam.done: .*/fastq/Sample_[1-2]/File1_R1.bam.done .*/fastq/Sample_[1-2]/File2_R1.bam.done $' \
     -I '@echo ".* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err"$' \
     -I '@.* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err || (echo "`grep -i -e abort -e error -e failed $(basename $@).err`" >&2; echo "\\nFailed Deduping step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).err $(OUT_DIR)/failLogs/$(notdir $(basename $@).err); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).err) for more details" >&2; exit 1;)$' \

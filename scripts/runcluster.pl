@@ -77,7 +77,9 @@ else {
 
 #   Check the path to the cwd will be visible in the batch environment
 if ($opts{engine} eq 'mosix' || $opts{engine} eq 'mosbatch') {
-    if (FixCWD()) { warn "Current working directory set to '" . getcwd() . "'\n"; }
+    if (FixCWD()) {
+        #warn "Current working directory set to '" . getcwd() . "'\n";
+    }
 }
 if ($opts{verbose}) { $Multi::VERBOSE = 1; $Multi::VERBOSE = 1; }   # Twice avoids warning
 exit Multi::RunCluster($engine, $opts{opts}, \@c, $opts{concurrent});

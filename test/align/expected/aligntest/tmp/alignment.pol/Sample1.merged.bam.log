@@ -1,6 +1,0 @@
-Input list file : Sample_1/File1_R1.bam, Sample_1/File1_R1.bam
-Output BAM file : alignment.pol/Sample1.merged.bam
-Output log file : alignment.pol/Sample1.merged.bam.log
-Verbose mode    : Off
-Total of 2 BAM files are being merged
-Finished writing 10000 records into the output BAM file

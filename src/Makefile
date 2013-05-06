@@ -1,7 +1,7 @@
 include Makefiles/Makefile.include
 
 STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID invNorm qplot
-EXES = samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1
+EXES = samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)
 #SUBDIRS=glfMerge glfMultiples libStatGen vcfPileup samtools-hybrid infoCollector vcfCooker
@@ -75,6 +75,13 @@ libsvm-3.1:
 	cd bin/; ln -fs ../$@/svm-predict .; cd ..
 	cd bin/; ln -fs ../$@/svm-train .; cd ..
 
+mosaik:
+	$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@/src $(MAKECMDGOALS)
+	mkdir --p bin/
+	cd bin/; ln -fs ../$@/bin/MosaikAligner .; cd ..
+	cd bin/; ln -fs ../$@/bin/MosaikBuild .; cd ..
+	cd bin/; ln -fs ../$@/bin/MosaikJump .; cd ..
+	cd bin/; ln -fs ../$@/bin/MosaikText .; cd ..
 
 $(LIBS): 
 	@$(MAKE) OPTFLAG="$(OPTFLAG)" -C $@ $(MAKECMDGOALS)

@@ -7,7 +7,7 @@
 #   Use this to generate makefiles for a single session whatever it is.
 #
 #   You can run this program using the test data by the following:
-#       rm -rf ~/outdataS
+#       rm -rf ~/outdata
 #       d=/gotcloud/test/align
 #       /gotcloud/bin/align.pl -conf $d/test.conf \
 #          -index $d/indexFile.txt -ref $d/../chr20Ref/ \
@@ -155,9 +155,6 @@ if ((! $opts{conf}) || (! -r $opts{conf})) {
     die "Conf file '$opts{conf}' does not exist or was not specified\n";
 }
 $opts{conf} = abs_path($opts{conf});
-if (! $opts{out_dir}) {
-    die "Output directory (-out_dir dir) was not specified\n";
-}
 
 #--------------------------------------------------------------
 #   Set configuration variables from comand line options
@@ -208,11 +205,10 @@ if($opts{keeplog})
 loadConf($opts{conf});
 
 $ref_dir = getConf('REF_DIR');
-if (! $ref_dir) {
-    die "Directory to reference files (-ref_dir dir) was not specified\n";
+if ($ref_dir) {
+    $ref_dir = abs_path($ref_dir);
+    setConf('REF_DIR', $ref_dir);
 }
-$ref_dir = abs_path($ref_dir);
-setConf('REF_DIR', $ref_dir);
 
 my $index_file = getConf('INDEX_FILE');
 if (! $index_file) {
@@ -221,8 +217,12 @@ if (! $index_file) {
 $index_file = getAbsPath($index_file);    # If path not provided, use cwd
 setConf('INDEX_FILE', $index_file);
 
-$out_dir = abs_path($out_dir);
-setConf('OUT_DIR', $out_dir);
+$out_dir = getConf("OUT_DIR");
+if($out_dir ne '')
+{
+  $out_dir = abs_path(getConf("OUT_DIR"));
+  setConf('OUT_DIR', $out_dir);
+}
 
 #   Last step, load default config values. These are almost never
 #   seen or set by the user, buf if they were set, these defaults
@@ -232,6 +232,11 @@ loadConf($opts{pipelinedefaults});
 #--------------------------------------------------------------
 #   Check required settings
 #--------------------------------------------------------------
+if (getConf("OUT_DIR") eq '')
+{
+    die "Output directory (-out_dir dir) was not specified\n";
+}
+
 my $missingReqFile = "0";
 # Check to see if the old REF is set instead of the new one.
 if( getConf("FA_REF") )
@@ -283,16 +288,52 @@ if(($hConf{RUN_QPLOT} eq "1") && ! -r getConf("REF").".GCcontent")
 }
 
 # Check for the required sub REF files.
-# TODO - in the future when BWA is optional, only check if doing BWA.
-my @bwaExtensions = qw(amb ann bwt fai pac rbwt rpac rsa sa);
-for my $extension (@bwaExtensions)
+if(getConf("MAP_TYPE") eq "BWA")
 {
-    if(! -r getConf("REF").".$extension")
+    foreach my $extension (qw(amb ann bwt fai pac rbwt rpac rsa sa))
     {
-        warn "ERROR: Could not read required file derived from REF: ".getConf("REF").".$extension\n";
-        warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_BWA_Reference_Files for information about building this file\n";
-        $missingReqFile = "1";
+        if(! -r getConf("REF").".$extension")
+        {
+            warn "ERROR: Could not read required file derived from REF: ".getConf("REF").".$extension\n";
+            warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_BWA_Reference_Files for information about building this file\n";
+            $missingReqFile = "1";
+        }
     }
+}
+elsif(getConf("MAP_TYPE") eq "MOSAIK")
+{
+    my $prefix = getConf("REF");
+    $prefix =~ s/\.[^.]*$//;
+    print "\n$prefix\n";
+    for my $extension (qw(.dat _15_keys.jmp _15_meta.jmp _15_positions.jmp))
+    {
+        if(! -r "$prefix$extension")
+        {
+            warn "ERROR: Could not read required file derived from REF: $prefix$extension\n";
+            warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_Mosaik_Reference_Files for information about building this file\n";
+            $missingReqFile = "1";
+        }
+    }
+
+    # Check for ANN files
+    if(! -r getConf("SE_ANN"))
+    {
+        warn "ERROR: Could not read required SE_ANN: ".getConf("SE_ANN")."\n";
+            warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_Mosaik_Reference_Files for information about building this file\n";
+            $missingReqFile = "1";
+    }
+    if(! -r getConf("PE_ANN"))
+    {
+        warn "ERROR: Could not read required PE_ANN: ".getConf("PE_ANN")."\n";
+            warn "See http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files#Generating_Mosaik_Reference_Files for information about building this file\n";
+            $missingReqFile = "1";
+    }
+}
+else
+{
+    warn "ERROR: Unknown MAP_TYPE, only BWA or MOSAIK is accepted.\n";
+    $missingReqFile = "1";
+    die "Exiting alignment pipeline due to unknown required setting\n";
 }
 
 if($missingReqFile eq "1")
@@ -573,18 +614,34 @@ foreach my $tmpmerge (keys %mergeToFq1)
 
     # if RGID is specified, add the rg line.
     $rgCommand = '';
-    if ($rgid ne ".") {
-      $rgCommand = "-r \"\@RG\tID:$rgid";
-      # only add the rg fields if they are specified.
-      if ($sample ne ".")   { $rgCommand .= "\tSM:$sample"; }
-      if ($library ne ".")  { $rgCommand .= "\tLB:$library"; }
-      if ($center ne '.')   { $rgCommand .= "\tCN:$center"; }
-      if ($platform ne '.') { $rgCommand .= "\tPL:$platform"; }
-      $rgCommand .= '"';
-    }
 
+    # Perform Mapping.
     # Operate on the fastq pair (or single end if single-ended)
-    pair_cmds();
+    if(getConf("MAP_TYPE") eq "BWA")
+    {
+        if ($rgid ne ".") {
+            $rgCommand = "-r \"\@RG\tID:$rgid";
+            # only add the rg fields if they are specified.
+            if ($sample ne ".")   { $rgCommand .= "\tSM:$sample"; }
+            if ($library ne ".")  { $rgCommand .= "\tLB:$library"; }
+            if ($center ne '.')   { $rgCommand .= "\tCN:$center"; }
+            if ($platform ne '.') { $rgCommand .= "\tPL:$platform"; }
+            $rgCommand .= '"';
+        }
+        mapBwa();
+    }
+    elsif(getConf("MAP_TYPE") eq "MOSAIK")
+    {
+        if ($rgid ne ".") {
+            $rgCommand = "-id $rgid";
+            # only add the rg fields if they are specified.
+            if ($sample ne ".")   { $rgCommand .= " -sam $sample"; }
+            if ($library ne ".")  { $rgCommand .= " -ln $library"; }
+            if ($center ne '.')   { $rgCommand .= " -cn $center"; }
+            if ($platform ne '.') { $rgCommand .= " -st $platform"; }
+        }
+        mapMosaik();
+    }
   }
 
   # Maybe rather than using full fastq path in subdirectories, use the merge name?
@@ -594,7 +651,9 @@ foreach my $tmpmerge (keys %mergeToFq1)
   # Merge the Polished BAMs
   print MAK &getConf("MERGE_TMP")."/$mergeName.merged.bam.done: $allPolish\n";
   print MAK "\tmkdir -p \$(\@D)\n";
-  print MAK "\t".&getConf("BAM_EXE")." mergeBam --out \$(basename \$\@) \$(subst ".&getConf("POL_TMP").",--in ".&getConf("POL_TMP").",\$(basename \$^))\n";
+
+  my $mergeBams = &getConf("BAM_EXE")." mergeBam --out \$(basename \$\@) \$(subst ".&getConf("POL_TMP").",--in ".&getConf("POL_TMP").",\$(basename \$^))";
+  print MAK logCatchFailure("MergingBams", $mergeBams, "\$(basename \$\@).log");
   print MAK "\ttouch \$\@\n\n";
 
   print MAK $allSteps;
@@ -753,12 +812,24 @@ sub getConf {
 #   Generate a line for a Makefile to generate an error message
 #--------------------------------------------------------------
 sub logCatchFailure {
-    my ($commandName, $command, $log) = @_;
+    my ($commandName, $command, $log, $failVal) = @_;
 
-    my $makeCmd = "\t\@echo \"$command\"\n" .
-        "\t\@$command || ";
+    if(!defined $failVal)
+    {
+        $failVal = 1;
+    }
+
+    my $makeCmd = "\t\@echo \"$command\"\n\t\@$command ";
+    if($failVal == 1)
+    {
+        $makeCmd .= "||";
+    }
+    else
+    {
+        $makeCmd .= "&&";
+    }
     #   What caused the failure.
-    $makeCmd .= "(echo \"`grep -i -e abort -e error -e failed $log`\" >&2; ";
+    $makeCmd .= " (echo \"`grep -i -e abort -e error -e failed $log`\" >&2; ";
     #   Show failed step.
     $makeCmd .= "echo \"\\nFailed $commandName step\" >&2; ";
     #   Copy the log to the failed logs directory.
@@ -784,6 +855,8 @@ sub align {
 
     my $alnCmd = &getConf("BWA_EXE")." aln ".&getConf("BWA_QUAL")." ".&getConf("BWA_THREADS")." ".&getConf("REF")." $fastq -f \$(basename \$\@) 2> " .
         "\$(basename \$\@).log";
+
+
     my $cmd = &getConf("SAI_TMP")."/".$sai.".done:\n" .
         "\tmkdir -p \$(\@D)\n" .
         logCatchFailure("aln", $alnCmd, "\$(basename \$\@).log") .
@@ -792,13 +865,13 @@ sub align {
 }
 
 #--------------------------------------------------------------
-#   cmd = pair_cmds()
+#   cmd = mapBwa()
 #
 #   Generate Makefile line for a read pair (alignment and polish)
 #   Does not seem to return anything, so it must be setting
 #   global variables. If so, what? Not obvious what are the ins and outs
 #--------------------------------------------------------------
-sub pair_cmds {
+sub mapBwa {
     my $sai1 = $fastq1;
     $sai1 =~ s/fastq.gz$/sai/;
     $sai1 =~ s/fastq$/sai/;
@@ -857,6 +930,87 @@ sub pair_cmds {
 }
 
 #--------------------------------------------------------------
+#   cmd = mapMosaik()
+#
+#   Generate Makefile line for a read pair (alignment and polish)
+#   Does not seem to return anything, so it must be setting
+#   global variables. If so, what? Not obvious what are the ins and outs
+#--------------------------------------------------------------
+sub mapMosaik {
+
+  my $absFastq1 = getAbsPath($fastq1, "FASTQ");
+  my $absFastq2 = '';
+  if($fastq2 ne ".")
+  {
+    $absFastq2 = getAbsPath($fastq2, "FASTQ");
+  }
+
+  my $mkb = $fastq1;
+  $mkb =~ s/fastq.gz$/mkb/;
+  $mkb =~ s/fastq$/mkb/;
+  my $mkbFiles .= &getConf("MKB_TMP")."/$mkb ";
+  my $mosaikBuildDone = &getConf("MKB_TMP")."/$mkb.done";
+
+  my $bam = $mkb;
+  $bam =~ s/mkb/bam/;
+  $alnFiles .= &getConf("ALN_TMP")."/$bam ";
+  $polFiles .= &getConf("POL_TMP")."/$bam ";
+  $allPolish .= &getConf("POL_TMP")."/$bam.done ";
+  my $alignDone = &getConf("ALN_TMP")."/$bam.done";
+  my $sortDone = $alignDone;
+  $sortDone =~ s/.bam.done/.sort.bam.done/;
+
+  #############
+  # Polish the bam.  Depends on the sorted bam.
+  $allSteps .= &getConf("POL_TMP")."/$bam.done: $sortDone\n";
+  $allSteps .= "\tmkdir -p \$(\@D)\n";
+
+  my $polishCmd = &getConf("BAM_EXE")." polishBam -f ".&getConf("REF")." --AS ".&getConf("AS")." --UR file:".&getConf("REF")." ";
+  $polishCmd .= "--checkSQ -i \$(basename \$^) -o \$(basename \$\@) -l \$(basename \$\@).log";
+  $allSteps .= logCatchFailure("polishBam", $polishCmd, "\$(basename \$\@).log");
+  $allSteps .= "\ttouch \$\@\n\n";
+
+  #############
+  # Sort the bam.  Depends on the aligned bam.
+  $allSteps .= "$sortDone: $alignDone\n";
+  $allSteps .= "\tmkdir -p \$(\@D)\n";
+
+  my $sortPrefix = "\$(basename \$(basename \$\@))";
+  my $sortcmd = &getConf("SAMTOOLS_EXE")." sort -m ".&getConf("BWA_MAX_MEM")." \$(basename \$^) $sortPrefix 2> $sortPrefix.log";
+  $allSteps .= "\t$sortcmd\n";
+  $allSteps .= logCatchFailure("sort", "(grep -q -i -e abort -e error -e failed $sortPrefix.log; [ \$\$? -eq 1 ])", "$sortPrefix.log");
+  $allSteps .= "\ttouch \$\@\n\n";
+
+
+  #############
+  # Run MosaikAlign to create the bam.  Depends on the Mosaik Build step.
+  $allSteps .= "$alignDone: $mosaikBuildDone\n";
+  $allSteps .= "\tmkdir -p \$(\@D)\n";
+
+  my $mosaikRef = getConf("REF");
+  $mosaikRef =~ s/\.[^.]+$/.dat/g;                     # Escape single quotes
+  my $mosaikJmp = $mosaikRef;
+  $mosaikJmp =~ s/\.dat$/_15/;
+
+  my $mosaikAlign = &getConf("MOSAIK_ALIGN_EXE")." ".getConf("MOSAIK_THREADS")." -in \$(basename \$\^) -ia $mosaikRef -j $mosaikJmp -annse ".getConf("SE_ANN")." -annpe ".getConf("PE_ANN")." -out \$(basename \$(basename \$\@)) -hs 15 > \$(basename \$\@).log";
+  $allSteps .= logCatchFailure("mosaikAlign", $mosaikAlign, "\$(basename \$\@).log");
+  $allSteps .= "\ttouch \$\@\n\n";
+
+  #############
+  # Run MosaikBuild to create the intermediate file (no dependencies).
+  $allSteps .= "$mosaikBuildDone:\n";
+  $allSteps .= "\tmkdir -p \$(\@D)\n";
+  my $mosaikBuild = &getConf("MOSAIK_BUILD_EXE")." -q $absFastq1 ";
+  if($fastq2 ne ".")
+  {
+    $mosaikBuild .= "-q2 $absFastq2 ";
+  }
+  $mosaikBuild .= "-st illumina -out \$(basename \$\@) $rgCommand > \$(basename \$\@).log";
+  $allSteps .= logCatchFailure("mosaikBuild", $mosaikBuild, "\$(basename \$\@).log");
+  $allSteps .= "\ttouch \$\@\n\n";
+}
+   
+#--------------------------------------------------------------
 #   value = getAbsPath(file, type)
 #
 #   Get the absolute path for the specified file.
@@ -877,7 +1031,7 @@ sub getAbsPath {
 
     # Relative path.
     my $newPath = "";
-    my $absPath = "";
+
     # Check if type was set.
     if( defined($type) && ($type ne "") )
     {
@@ -899,7 +1053,6 @@ sub getAbsPath {
             $newPath = "$val/$file";
         }
     }
-
     if($newPath eq "")
     {
         $newPath = $file;
