@@ -129,7 +129,6 @@ if ($opts {test}) {
     print "Successfully ran the test case, congratulations!\n";
     exit;
 }
-if ($opts{batchtype} eq 'flux') { $opts{batchtype} = 'pbs'; }
 $opts{runcluster} = abs_path($opts{runcluster});    # Make sure this is fully qualified
 
 if ((! $opts{conf}) || (! -r $opts{conf})) {
@@ -468,7 +467,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     print MAK "DEDUP_FILES = " . getConf('DEDUP_TMP') . "/$mergeName.dedup.bam\n\n";
     print MAK "RECAL_FILES = " . getConf('RECAL_TMP') . "/$mergeName.recal.bam\n\n";
     close MAK;
-    print STDERR "Created $makef\n";
+    warn "Created $makef\n";
 
     my $s = "make -f $makef";
     if ($opts{numjobspersample}) {
@@ -482,35 +481,37 @@ foreach my $tmpmerge (keys %mergeToFq1) {
 #   Makefile created, commands built in @mkcmds
 #   Normal case is to run these, either locally or in batch mode
 #--------------------------------------------------------------
-print STDERR '-' x 69 . "\n";
-my @runcmds = ();                   # Build complete commands in here
-foreach my $c (@mkcmds) {
-    if (! $opts{batchtype} ) { push @runcmds,$c; next; }
-    #   Batch command, figure out the complete command
-    $c =~ s/\'/\\'/g;                     # Escape single quotes
-    my $cmd = $opts{runcluster};
-    if ($opts{batchopts}) { $cmd .= " -opts '" . $opts{batchopts} . "'"; }
-    $cmd .= ' ' . $opts{batchtype} . " '" . $c . "'";
-    push @runcmds,$cmd;
-}
+warn '-' x 69 . "\n";
 
 if ($opts{'dry-run'}) {
     die "#  These commands would have been run:\n" .
-        '  ' . join("\n  ",@runcmds) . "\n";
+        '  ' . join("\n  ",@mkcmds) . "\n";
 }
 
 #   We now have an array of commands to run launch and wait for them
-print STDERR "Waiting while samples are processed...\n";
+warn "Waiting while samples are processed...\n";
 my $t = time();
 $_ = $Multi::VERBOSE;               # Avoid Perl warning
 if ($opts{verbose}) { $Multi::VERBOSE = 1; }
-Multi::QueueCommands(\@runcmds, $opts{numconcurrentsamples});
-my $errs = Multi::WaitForCommandsToComplete(\&Multi::RunNext);
-if ($errs || $opts{verbose}) { print STDERR "###### $errs processes failed ######\n" }
+
+my $errs = Multi::RunCluster($opts{batchtype}, $opts{batchopts}, \@mkcmds, $opts{numconcurrentsamples});
+if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
 $t = time() - $t;
 print STDERR "Processing finished in $t secs";
-if ($errs) { print STDERR " WITH ERRORS.  Check the logs\n"; }
-else { print STDERR " with no errors reported\n"; }
+if ($errs) {
+        print STDERR " WITH ERRORS.  Check the logs\n" .
+        "  TYPE=$opts{batchtype}\n" .
+        "  OPTS=$opts{batchopts}\n" .
+        "  CMDS=" . join("\n    ", @mkcmds) . "\n";
+}
+else {
+    print STDERR " with no errors reported\n";
+    my $href = Multi::EngineDetails($opts{batchtype});
+    if ($href->{wait} eq 'n') {
+        warn "\nReal tasks were submitted to '$opts{batchtype}' and probably is not finished\n" .
+            "Use '$href->{status}' to determine when commands completes\n";
+    }
+}
 exit($errs);
 
 
