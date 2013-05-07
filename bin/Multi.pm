@@ -41,26 +41,77 @@ our %PIDS;                              # Keep track of what is running
 our @COMMANDS;                          # Save array of commands to run here
 our $NEXTCMD;                           # Index into @COMMANDS
 our $PIDCMD = 0;                        # Index in %PIDS{key} array
+our $WAITORNOT = '';                    # Wait for cmds or not ($ClusterTypes{engine}[0])
 
 #   Define known types of clusters.  Array is command to queue with and extra options to use
 #   First field indicates if the command will run to completion (wait)
 #   or not (n)
 #   Second field is the command to use to run the command
 #   Third  field are options for the second field
+#   Fourth field is cmd user uses to see if cmds have completed
 our %ClusterTypes = (
-    # name     wait?  scommand  opts for command
-    sgei     => ['w', 'qrsh',    ' -now n'],
-    sge      => ['w', 'qsub',    ''],
-    mosix    => ['w', 'mosbatch', '-E/tmp'],
-    mosbatch => ['w', 'mosbatch', '-E/tmp'],
-    slurm    => ['n', 'sbatch',  ''],
-    slurmi   => ['w', 'srun',    ''],
-    pbs      => ['n', 'qsub',    "pbsfile=$ENV{HOME}/.pbsfile"],
-    flux     => ['n', 'qsub',    "pbsfile=$ENV{HOME}/.pbsfile"],
-    local    => ['w', '',        ''],
+    # name     wait?  command     opts for command   status command
+    sgei     => ['w', 'qrsh',     '-now n',          ''],
+    sge      => ['n', 'qsub',     '',                "qstat -u $ENV{USER}"],
+    mosix    => ['w', 'mosbatch', '-E/tmp',          ''],
+    mosbatch => ['w', 'mosbatch', '-E/tmp',          ''],
+    slurm    => ['n', 'sbatch',   '',                "squeue -u $ENV{USER}"],
+    slurmi   => ['w', 'srun',     '',                ''],
+    pbs      => ['n', 'qsub',     '',                "qstat -u $ENV{USER}"],
+    flux     => ['n', 'qsub',     '',                "qstat -u $ENV{USER}"],
+    local    => ['w', '',         '',                ''],
 );
 our $BASHNAME = 'tmp_cluster_remove_whendone';  # When we create a script to be run
 our $BASHDIR = '.';                     # Create BASHNAME scripts here
+
+#==================================================================
+# Subroutine:
+#   EngineDetails
+#==================================================================
+
+=head1 NAME
+
+ #=============================================
+ #  $href = EngineDetails ( engine )
+ #=============================================
+
+=head1 SYNOPSIS
+
+ $href = Multi::RunCommand('slurm');
+ print "Wait to complete: " . $href->{wait} . "\n";
+ print "Submitted by: " . $href->{cmd} . "\n";
+ print "Forced options: " . $href->{opts} . "\n";
+ print "Status command is: " . $href->{status} . "\n";
+
+=head1 DESCRIPTION
+
+Use this to obtain attributes of the cluster engine to be used.
+This returns a reference to a hash of possibly useful information.
+
+=head1 PARAMETERS
+
+=over 4
+
+=item B<engine>
+
+Specifies the type of cluster to submit the jobs to.
+Valid values can be found in ClusterTypes at the top of this code.
+
+=back
+
+=cut
+
+sub EngineDetails {
+    my ($engine) = @_;
+    my %details = ();
+    if (exists($ClusterTypes{$engine})) {
+        $details{wait} = $ClusterTypes{$engine}[0];
+        $details{cmd} = $ClusterTypes{$engine}[1];
+        $details{opts} = $ClusterTypes{$engine}[2];
+        $details{status} = $ClusterTypes{$engine}[3];
+    }
+    return \%details;
+}
 
 #==================================================================
 # Subroutine:
@@ -214,9 +265,15 @@ sub WaitForCommandsToComplete {
         my $rc = $? >> 8;
         if ($rc) { $errs++; }
         if ($VERBOSE) {
-            my $st = 'completed';
-            if ($rc) { $st = 'failed  '; }
-            warn "Process $p $st RC=${rc}: CMD=$PIDS{$p}[$PIDCMD]\n";
+            if ($rc) { warn "Process $p failed  RC=${rc}: CMD=$PIDS{$p}[$PIDCMD]\n"; }
+            else {
+                print STDERR "Process $p completed";
+                if ($WAITORNOT eq 'n') {
+                    print STDERR ", but task not finished. " .
+                        "Use other commands to watch for completion";
+                }
+                print STDERR "\n";
+            }
         }
         #   If the command was one we made up for interactive tasks, remove it
         if ($PIDS{$p}[$PIDCMD] =~ /\s(\S+$BASHNAME\S+~w\S+)/) {
@@ -312,21 +369,27 @@ sub RunCluster {
     #   Run through list of commands, create shell scripts as necessary
     #   If the command looks like a shell script we support, run it directly
     my $modelcmd = "$ClusterTypes{$engine}[1] $ClusterTypes{$engine}[2] $opts ";
+    $WAITORNOT = $ClusterTypes{$engine}[0]; # Checked elsewhere
     my @commands = ();
     my $index = 1;
     foreach my $c (@{$cmdsaref}) {
         if ($c =~ /^\s*$/) { next; }        # Skip blank lines and comments
         if ($c =~ /^#/) { next; }
-        if ($c !~ /[|;(]/) {       # User script, run that directly
-            push @commands,$modelcmd . $c;
-            next;
+        if ($c !~ /[|;(]/) {                # Not multiple cmds or pipe
+            if ($c =~ /^\s*(\S+)/) {        # Isolate pgm to run
+                my $s = `/usr/bin/file $1 2>/dev/null`;
+                if ($s =~ /ascii text executable/i) {   # Simple shell script
+                    push @commands,$modelcmd . $c;      # can be run directly
+                    next;
+                }
+            }
         }
         #   User provided a command, wrap it in a BASH script
         #   Bash script name contains : + n or w (wait or nowait)
         my $f = $BASHDIR . '/' . $BASHNAME . '_' . $index . '_' . $$ . '~' . $ClusterTypes{$engine}[0] . '.sh';
         $index++;
         open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-        print OUT "#!/bin/bash\nset -o pipefail\n$c\n";
+        print OUT "#!/bin/bash\nset -o pipefail\n$c\nexit \$?\n";
         close(OUT);
         chmod(0755, $f) || exit 1;
         push @commands,$modelcmd . $f;
