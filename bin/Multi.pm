@@ -389,7 +389,7 @@ sub RunCluster {
         my $f = $BASHDIR . '/' . $BASHNAME . '_' . $index . '_' . $$ . '~' . $ClusterTypes{$engine}[0] . '.sh';
         $index++;
         open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
-        print OUT "#!/bin/bash\nset -o pipefail\n$c\nexit \$\n?";
+        print OUT "#!/bin/bash\nset -o pipefail\n$c\nexit \$?\n";
         close(OUT);
         chmod(0755, $f) || exit 1;
         push @commands,$modelcmd . $f;
