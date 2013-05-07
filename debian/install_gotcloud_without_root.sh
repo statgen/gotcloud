@@ -9,7 +9,9 @@ if [ "$#" -le "1" ]; then
   echo ""
   echo "Install the gotcloud packages without root authority"
   echo "You must be in the directory where the gotcould*.deb file lives"
-  echo "E.g.  $0  1.01  /usr/local  creates /usr/local/gotcloud"
+  echo "E.g."
+  echo "cd /tmp"
+  echo "$0  1.06  ~/gotcloud    # Creates $HOME/gotcloud"
   exit 1
 fi
 ver=$1

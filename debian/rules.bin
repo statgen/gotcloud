@@ -11,6 +11,11 @@ ifndef PFX
 PFX=usr/local/gotcloud
 endif
 
+#   Hack to skip Debian commands
+ifndef DEB
+DEB=yes
+endif
+
 PKG=${PACKAGE}_${PACKVER}
 INSTALLDIR=${PFX}
 #PREPOSTLIST=debian/postinst debian/postrm debian/preinst debian/prerm
@@ -28,7 +33,6 @@ clean:
 binary:
 	@rm -rf debian/tmp debian/errs
 	@echo "===> Version '${PACKVER} of '${PACKAGE}' will install into '${INSTALLDIR}'"
-	cp bin/bam /tmp/xxremove && echo "FAIL:  You have not compiled the 'src' directory"
 	install -d debian/tmp/DEBIAN
 	cp debian/control ${PREPOSTLIST} debian/tmp/DEBIAN
 	install -d debian/tmp/usr/share/doc/${PKG}
@@ -42,15 +46,11 @@ binary:
 	cp -p release_version.txt debian/tmp/${INSTALLDIR}
 	cp -rp ${DIRLIST} debian/tmp/${INSTALLDIR}
 	cp -p gotcloud debian/tmp/${INSTALLDIR}/bin
-	#ls -laR debian/tmp/${INSTALLDIR}
-	#test -z "${RPMDIR}" || mv debian/tmp/${INSTALLDIR}/rpmbin/* debian/tmp/${INSTALLDIR}/bin
-	#test -z "${RPMDIR}" || rm -rf debian/tmp/${INSTALLDIR}/rpmbin
 	@echo "Converting symlinks into the actual executables to be distributed"
 	find bin -type l -exec rm -f debian/tmp/${INSTALLDIR}/{} \;
 	find bin -type l -exec cp -p {} debian/tmp/${INSTALLDIR}/bin \;
 	chmod 755 debian/tmp/${INSTALLDIR}/bin/* debian/tmp/${INSTALLDIR}/scripts/*
-	dpkg-gencontrol -isp
-	chown -R root.root debian/tmp
+	(test ${DEB} = yes && dpkg-gencontrol -isp) || true
+	(test ${DEB} = yes && chown -R root.root debian/tmp) || true
 	chmod -R o-s,go=u,go-ws debian/tmp
-	dpkg --build debian/tmp .
-	@rm -rf debian/tmp /tmp/xxremove
+	(test ${DEB} = yes && dpkg --build debian/tmp .) || true

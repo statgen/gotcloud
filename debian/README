@@ -2,7 +2,7 @@
 
 To test the pipeline, run:
 
-  /usr/local/gotcloud/bin/gen_biopipeline.pl --test ~/testalign
+  /usr/local/gotcloud/bin/align.pl --test ~/testalign
 
 If it doesn't already exist, this will create the directory, ~/testalign.
 If it already exists, it will remove all contents from the directory.

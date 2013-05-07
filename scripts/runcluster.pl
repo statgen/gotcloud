@@ -106,7 +106,7 @@ sub FixCWD {
     chomp($host);
     my $cwd = "/net/$host" . $abs_path;
     chdir($cwd) && return 1;
-#    warn "Unable to CD to '$cwd' to correct local networking anomoly\n";
+    warn "Unable to CD to '$cwd' to correct local networking anomaly\n";
     return 0;
 }
 
