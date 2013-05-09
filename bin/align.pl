@@ -69,8 +69,6 @@ my $GCURL = 'http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Re
 my %opts = (
     runcluster => "$basepath/scripts/runcluster.pl",
     pipelinedefaults => $scriptdir . '/gotcloudDefaults.conf',
-    batchtype => '',
-    batchopts => '',
     keeptmp => 0,
     keeplog => 0,
     conf => '',
@@ -159,6 +157,8 @@ if ($opts{base_prefix})  { setConf('BASE_PREFIX', $opts{base_prefix}); }
 if ($opts{keeptmp})      { setConf('KEEP_TMP', $opts{keeptmp}); }
 if ($opts{keeplog})      { setConf('KEEP_LOG', $opts{keeplog}); }
 if ($opts{index_file})   { setConf('INDEX_FILE', $opts{index_file}); }
+if ($opts{batchtype})    { setConf('BATCH_TYPE', $opts{batchtype}); }
+if ($opts{batchopts})    { setConf('BATCH_OPTS', $opts{batchops}); }
 
 #############################################################################
 #   Load configuration variables from conf file
@@ -166,6 +166,10 @@ if ($opts{index_file})   { setConf('INDEX_FILE', $opts{index_file}); }
 #   Make sure paths for variables are fully qualified
 #############################################################################
 loadConf($opts{conf});
+
+#   Load default config values. These are almost never seen or set by the user,
+#   but if they were set, these defaults are NOT used.
+loadConf($opts{pipelinedefaults});
 
 foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     my $f = getConf($key);
@@ -178,9 +182,12 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
 my $index_file = getConf('INDEX_FILE');
 $out_dir = getConf('OUT_DIR');
 
-#   Load default config values. These are almost never seen or set by the user,
-#   but if they were set, these defaults are NOT used.
-loadConf($opts{pipelinedefaults});
+# Set the batch type to local if it wasn't set to anything else
+if(!getConf('BATCH_TYPE'))
+{
+    # BATCH_TYPE is not set or is blank, so force it to "local"
+    setConf('BATCH_TYPE', "local", 1);
+}
 
 #----------------------------------------------------------------------------
 #   Check required settings
@@ -521,21 +528,21 @@ my $t = time();
 $_ = $Multi::VERBOSE;               # Avoid Perl warning
 if ($opts{verbose}) { $Multi::VERBOSE = 1; }
 
-my $errs = Multi::RunCluster($opts{batchtype}, $opts{batchopts}, \@mkcmds, $opts{numconcurrentsamples});
+my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples});
 if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
 $t = time() - $t;
 print STDERR "Processing finished in $t secs";
 if ($errs) {
         print STDERR " WITH ERRORS.  Check the logs\n" .
-        "  TYPE=$opts{batchtype}\n" .
-        "  OPTS=$opts{batchopts}\n" .
+        "  TYPE=".getConf('BATCH_TYPE')."\n" .
+        "  OPTS=".getConf('BATCH_OPTS')."\n" .
         "  CMDS=" . join("\n    ", @mkcmds) . "\n";
 }
 else {
     print STDERR " with no errors reported\n";
-    my $href = Multi::EngineDetails($opts{batchtype});
+    my $href = Multi::EngineDetails(getConf('BATCH_TYPE'));
     if ($href->{wait} eq 'n') {
-        warn "\nReal tasks were submitted to '$opts{batchtype}' and probably is not finished\n" .
+        warn "\nReal tasks were submitted to '".getConf('BATCH_TYPE')."' and probably is not finished\n" .
             "Use '$href->{status}' to determine when commands completes\n";
     }
 }
