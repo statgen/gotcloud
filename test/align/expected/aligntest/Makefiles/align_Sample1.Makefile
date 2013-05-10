@@ -31,7 +31,6 @@ $(FINAL_BAM_DIR)/Sample1.recal.bam.done: $(DEDUP_TMP)/Sample1.dedup.bam.done
 	rm -f $(basename $@).log
 	cp $(RECAL_TMP)/Sample1.recal.bam $(basename $@)
 	$(SAMTOOLS_EXE) index $(basename $@)
-	$(MD5SUM_EXE) $(basename $@) > $(basename $@).md5
 	touch $@
 
 $(DEDUP_TMP)/Sample1.dedup.bam.done: $(MERGE_TMP)/Sample1.merged.bam.done

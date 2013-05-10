@@ -121,7 +121,6 @@ diff -r $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -I '^.*/Sample[1-2].dedup.bam.done: .*/Sample[1-2].merged.bam.done$' \
     -I 'cp .*/Sample[1-2].recal.bam $(basename $@)$' \
     -I '.* index $(basename $@)$' \
-    -I '.* $(basename $@) > $(basename $@).md5$' \
     -I 'mkdir -p .*$' \
     -I '@echo ".* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-2].recal.bam .* 2> $(basename $@).log"$' \
     -I '@.* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-2].recal.bam .* 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed Recalibration step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \

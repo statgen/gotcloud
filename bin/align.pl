@@ -249,6 +249,41 @@ for my $extension (@mapExtensions) {
 if ($missingReqFile) { die "Exiting alignment pipeline due to required file(s) missing\n"; }
 
 #----------------------------------------------------------------------------
+#   Check for required executables
+#----------------------------------------------------------------------------
+my @reqExes = qw(SAMTOOLS_EXE BAM_EXE);
+if (getConf('MAP_TYPE') eq 'BWA')
+{
+    push(@reqExes, 'BWA_EXE');
+}
+elsif (getConf('MAP_TYPE') eq 'MOSAIK')
+{
+    push(@reqExes, 'MOSAIK_ALIGN_EXE');
+    push(@reqExes, 'MOSAIK_BUILD_EXE');
+}
+if (getConf('RUN_VERIFY_BAM_ID'))
+{
+    push(@reqExes, 'VERIFY_BAM_ID_EXE');
+}
+if (getConf('RUN_QPLOT'))
+{
+    push(@reqExes, 'QPLOT_EXE');
+}
+
+my $missingExe = 0;
+foreach my $exe (@reqExes)
+{
+    if(-x getConf($exe)) { next; }
+    print "$exe, ".getConf($exe)." is not executable\n";
+    $missingExe++;
+}
+
+if($missingExe)
+{
+    die "EXITING: Missing required exes.  Try typing 'make' in the gotcloud/src directory\n";
+}
+
+#----------------------------------------------------------------------------
 #   Check for deprecated required settings
 #----------------------------------------------------------------------------
 # Check to see if the old REF is set instead of the new one.
@@ -424,7 +459,6 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     }
     print MAK "\tcp " . getConf('RECAL_TMP') . "/$mergeName.recal.bam \$(basename \$\@)\n";
     print MAK "\t" . getConf('SAMTOOLS_EXE') . " index \$(basename \$\@)\n";
-    print MAK "\t" . getConf('MD5SUM_EXE') . " \$(basename \$\@) > \$(basename \$\@).md5\n";
     print MAK "\ttouch \$\@\n\n";
 
     #   Dedup the Merged BAM

@@ -380,6 +380,55 @@ if($failReqFile eq "1")
 }
 
 
+#----------------------------------------------------------------------------
+#   Check for required executables
+#----------------------------------------------------------------------------
+my @reqExes;
+
+# required executables for each step.
+my %reqExeHash = (
+                  'RUN_INDEX' => [qw(SAMTOOLS_FOR_OTHERS)],
+                  'RUN_PILEUP' => [qw(GLFMERGE SAMTOOLS_FOR_OTHERS SAMTOOLS_FOR_PILEUP BAMUTIL)],
+                  'RUN_GLFMULTIPLES' => [qw(GLFMULTIPLES VCFMERGE)],
+                  'RUN_FILTER' => [qw(INFOCOLLECTOR VCFCOOKER VCFPASTE BGZIP TABIX VCFSUMMARY VCFMERGE)],
+                  'RUN_VCFPILEUP' => [qw(VCFPILEUP)],
+                  'RUN_SVM' => [qw(VCFPASTE BGZIP TABIX VCFSUMMARY SVM_SCRIPT SVMLEARN SVMCLASSIFY INVNORM VCF_SPLIT_CHROM)],
+                  'RUN_EXTRACT' => [qw(BGZIP TABIX GLFEXTRACT)],
+                  'RUN_SPLIT' => [qw(BGZIP VCFSPLIT)],
+                  'RUN_BEAGLE'=> [qw(LIGATEVCF BGZIP TABIX VCF2BEAGLE BEAGLE BEAGLE2VCF)],
+                  'RUN_SUBSET' => [qw(VCFCOOKER TABIX VCFSPLIT)],
+                  'RUN_THUNDER' => [qw(LIGATEVCF BGZIP TABIX THUNDER)],
+                 );
+
+my $missingExe = 0;
+foreach my $step (keys %reqExeHash)
+{
+    if(! getConf($step)) { next; } # skip if this step is not beign run
+    # check for each exe required by this step.
+    foreach my $exe (@{$reqExeHash{$step}})
+    {
+        my ($prog, $second, $rest) = split(/ /, getConf($exe));
+        if($prog eq 'perl')
+        {
+            if(-r $second) { next; }
+            print "$exe, $prog is not executable\n";
+            $missingExe++;
+        }
+        elsif($prog ne 'java')
+        {
+            if(-x $prog) { next; }
+            print "$exe, $prog is not executable\n";
+            $missingExe++;
+        }
+    }
+}
+
+if($missingExe)
+{
+    die "EXITING: Missing required exes.  Try typing 'make' in the gotcloud/src directory\n";
+}
+
+
 
 #############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
