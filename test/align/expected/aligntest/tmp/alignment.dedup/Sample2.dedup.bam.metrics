@@ -6,9 +6,9 @@ Reading ReferenceID -1
 SUMMARY STATISTICS OF THE READS
 Total number of reads: 10000
 Total number of paired-end reads: 10000
-Total number of properly paired reads: 2118
-Total number of unmapped reads : 6726
-Total number of reverse strand mapped reads: 1847
+Total number of properly paired reads: 2158
+Total number of unmapped reads : 6667
+Total number of reverse strand mapped reads: 1852
 Total number of QC-failed reads : 0
 Size of singleKeyMap (must be zero) : 0
 Size of pairedKeyMap (must be zero) : 0

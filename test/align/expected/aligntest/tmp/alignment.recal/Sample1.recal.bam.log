@@ -6,13 +6,13 @@ Open reference
 Done! Sequence length 63025520
 End: Fri Feb 22 14:05:55 2013
 
-# mapped Reads observed: 5898; Q>0: 5684
-# unmapped Reads observed: 4020
-# Duplicate Reads skipped: 82
-# Mapping Quality 0 Reads skipped: 214
+# mapped Reads observed: 5887; Q>0: 5678
+# unmapped Reads observed: 4032
+# Duplicate Reads skipped: 81
+# Mapping Quality 0 Reads skipped: 209
 # Mapping Quality 255 Reads skipped: 0
-# Bases observed: 199011 - #match: 194019; #mismatch: 4992
-# Bases Skipped for DBSNP: 7708, for Map Qual = 0: 214, for MapQual = 255: 0, for BaseQual < 5: 2241
+# Bases observed: 196372 - #match: 192875; #mismatch: 3497
+# Bases Skipped for DBSNP: 7558, for Map Qual = 0: 209, for MapQual = 255: 0, for BaseQual < 5: 582
 Writing recalibration table aligntest/tmp/alignment.recal/Sample1.recal.bam.qemp
 Writing recalibrated file aligntest/tmp/alignment.recal/Sample1.recal.bam
 Recalibration successfully finished

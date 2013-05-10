@@ -216,7 +216,7 @@ if (getConf('RUN_QPLOT')) { $missingReqFile += CheckFor_REF_File('.GCcontent'); 
 my @mapExtensions;
 my $removeExt = 0;
 if (getConf('MAP_TYPE') eq 'BWA') {
-    @mapExtensions = qw(.amb .ann .bwt .fai .pac .rbwt .rpac .rsa .sa);
+    @mapExtensions = qw(.amb .ann .bwt .fai .pac .sa);
 }
 elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
     @mapExtensions = qw(.dat _15_keys.jmp _15_meta.jmp _15_positions.jmp);
