@@ -99,6 +99,12 @@ my $VERBOSE = 0;
 
     Returns the number of errors detected
 
+=head1 USAGE
+
+    if (loadConf('default.conf', $opts{verbose})) {
+        die "Failed to read configuration files\n";
+    }
+
 =cut
 
 sub loadConf {
@@ -169,6 +175,14 @@ sub loadConf {
     Key may be a simple varname in which case the section will be 'global'.
     If the key is of the form name/keyname, then we set the variable
     'keyname' in the section 'name'.
+    
+    No substitution is done for variables in value.
+
+=head1 USAGE
+
+    setConf('FASTQ_PREFIX', '');
+    setConf('MAP_TYPE', 'BWA');
+    setConf('BWA/THREADS', 3);
 
 =cut
 
@@ -186,7 +200,7 @@ sub setConf {
 =head1 NAME
 
  #=============================================
- #  value = getConf ( key, required )
+ #  value = getConf ( key[, required] )
  #=============================================
 
 =head1 DESCRIPTION
@@ -198,6 +212,12 @@ sub setConf {
     Key may be a simple varname in which case the section will be 'global'.
     If the key is of the form name/keyname, then we return the value of the
     variable 'keyname' in the section 'name'.
+
+=head1 USAGE
+
+    $fpfx = getConf('FASTQ_PREFIX');
+    $type = getConf('MAP_TYPE', 1);
+    $threads = getConf('BWA/THREADS';
 
 =cut
 
@@ -218,18 +238,6 @@ sub getConf {
 #==================================================================
 #  Local functions
 #==================================================================
-
-#==================================================================
-#  DieOrWarn ($flag, $msg)
-#    Generates a warning and then stops if flag is true
-#
-#==================================================================
-sub DieOrWarn {
-    my $dieornot = shift;
-    my $msg = shift;
-    if ($dieornot) { die $msg; }
-    warn $msg;
-}
 
 #==================================================================
 #  errs = ReadConfig ($file)
