@@ -51,7 +51,8 @@ $scriptdir = abs_path($scriptdir);
 if ($scriptdir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptdir'\n"; }
 my $basepath = $1;
 
-push @INC,$scriptdir;     # use lib is a BEGIN block and does not work
+push @INC,$scriptdir;                   # Use lib is a BEGIN block and does not work
+require GC_Common;
 require Conf;
 require Multi;
 
@@ -79,6 +80,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     dry-run|dryrun
     batchtype=s
     batchopts=s
+    conf_path=s
     test=s
     out_dir|outdir=s
     conf=s
@@ -162,14 +164,13 @@ if ($opts{batchopts})    { setConf('BATCH_OPTS', $opts{batchops}); }
 
 #############################################################################
 #   Load configuration variables from conf file
-#   Variables already set will NOT be replaced
 #   Make sure paths for variables are fully qualified
 #############################################################################
-loadConf($opts{conf});
-
-#   Load default config values. These are almost never seen or set by the user,
-#   but if they were set, these defaults are NOT used.
-loadConf($opts{pipelinedefaults});
+#   Load config values. The default conf file is almost never seen by the user,
+if (exists($opts{conf_path})) { $ENV{CONF_PATH} = $opts{conf_path}; }
+if (loadConf($opts{pipelinedefaults}, $opts{verbose})) {
+    die "Failed to read configuration files\n";
+}
 
 foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     my $f = getConf($key);
@@ -177,7 +178,7 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     # Extract up to the first '_' from the key to get the prefix type option.
     my $type = substr($key, 0, index($key, '_'));
 	# Replace the already stored value with the absolute path
-    setConf($key, getAbsPath($f, $type), 1);
+    setConf($key, getAbsPath($f, $type));
 }
 my $index_file = getConf('INDEX_FILE');
 $out_dir = getConf('OUT_DIR');
@@ -186,7 +187,7 @@ $out_dir = getConf('OUT_DIR');
 if(!getConf('BATCH_TYPE'))
 {
     # BATCH_TYPE is not set or is blank, so force it to "local"
-    setConf('BATCH_TYPE', "local", 1);
+    setConf('BATCH_TYPE', "local");
 }
 
 #----------------------------------------------------------------------------
@@ -203,7 +204,7 @@ foreach my $f (@reqRefs)
 {
     # Replace the path with the absolute path
     my $newPath = getAbsPath(getConf($f), "REF");
-    setConf($f, $newPath, 1);
+    setConf($f, $newPath);
 	# Check that the path exists.
     if (-r $newPath) { next; }
     warn "ERROR: Could not read required $f: $newPath\n";
@@ -326,7 +327,7 @@ else {
     #   Make sure there's a trailing / on FASTQ and it is fully qualified
     $fq = abs_path($fq);
     if ($fq !~ /\/$/) { $fq .= '/'; }
-    setConf('FASTQ_PREFIX', $fq, 1);       # Force this to be set
+    setConf('FASTQ_PREFIX', $fq);           # Force this to be set
 }
 
 #   Track positions for each field
@@ -943,6 +944,16 @@ Specifies the batch system to be used when executing the commands.
 These determine exactly how B<runcluster> will run the command.
 the type 'flux' is an alias for 'pbs'.
 The default is B<local>.
+
+=item B<-conf_path dirlist>
+
+Specifies a colon-delimited list of directories to be searched for
+configuration files.
+If this is set, the user configuration directory B<$HOME/.config/gotcloud>
+is not searched. You'll need to use this if you want it included.
+No error messages are generated if no configuration file (B<*.conf>)
+is found in the directories in this list.
+The default configuration will be read in all cases (see B<-conf>).
 
 =item B<-conf file>
 
