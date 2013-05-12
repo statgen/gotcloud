@@ -354,13 +354,14 @@ my %fq1toLib = ();
 my %fq1toCn = ();
 my %fq1toPl = ();
 my %mergeToFq1 = ();
+my %smToMerge = ();
 while ($line = <IN>)
 {
     chomp($line);
     @fields = split('\t', $line);
     my $fastq1 = $fields[$fieldname2index{FASTQ1}];
-    $_ = $fields[$fieldname2index{MERGE_NAME}];
-    push @{$mergeToFq1{$_}}, $fastq1;
+    my $mergeName = $fields[$fieldname2index{MERGE_NAME}];
+    push @{$mergeToFq1{$mergeName}}, $fastq1;
 
     if (exists($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
     else { $fq1toFq2{$fastq1} = '.'; }
@@ -379,8 +380,46 @@ while ($line = <IN>)
 
     if (exists($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
     else { $fq1toPl{$fastq1} = '.'; }
+
+    # Update the list of per sample bams if this is the first
+    # appearance of the merge name (mergeToFQ1 has length 1)
+    if(scalar(@{$mergeToFq1{$mergeName}}) == 1)
+    {
+        # if there is a specified sample id, use that, otherwise
+        # use the mergename as the index.
+        if($fq1toSm{$fastq1} eq '.')
+        {
+            push(@{$smToMerge{$mergeName}}, $mergeName);
+        }
+        else
+        {
+            push(@{$smToMerge{$fq1toSm{$fastq1}}}, $mergeName);
+        }
+    }
 }
 close(IN);
+
+
+# Output the bam index to the FINAL_BAM_DIR directory
+
+# If the bam index file name is specified, write to it.
+if(getConf('BAM_INDEX'))
+{
+    my $bamIndex = getConf("BAM_INDEX");
+    open(BAM_IDX,">$bamIndex") || die "Cannot open $bamIndex for writing.  $!\n";
+    # Loop through %smToMerge and print the bam index
+    foreach my $key (keys %smToMerge )
+    {
+        print BAM_IDX "$key\tALL";
+        foreach (@{$smToMerge{$key}})
+        {
+            print BAM_IDX "\t".&getConf("FINAL_BAM_DIR")."/".$_.".recal.bam";
+        }
+        print BAM_IDX "\n";
+    }
+    close(BAM_IDX);
+}
+
 
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
