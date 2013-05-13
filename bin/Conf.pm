@@ -24,14 +24,15 @@ Functions to manage configuration files.
 The environment variable CONF_PATH (colon-delimited path of directories)
 may be set to specify a list of directories containing *.conf files.
 If this is not set, it is assumed to be $HOME/.config/gotcloud/.
-This means if you set CONF_PATH you may want to also include 
+This means if you set CONF_PATH you may want to also include
 the one in your $HOME.
 
 Configuration files are read in this order:
-    1) As provided by loadConf (i.e. gotcloud/bin/somename.conf)
+    1) Default config as provided by loadConf (i.e. gotcloud/bin/gotcloudDefaults.conf)
+    1) Primary config as provided by loadConf (i.e. gotcloud/test/align/test.conf)
     2) foreach dir in CONF_PATH, read $dir/*.conf
 
-If a value is set in multiple places, the last one is used.
+If a value is set in multiple places, the last value is used.
 
 Configuration files consists of sections of key=value lines.
 A section is defined by a line of the form [section_name].
@@ -54,7 +55,7 @@ An example configuration file might looks like:
 Defines three sections, global, green and red.
 
 After all conf files are read we substitute for anything of the
-form $(varname). The variable (varname) may come from the 
+form $(varname). The variable (varname) may come from the
 current section or from global, and not from another section.
 In the configuration example above, the final values will be:
 
@@ -74,13 +75,13 @@ In the configuration example above, the final values will be:
 our %CONF_HASH = ();                # Configuration values (hash of hashes)
 my $DEFAULT_CONF = $ENV{HOME} . '/.config/gotcloud/';  # User default conf files here
 my $VERBOSE = 0;
- 
+
 #==================================================================
 
 =head1 NAME
 
  #=============================================
- #  errs = loadConf ( defaultconfig, verbose )
+ #  errs = loadConf ( defconfig, priconfig, verbose )
  #=============================================
 
 =head1 DESCRIPTION
@@ -89,31 +90,33 @@ my $VERBOSE = 0;
     key=value data.  Will not return on errors
 
     You must provide the path to the default config file
-    (defaultconfig). This file is always read.
-    
+    (defconfig). This file is always read.
+
+    If you provide a primary configuration file (priconfig)
+    this will be read next. This file is optional.
+
     Set verbose to true to see more informational messages.
 
     If the environment variable CONF_PATH is set, it must
     be a colon-delimited list of directories to be
-    searched for conf files (*.conf)   
+    searched for conf files (*.conf)
 
     Returns the number of errors detected
 
 =head1 USAGE
 
-    if (loadConf('default.conf', $opts{verbose})) {
+    if (loadConf('default.conf', ,'test.conf', $opts{verbose})) {
         die "Failed to read configuration files\n";
     }
 
 =cut
 
 sub loadConf {
-    my $conf = shift;
-    my $v = shift;
+    my ($defconf, $priconf, $v) = @_;
     if (defined($v) && $v) { $VERBOSE = 1; }
+    my $errs = ReadConfig($defconf);
+    if ($priconf) { $errs += ReadConfig($priconf); }
 
-    %CONF_HASH = ();                  # Always read defaults
-    my $errs = ReadConfig ($conf);
 
     #   If CONF_PATH set, use this for all conf files
     #   If not, just read user config files
@@ -175,7 +178,7 @@ sub loadConf {
     Key may be a simple varname in which case the section will be 'global'.
     If the key is of the form name/keyname, then we set the variable
     'keyname' in the section 'name'.
-    
+
     No substitution is done for variables in value.
 
 =head1 USAGE
@@ -258,7 +261,7 @@ sub ReadConfig {
     while (<IN>) {
         next if (/^#/ );                # Ignore comments
         next if (/^\s*$/);              # Ignore blank lines
-        s/#.*$//;                        # Remove in-line comments
+        s/\s+#.*$//;                    # Remove in-line comments
         #   Sections look like [ name ]
         if (/^\[\s*(\w+)\s*\]\s*$/ ) {
             $section = $1;

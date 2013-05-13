@@ -168,16 +168,16 @@ if ($opts{batchopts})    { setConf('BATCH_OPTS', $opts{batchops}); }
 #############################################################################
 #   Load config values. The default conf file is almost never seen by the user,
 if (exists($opts{conf_path})) { $ENV{CONF_PATH} = $opts{conf_path}; }
-if (loadConf($opts{pipelinedefaults}, $opts{verbose})) {
+if (loadConf($opts{pipelinedefaults}, $opts{conf}, $opts{verbose})) {
     die "Failed to read configuration files\n";
 }
 
 foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     my $f = getConf($key);
     if (! $f) { die "Required field -$key was not specified\n"; }
-    # Extract up to the first '_' from the key to get the prefix type option.
+    #   Extract up to the first '_' from the key to get the prefix type option.
     my $type = substr($key, 0, index($key, '_'));
-	# Replace the already stored value with the absolute path
+    #   Replace the already stored value with the absolute path
     setConf($key, getAbsPath($f, $type));
 }
 my $index_file = getConf('INDEX_FILE');
@@ -203,9 +203,9 @@ if(getConf('RUN_VERIFY_BAM_ID'))
 foreach my $f (@reqRefs)
 {
     # Replace the path with the absolute path
-    my $newPath = getAbsPath(getConf($f), "REF");
+    my $newPath = getAbsPath(getConf($f), 'REF');
     setConf($f, $newPath);
-	# Check that the path exists.
+    # Check that the path exists.
     if (-r $newPath) { next; }
     warn "ERROR: Could not read required $f: $newPath\n";
     $missingReqFile++;

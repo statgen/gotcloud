@@ -51,9 +51,9 @@ sub getAbsPath {
     my $newPath = '';
 
     # Check if type was set.
-    if ( defined($type) && ($type ne "") ) {
+    if ( defined($type) && ($type ne '') ) {
         #   Check if a directory was defined for this type.
-        my $val1 = &getConf($type . '_PREFIX');
+        my $val1 = getConf($type . '_PREFIX');
         if( defined($val1) && ($val1 ne '') ) { $newPath = "$val1/$file"; }
     }
 
