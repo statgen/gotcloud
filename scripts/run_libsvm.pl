@@ -129,7 +129,7 @@ my $ncols = 0;
 while(<$in>) {
 	next if ( /^#/ );
 	my ($chrom,$pos,$id,$ref,$alt,$qual,$filt,$info) = split(/[\t\r\n]+/);
-	$info .= ";QUAL=$qual" unless ( $qual ne "." );
+	$info .= ";QUAL=$qual" unless ( $qual eq "." );
 	my @infos = split(/;/,$info);
 	my @values = ();
 	my $j = 0;
