@@ -1643,6 +1643,22 @@ sub getFilterArgs
         $filterArgs .= " --minDP ".($numSamples*$confValue);
     }
 
+    # Filter minNS.  First check if FILTER_MIN_NS is set.
+    if(getIntConf('FILTER_MIN_NS'))
+    {
+        $filterArgs .= " --minNS ".getIntConf('FILTER_MIN_NS');
+    }
+    elsif(getIntConf('FILTER_MIN_NS_FRAC'))
+    {
+        $confValue = getIntConf('FILTER_MIN_NS_FRAC');
+        if(($confValue < 0) || ($confValue > 1))
+        {
+            die "ERROR: FILTER_MIN_NS_FRAC must be between 0 & 1, but it ".
+            "was: $confValue.\n";
+        }
+        $filterArgs .= " --minNS ".($numSamples*$confValue);
+    }
+
     # Get the formula min/max sample numbers.
     my $filterMinSamples = getIntConf('FILTER_FORMULA_MIN_SAMPLES');
     if(! $filterMinSamples)
@@ -1669,15 +1685,22 @@ sub getFilterArgs
     #          a log formula is used if numSamples is between min & max samples
     # Set the filter KEY to blank or "off" to disable a default filter.
     my %filterArgHash = (
-                         maxABL => "FILTER_MAX_ABL",
-                         maxSTR => "FILTER_MAX_STR",
-                         minSTR => "FILTER_MIN_STR",
+                         maxABL   => "FILTER_MAX_ABL",
+                         maxSTR   => "FILTER_MAX_STR",
+                         minSTR   => "FILTER_MIN_STR",
                          winIndel => "FILTER_WIN_INDEL",
-                         maxSTZ => "FILTER_MAX_STZ",
-                         minSTZ => "FILTER_MIN_STZ",
-                         maxAOI => "FILTER_MAX_AOI",
-                         minFIC => "FILTER_MIN_FIC",
-                         minNS => "FILTER_MIN_NS"
+                         maxSTZ   => "FILTER_MAX_STZ",
+                         minSTZ   => "FILTER_MIN_STZ",
+                         maxAOI   => "FILTER_MAX_AOI",
+                         minFIC   => "FILTER_MIN_FIC",
+                         maxCBR   => "FILTER_MAX_CBR",
+                         maxLQR   => "FILTER_MAX_LQR",
+                         minQual  => "FILTER_MIN_QUAL",
+                         minMQ    => "FILTER_MIN_MQ",
+                         maxMQ0   => "FILTER_MAX_MQ0",
+                         maxMQ30  => "FILTER_MAX_MQ30",
+                         maxAOZ   => "FILTER_MAX_AOZ",
+                         maxIOR   => "FILTER_MAX_IOR",
                         );
     foreach my $key (sort(keys %filterArgHash))
     {
