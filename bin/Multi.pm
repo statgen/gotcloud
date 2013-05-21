@@ -95,6 +95,7 @@ This returns a reference to a hash of possibly useful information.
 =item B<engine>
 
 Specifies the type of cluster to submit the jobs to.
+If engine is not defined or null, it defaults to 'local'.
 Valid values can be found in ClusterTypes at the top of this code.
 
 =back
@@ -104,6 +105,7 @@ Valid values can be found in ClusterTypes at the top of this code.
 sub EngineDetails {
     my ($engine) = @_;
     my %details = ();
+    if ((! defined($engine)) || $engine eq '') { $engine = 'local'; }
     if (exists($ClusterTypes{$engine})) {
         $details{wait} = $ClusterTypes{$engine}[0];
         $details{cmd} = $ClusterTypes{$engine}[1];
@@ -323,6 +325,7 @@ This returns a nonzero if anything was in error.
 =item B<engine>
 
 Specifies the type of cluster to submit the jobs to.
+If engine is not defined or null, it defaults to 'local'.
 Valid values can be found in ClusterTypes at the top of this code.
 
 =item B<opts>
@@ -352,8 +355,10 @@ Be careful this path can also resolve properly when the command runs on another 
 
 sub RunCluster {
     my ($engine, $opts, $cmdsaref, $maxconcurrent, $bashdir) = @_;
+    if ((! defined($engine)) || $engine eq '') { $engine = 'local'; }
+    if (! defined($opts))     { $opts = ''; }
     if (! defined($maxconcurrent)) { $maxconcurrent = 1; }
-    if (! defined($bashdir)) { $bashdir = $BASHDIR; }
+    if (! defined($bashdir))  { $bashdir = $BASHDIR; }
     if ($BASHDIR eq '.' || $BASHDIR eq '') { $_ = `pwd`; chomp($_); $BASHDIR = $_; }
 
     #   Pick next command to run

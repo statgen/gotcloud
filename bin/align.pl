@@ -183,13 +183,6 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
 my $index_file = getConf('INDEX_FILE');
 $out_dir = getConf('OUT_DIR');
 
-# Set the batch type to local if it wasn't set to anything else
-if(!getConf('BATCH_TYPE'))
-{
-    # BATCH_TYPE is not set or is blank, so force it to "local"
-    setConf('BATCH_TYPE', "local");
-}
-
 #----------------------------------------------------------------------------
 #   Check required settings
 #----------------------------------------------------------------------------
