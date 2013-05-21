@@ -69,6 +69,7 @@ my %opts = (
     runcluster => "$basepath/scripts/runcluster.pl",
     pipelinedefaults => $scriptdir . '/gotcloudDefaults.conf',
     phonehome => "$basepath/scripts/gcphonehome.pl -pgmname GotCloud $me",
+    calcstorage => "$basepath/scripts/gccalcstorage.pl $me",
     keeptmp => 0,
     keeplog => 0,
     conf => '',
@@ -293,6 +294,9 @@ if(getConf("FASTQ"))
 
 #   All set now, phone home to check for a new version. We don't care about failures.
 system($opts{phonehome});
+
+#   Last warning to user about storage requirements
+system($opts{calcstorage} . ' ' . getConf('FASTQ_PREFIX') . ' ' getConf('INDEX_FILE'));
 
 #############################################################################
 #   Read the Index File
