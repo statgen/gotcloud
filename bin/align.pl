@@ -56,8 +56,6 @@ require GC_Common;
 require Conf;
 require Multi;
 
-(my $version = '$Revision: 1.1 $ ') =~ tr/[0-9].//cd;
-
 #############################################################################
 #   Global Variables
 ############################################################################
@@ -70,6 +68,7 @@ my $GCURL = 'http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Re
 my %opts = (
     runcluster => "$basepath/scripts/runcluster.pl",
     pipelinedefaults => $scriptdir . '/gotcloudDefaults.conf',
+    phonehome => "$basepath/scripts/gcphonehome.pl -pgmname GotCloud $me",
     keeptmp => 0,
     keeplog => 0,
     conf => '',
@@ -99,7 +98,6 @@ Getopt::Long::GetOptions( \%opts,qw(
 #   Simple help if requested, sanity check input options
 if ($opts{help}) {
     warn "$me$mesuffix [options]\n" .
-        "Version $version\n" .
         "Use this to generate makefiles for a single session whatever it is.\n" .
         "More details available by entering: perldoc $0\n\n";
     if ($opts{help}) { system("perldoc $0"); }
@@ -292,6 +290,9 @@ if(getConf("FASTQ"))
     warn "ERROR: FASTQ is deprecated and has been replaced by FASTQ_PREFIX, please update your configuration file and rerun\n";
     $missingReqFile++;
 }
+
+#   All set now, phone home to check for a new version. We don't care about failures.
+system($opts{phonehome});
 
 #############################################################################
 #   Read the Index File
