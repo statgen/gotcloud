@@ -21,7 +21,13 @@ use File::Basename;
 
 my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 
+#   output of align = 110% * size of FASTQ (bams)
+#   temp files of umake = 120% of size of BAMs  (glf)
+#   output of umake = 5% of BAMs  (vcf)
 my %opts = (
+    fastq2bam_factor => 1.1,
+    bam2glf_factor => 1.2,
+    bam2vcf_factor => 0.05,
 );
 
 Getopt::Long::GetOptions( \%opts,qw(
@@ -67,20 +73,17 @@ sub AsGB {
 }
 
 #--------------------------------------------------------------
-#   AlignStorage (dir, file)
+#   AlignStorage (dir, indexfile)
 #
 #   Returns a string showing the storage requirements for the aligner
-#       output of align = 110% * size of FASTQ (bams)
-#       temp files of umake = 120% of size of BAMs  (glf)
-#       output of umake = 4% of BAMs  (vcf)
 #--------------------------------------------------------------
 sub AlignStorage {
-    my ($dir, $file) = @_;
+    my ($dir, $indexfile) = @_;
     my $totsize = 0;
-    open(IN,$file) ||
-        die "Unable to open file '$file': $!\n";
+    open(IN, $indexfile) ||
+        die "Unable to open file '$indexfile': $!\n";
     $_ = <IN>;                    # Remove header, check it
-    if (! /MERGE_NAME/) { die "Index file '$file' did not look correct\n  Line=$_"; }
+    if (! /MERGE_NAME/) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
     my $k = 0;
     while (<IN>) {
         my @c = split(' ',$_);
@@ -100,16 +103,16 @@ sub AlignStorage {
     close(IN);
     if (! $k) { die "No FASTQ files were found. This cannot be correct\n"; }
 
-    my $gb = 1.1*$totsize;
-    my $s = "File sizes of $k FASTQ input files referenced in '$file' = " . AsGB($gb) . "\n";
+    my $gb = $opts{fastq2bam_factor}*$totsize;
+    my $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . AsGB($gb) . "\n";
 
     #   Add a bit extra for temp files for the aligner. Use the average size of a FASTQ
-    my $bamsize = (1.2*$totsize);
+    my $bamsize = ($opts{bam2glf_factor}*$totsize);
     $s .= "Size of BAMs from aligner will be about " . AsGB($bamsize) . "\n";
 
     $s .= "Intermediate files from snpcaller will be about " . AsGB($bamsize) . "\n";
 
-    my $vcfsize = .04*$bamsize;
+    my $vcfsize = $opts{bam2vcf_factor}*$bamsize;
     $s .= "Final VCF output from snpcaller will be about " . AsGB($vcfsize) . "\n";
 
     $s .= "Be sure you have enough space to hold all this data\n";
@@ -117,17 +120,15 @@ sub AlignStorage {
 }
 
 #--------------------------------------------------------------
-#   UmakeStorage (file)
+#   UmakeStorage (indexfile)
 #
 #   Returns a string showing the storage requirements for the snpcaller
-#       temp files of umake = 120% of size of BAMs  (glf)
-#       output of umake = 4% of BAMs  (vcf)
 #--------------------------------------------------------------
 sub UmakeStorage {
-    my ($file) = @_;
+    my ($indexfile) = @_;
     my $bamsize = 0;
-    open(IN,$file) ||
-        die "Unable to open file '$file': $!\n";
+    open(IN, $indexfile) ||
+        die "Unable to open file '$indexfile': $!\n";
     my $k = 0;
     while (<IN>) {
         #   Input line ~:  HG01055 ALL     /home/tpg/out/e/bams/HG01055.recal.bam
@@ -141,13 +142,13 @@ sub UmakeStorage {
     close(IN);
     if (! $k) { die "No BAM files were found. This cannot be correct\n"; }
 
-    my $s = "File sizes of $k BAM input files referenced in '$file' = " . AsGB($bamsize) . "\n";
+    my $s = "File sizes of $k BAM input files referenced in '$indexfile' = " . AsGB($bamsize) . "\n";
 
-    #   Add a bit extra for temp files for the aligner. Use the average size of a FASTQ
-    my $tmpsize = (1.2*$bamsize);
+    #   Add a bit extra for temp files for the aligner. Use the average size of a BAM file
+    my $tmpsize = ($opts{bam2glf_factor}*$bamsize);
     $s .= "Intermediate files from snpcaller will be about " . AsGB($tmpsize) . "\n";
 
-    my $vcfsize = .05*$bamsize;
+    my $vcfsize = $opts{bam2vcf_factor}*$bamsize;
     $s .= "Final VCF output from snpcaller will be about " . AsGB($vcfsize) . "\n";
 
     $s .= "Be sure you have enough space to hold all this data\n";
