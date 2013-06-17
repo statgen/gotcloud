@@ -561,13 +561,22 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     #   FOR EXAMPLE, SARDINIA, multiple runs for a sample have the same fastq names,
     #   so easiest to keep the subdirs.
 
+
     # Merge the Polished BAMs
     print MAK getConf('MERGE_TMP') . "/$mergeName.merged.bam.done: $allPolish\n";
     print MAK "\tmkdir -p \$(\@D)\n";
     my $mergeBams = getConf('BAM_EXE') . " mergeBam --out \$(basename \$\@) \$(subst " .
         getConf('POL_TMP') . ",--in " . getConf('POL_TMP') . ",\$(basename \$^))";
+
+    # If there is only 1 bam, just link instead of merging.
+    if((scalar @{$mergeToFq1{$mergeName}}) <= 1)
+    {
+        # only one bam, so link it to the final name.
+        $mergeBams = "ln \$(basename \$^) \$(basename \$\@)";
+    }
     print MAK logCatchFailure('MergingBams', $mergeBams, "\$(basename \$\@).log");
     print MAK "\ttouch \$\@\n\n";
+
     print MAK $allSteps;
     print MAK "SAI_FILES = $saiFiles\n\n";
     print MAK "ALN_FILES = $alnFiles\n\n";

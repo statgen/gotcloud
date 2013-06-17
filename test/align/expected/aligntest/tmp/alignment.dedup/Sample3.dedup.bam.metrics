@@ -1,0 +1,22 @@
+Reading ReferenceID 0
+
+Reading ReferenceID -1
+
+--------------------------------------------------------------------------
+SUMMARY STATISTICS OF THE READS
+Total number of reads: 300
+Total number of paired-end reads: 300
+Total number of properly paired reads: 196
+Total number of unmapped reads : 83
+Total number of reverse strand mapped reads: 118
+Total number of QC-failed reads : 0
+Size of singleKeyMap (must be zero) : 0
+Size of pairedKeyMap (must be zero) : 0
+Total number of missing mates: 0
+--------------------------------------------------------------------------
+Sorting the indices of 0 duplicated records
+
+Writing aligntest/tmp/alignment.dedup/Sample3.dedup.bam
+Successfully marked 0 unpaired and 0 paired duplicate reads
+
+Dedup complete!
