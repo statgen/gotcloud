@@ -88,7 +88,7 @@ int VcfHelper::compareGenomicPos(const String & chr1, int pos1, const String& ch
 VcfInd::VcfInd(const String& indID, const String& famID, const String& fatID, const String& motID, const String& gender) {
   sIndID = indID;
   sFamID = famID;
-  sFatID = (famID.Length() == 0) ? "0" : famID;
+  sFatID = (fatID.Length() == 0) ? "0" : fatID;
   sMotID = (motID.Length() == 0) ? "0" : motID;
   if ( gender.Compare("1") == 0 ) {
     this->gender = MALE;
