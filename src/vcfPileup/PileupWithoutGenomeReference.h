@@ -35,7 +35,6 @@ public:
                             uint16_t includeFlag = 0);        
 
     virtual int processFile(const std::string& bamFileName, 
-                            const std::string& bamIndexFileName, 
                             const std::string& inputVCFFileName,
                             const std::string& outputVCFFileName,
                             uint16_t excludeFlag = 0x0704,
@@ -104,8 +103,7 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
 }
 
 template <class PILEUP_TYPE, class FUNC_CLASS>
-int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std::string& bamFileName, 
-                                                                       const std::string& bamIndexFileName, 
+int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std::string& bamFileName,
                                                                        const std::string& inputVCFFileName, 
                                                                        const std::string& outputVCFFileName, 
                                                                        uint16_t excludeFlag,
@@ -241,7 +239,7 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
     }
 
     // read index file
-    if (!samIn.ReadBamIndex(bamIndexFileName.c_str()))
+    if (!samIn.ReadBamIndex())
     {
         return(samIn.GetStatus());  	
     }
