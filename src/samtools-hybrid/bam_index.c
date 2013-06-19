@@ -341,8 +341,8 @@ bam_index_t *bam_index_load_local(const char *_fn)
 	strcpy(fnidx, fn); strcat(fnidx, ".bai");
 	fp = fopen(fnidx, "r");
 	if (fp == 0) { // try "{base}.bai"
-		char *s = strstr(fn, "bam");
-		if (s == fn + strlen(fn) - 3) {
+		if (strcmp(fn + strlen(fn) - 4, ".bam") == 0)
+                {
 			strcpy(fnidx, fn);
 			fnidx[strlen(fn)-1] = 'i';
 			fp = fopen(fnidx, "r");
