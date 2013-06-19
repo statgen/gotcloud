@@ -10,8 +10,8 @@
 #       rm -rf ~/outdata
 #       d=/gotcloud/test/align
 #       /gotcloud/bin/align.pl -conf $d/test.conf \
-#          -index $d/indexFile.txt -ref $d/../chr20Ref/ \
-#          -fastq $d   -out ~/outdata
+#          -index_file $d/indexFile.txt -ref $d/../chr20Ref/ \
+#          -fastq_prefix $d   -out ~/outdata
 #
 #   You can verify the results on the test data are expected using:
 #       /gotcloud/scripts/diff_results_align.sh ~/outdata $d/expected
@@ -56,12 +56,11 @@ require GC_Common;
 require Conf;
 require Multi;
 
-(my $version = '$Revision: 1.1 $ ') =~ tr/[0-9].//cd;
-
 #############################################################################
 #   Global Variables
 ############################################################################
-setConf('GOTCLOUD_ROOT', $basepath);
+my @confSettings;
+push(@confSettings, "GOTCLOUD_ROOT = $basepath");
 my $GCURL = 'http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files';
 
 #--------------------------------------------------------------
@@ -70,6 +69,8 @@ my $GCURL = 'http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Re
 my %opts = (
     runcluster => "$basepath/scripts/runcluster.pl",
     pipelinedefaults => $scriptdir . '/gotcloudDefaults.conf',
+    phonehome => "$basepath/scripts/gcphonehome.pl -pgmname GotCloud $me",
+    calcstorage => "$basepath/scripts/gccalcstorage.pl $me",
     keeptmp => 0,
     keeplog => 0,
     conf => '',
@@ -80,7 +81,6 @@ Getopt::Long::GetOptions( \%opts,qw(
     dry-run|dryrun
     batchtype=s
     batchopts=s
-    conf_path=s
     test=s
     out_dir|outdir=s
     conf=s
@@ -91,7 +91,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     base_prefix|baseprefix=s
     keeptmp
     keeplog
-    verbose
+    verbose=i
     numjobspersample|numjobs=i
     numconcurrentsamples|numcs=i
 )) || die "Failed to parse options\n";
@@ -99,7 +99,6 @@ Getopt::Long::GetOptions( \%opts,qw(
 #   Simple help if requested, sanity check input options
 if ($opts{help}) {
     warn "$me$mesuffix [options]\n" .
-        "Version $version\n" .
         "Use this to generate makefiles for a single session whatever it is.\n" .
         "More details available by entering: perldoc $0\n\n";
     if ($opts{help}) { system("perldoc $0"); }
@@ -143,35 +142,39 @@ $opts{conf} = abs_path($opts{conf});
 my $out_dir = '';
 if ($opts{out_dir}) {
     $out_dir = abs_path($opts{out_dir});
-    setConf('OUT_DIR', $out_dir);
+    # Add the output directory to the configuration.
+    push(@confSettings, "OUT_DIR = $out_dir");
 }
 
 my $ref_dir = '';
 if ($opts{ref_dir}) {
     $ref_dir = abs_path($opts{ref_dir});
-    setConf('REF_DIR', $ref_dir);
+    push(@confSettings, "REF_DIR = $ref_dir");
 }
 
 #   Set the configuration values for applicable command-line options.
-if ($opts{ref_prefix})   { setConf('REF_PREFIX', $opts{ref_prefix}); }
-if ($opts{fastq_prefix}) { setConf('FASTQ_PREFIX', $opts{fastq_prefix}); }
-if ($opts{base_prefix})  { setConf('BASE_PREFIX', $opts{base_prefix}); }
-if ($opts{keeptmp})      { setConf('KEEP_TMP', $opts{keeptmp}); }
-if ($opts{keeplog})      { setConf('KEEP_LOG', $opts{keeplog}); }
-if ($opts{index_file})   { setConf('INDEX_FILE', $opts{index_file}); }
-if ($opts{batchtype})    { setConf('BATCH_TYPE', $opts{batchtype}); }
-if ($opts{batchopts})    { setConf('BATCH_OPTS', $opts{batchops}); }
+if ($opts{ref_prefix})   { push(@confSettings, "REF_PREFIX = $opts{ref_prefix}"); }
+if ($opts{fastq_prefix}) { push(@confSettings, "FASTQ_PREFIX = $opts{fastq_prefix}"); }
+if ($opts{base_prefix})  { push(@confSettings, "BASE_PREFIX = $opts{base_prefix}"); }
+if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
+if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
+if ($opts{index_file})   { push(@confSettings, "INDEX_FILE = $opts{index_file}"); }
+if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
+if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchops}"); }
 
 #############################################################################
 #   Load configuration variables from conf file
-#   Make sure paths for variables are fully qualified
-#############################################################################
 #   Load config values. The default conf file is almost never seen by the user,
-if (exists($opts{conf_path})) { $ENV{CONF_PATH} = $opts{conf_path}; }
-if (loadConf($opts{pipelinedefaults}, $opts{conf}, $opts{verbose})) {
+my @configs = split(' ', $opts{conf});
+push(@configs, $opts{pipelinedefaults});
+
+if (loadConf(\@confSettings, \@configs, $opts{verbose})) {
     die "Failed to read configuration files\n";
 }
 
+#############################################################################
+#   Make sure paths for variables are fully qualified
+#############################################################################
 foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     my $f = getConf($key);
     if (! $f) { die "Required field -$key was not specified\n"; }
@@ -182,13 +185,6 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
 }
 my $index_file = getConf('INDEX_FILE');
 $out_dir = getConf('OUT_DIR');
-
-# Set the batch type to local if it wasn't set to anything else
-if(!getConf('BATCH_TYPE'))
-{
-    # BATCH_TYPE is not set or is blank, so force it to "local"
-    setConf('BATCH_TYPE', "local");
-}
 
 #----------------------------------------------------------------------------
 #   Check required settings
@@ -300,6 +296,23 @@ if(getConf("FASTQ"))
     $missingReqFile++;
 }
 
+#----------------------------------------------------------------------------
+#   Perform phone home and check storage requirements.
+#----------------------------------------------------------------------------
+#   All set now, phone home to check for a new version. We don't care about failures.
+system($opts{phonehome});
+
+#   Last warning to user about storage requirements
+# check if fastq_prefix is specified.
+my $fastqpref = getConf('FASTQ_PREFIX');
+if( !defined($fastqpref) || ($fastqpref eq '') )
+{
+    # FASTQ_PREFIX is not set, so use BASE_PREFIX.
+    $fastqpref = getConf('BASE_PREFIX');
+}
+
+system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
+
 #############################################################################
 #   Read the Index File
 #############################################################################
@@ -312,23 +325,6 @@ system("mkdir -p $out_dir") &&
 #   Read the first line and check if it is a header or a reference
 my $line = <IN>;
 chomp($line);
-if ($line =~ /^#FASTQ_PREFIX\s*=\s*(.+)\s*$/) {    # Provides reference path to fastq files
-    setConf('FASTQ_PREFIX', $1);
-    $line = <IN>;
-    chomp($line);
-}
-
-#   By now the FASTQ directory should be set if it ever will be
-my $fq = getConf('FASTQ_PREFIX');
-if ((! $fq) || (! -d $fq)) {
-###    warn "WARNING: FASTQ directory '$fq' does not exist or -fastq was not specified\n";
-}
-else {
-    #   Make sure there's a trailing / on FASTQ and it is fully qualified
-    $fq = abs_path($fq);
-    if ($fq !~ /\/$/) { $fq .= '/'; }
-    setConf('FASTQ_PREFIX', $fq);           # Force this to be set
-}
 
 #   Track positions for each field
 my @fieldnames = qw(MERGE_NAME FASTQ1 FASTQ2 RGID SAMPLE LIBRARY CENTER PLATFORM);
@@ -954,22 +950,10 @@ These determine exactly how B<runcluster> will run the command.
 the type 'flux' is an alias for 'pbs'.
 The default is B<local>.
 
-=item B<-conf_path dirlist>
-
-Specifies a colon-delimited list of directories to be searched for
-configuration files.
-If this is set, the user configuration directory B<$HOME/.config/gotcloud>
-is not searched. You'll need to use this if you want it included.
-No error messages are generated if no configuration file (B<*.conf>)
-is found in the directories in this list.
-The default configuration will be read in all cases (see B<-conf>).
-
 =item B<-conf file>
 
-Specifies the configuration file to be used.
-The default configuration is B<gotcloudDefaults.conf> found in the same directory
-where this program resides.
-If this file is not found, you must specify this option on the command line.
+Specifies a space delimited list of configuration files to be used.
+The first file in the list has the highest precedence in the case of repeated values.
 
 =item B<-dry-run>
 

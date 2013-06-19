@@ -134,7 +134,7 @@ if [ "$debpkg" = "bin" ]; then
   if [ "$clean" = "y" ]; then
     make clean > /dev/null 2> /dev/null
   fi
-  make >> $efile 2>&1 || (cat $efile; exit 1)
+  make -j2 >> $efile 2>&1 || (cat $efile; exit 1)
   cd ..
   echo "Binaries created as necessary"
 fi

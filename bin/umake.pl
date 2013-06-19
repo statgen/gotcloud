@@ -3,7 +3,7 @@
 ####################################################################
 # umake.pl
 # Main script for UMAKE SNP calling pipeline
-# Usage : 
+# Usage :
 # - STEP 1 : perl umake.pl --conf [config-file]
 # - STEP 2 : make -f [out-prefix].Makefile -j [# parallel jobs]
 #
@@ -34,6 +34,10 @@ $hConf{"GOTCLOUD_ROOT"} = $gotcloudRoot;
 #############################################################################
 ## STEP 1 : Load configuration file
 ############################################################################
+my %opts = (
+    phonehome => "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $scriptName",
+);
+
 my $help = "";
 my $testdir = "";
 my $outdir = "";
@@ -63,20 +67,20 @@ my $optResult = GetOptions("help",\$help,
                            "outdir|out_dir=s",\$outdir,
                            "conf=s",\$conf,
                            "numjobs=i",\$numjobs,
-			   "snpcall",\$snpcallOpt,
-			   "extract",\$extractOpt,
-			   "beagle",\$beagleOpt,
-			   "thunder",\$thunderOpt,
-			   "outprefix=s",\$outprefix,
-			   "override=s",\$override,
-			   "region=s",\$callregion,
+               "snpcall",\$snpcallOpt,
+               "extract",\$extractOpt,
+               "beagle",\$beagleOpt,
+               "thunder",\$thunderOpt,
+               "outprefix=s",\$outprefix,
+               "override=s",\$override,
+               "region=s",\$callregion,
                            "batchtype|batch_type=s",\$batchtype,
                            "batchopts|batch_opts=s",\$batchopts,
                            "baseprefix|base_prefix=s",\$baseprefix,
                            "bamprefix|bam_prefix=s",\$bamprefix,
                            "refprefix|ref_prefix=s",\$refprefix,
 #                           "vcfdir|vcf_dir=s",\$vcfdir,
-			   "localdefaults=s",\$localdefaults,
+               "localdefaults=s",\$localdefaults,
                            "verbose", \$verbose
     );
 
@@ -172,48 +176,51 @@ if ($batchtype eq "")
 if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
 $runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 
+#   All set now, phone home to check for a new version. We don't care about failures.
+system($opts{phonehome});
+
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
 ## Extract : PILEUP -> GLFEXTRACT -> SPLIT : 1,6,7
 ## BEAGLE  : BEAGLE -> SUBSET : 8,9
-## THUNDER : THUNDER -> 10 
+## THUNDER : THUNDER -> 10
 my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_SVM RUN_EXTRACT RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER);
 my @orderFlags = ();
 
 ## if --snpcall --beagle --subset or --thunder
 if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ) {
     foreach my $o (@orders) {
-	push(@orderFlags, 0);
-	$hConf{$o} = "FALSE";
+    push(@orderFlags, 0);
+    $hConf{$o} = "FALSE";
     }
     if ( $snpcallOpt ) {
-	foreach my $i (1,2,3,4,5,7) { # PILEUP to SPLIT
-	    $orderFlags[$i] = 1;
-	    $hConf{$orders[$i]} = "TRUE";
-	}
+    foreach my $i (1,2,3,4,5,7) { # PILEUP to SPLIT
+        $orderFlags[$i] = 1;
+        $hConf{$orders[$i]} = "TRUE";
+    }
     }
     if ( $extractOpt ) {
-	foreach my $i (1,6,7) { # PILEUP, EXTRACT, SPLIT
-	    $orderFlags[$i] = 1;
-	    $hConf{$orders[$i]} = "TRUE";
-	}
+    foreach my $i (1,6,7) { # PILEUP, EXTRACT, SPLIT
+        $orderFlags[$i] = 1;
+        $hConf{$orders[$i]} = "TRUE";
+    }
     }
     if ( $beagleOpt ) {
-	foreach my $i (8,9) {
-	    $orderFlags[$i] = 1;
-	    $hConf{$orders[$i]} = "TRUE";
-	}
+    foreach my $i (8,9) {
+        $orderFlags[$i] = 1;
+        $hConf{$orders[$i]} = "TRUE";
+    }
     }
     if ( $thunderOpt ) {
-	foreach my $i (10) {
-	    $orderFlags[$i] = 1;
-	    $hConf{$orders[$i]} = "TRUE";
-	}
+    foreach my $i (10) {
+        $orderFlags[$i] = 1;
+        $hConf{$orders[$i]} = "TRUE";
+    }
     }
 }
 else {
     foreach my $o (@orders) {
-	push(@orderFlags, ( &getConf($o) eq "TRUE") ? 1 : 0 );
+    push(@orderFlags, ( &getConf($o) eq "TRUE") ? 1 : 0 );
     }
 }
 
@@ -224,25 +231,25 @@ foreach my $v (@validOrders) {
     my @vjs = ();
     my $i;
     for($i=0; $i < @orderFlags; ++$i) {
-	if ( $orderFlags[$i] == 1 ) {
-	    my $found = 0;
-	    for(my $j=0; $j < @{$v}; ++$j) {
-		if ( $v->[$j] == $i ) {
-		    push(@vjs,$j);
-		    $found = 1;
-		}
-	    }
-	    last if ( $found == 0 );
-	}
+    if ( $orderFlags[$i] == 1 ) {
+        my $found = 0;
+        for(my $j=0; $j < @{$v}; ++$j) {
+        if ( $v->[$j] == $i ) {
+            push(@vjs,$j);
+            $found = 1;
+        }
+        }
+        last if ( $found == 0 );
+    }
     }
     #print "$i\n";
-    if ( $i == $#orderFlags + 1 ) { 
-	for(my $j=1; $j < @vjs; ++$j) {
-	    if ( $vjs[$j] != $vjs[$j-1]+1 ) {
-		next;
-	    }
-	}
-	$validFlag = 1;
+    if ( $i == $#orderFlags + 1 ) {
+    for(my $j=1; $j < @vjs; ++$j) {
+        if ( $vjs[$j] != $vjs[$j-1]+1 ) {
+        next;
+        }
+    }
+    $validFlag = 1;
     }
 }
 
@@ -250,9 +257,9 @@ print STDERR "Processing the following steps...\n";
 my $numSteps = 0;
 for(my $i=0; $i < @orderFlags; ++$i) {
     if ( $orderFlags[$i] == 1 ) {
-	print STDERR ($i+1);
-	print STDERR ": $orders[$i]\n";
-	++$numSteps;
+    print STDERR ($i+1);
+    print STDERR ": $orders[$i]\n";
+    ++$numSteps;
     }
 }
 
@@ -450,13 +457,13 @@ while(<IN>) {
     my @mpops = split(/,/,$pop);
 
     if ( defined($hSM2pops{$smID}) || defined($hSM2bams{$smID}) ) {
-	die "Duplicated sample ID $smID\n";
+    die "Duplicated sample ID $smID\n";
     }
 
     $hSM2pops{$smID} = \@mpops;
     $hSM2bams{$smID} = \@bams;
     foreach my $mpop (@mpops) {
-	$hPops{$mpop} = 1;
+    $hPops{$mpop} = 1;
     }
     foreach my $bam (@bams) {
         if(!($bam =~ /^\// ))
@@ -475,14 +482,14 @@ while(<IN>) {
                 $bam = getAbsPath($bam, "BAM");
             }
         }
-	push(@allbamSMs,$smID);
+    push(@allbamSMs,$smID);
 
-	if ( &getConf("ASSERT_BAM_EXIST") eq "TRUE" ) {
-#	$bam =~ s/\s+//g;
-	    unless ( -s $bam ) {
-		die "Cannot locate '$bam'\n";
-	    }
-	}
+    if ( &getConf("ASSERT_BAM_EXIST") eq "TRUE" ) {
+#   $bam =~ s/\s+//g;
+        unless ( -s $bam ) {
+        die "Cannot locate '$bam'\n";
+        }
+    }
     }
     push(@allSMs,$smID);
     push(@allbams,@bams);
@@ -497,19 +504,19 @@ if ( $pedIndex ne "" ) {
     $pedIndex = getAbsPath($pedIndex);
     open(IN,$pedIndex) || die "Cannot open $pedIndex file\n";
     while(<IN>) {
-	next if ( /^#/ );
-	my ($famID,$indID,$fatID,$motID,$sex) = split;
-	#die "Cannot recognize $indID in $pedIndex\n" unless defined($hSM2bams{$indID});
-	$hSM2sexs{$indID} = $sex;
+    next if ( /^#/ );
+    my ($famID,$indID,$fatID,$motID,$sex) = split;
+    #die "Cannot recognize $indID in $pedIndex\n" unless defined($hSM2bams{$indID});
+    $hSM2sexs{$indID} = $sex;
     }
     close IN;
     foreach my $id (@allSMs) {
-	die "Cannot find $id in $pedIndex\n" unless defined($hSM2sexs{$id});
+    die "Cannot find $id in $pedIndex\n" unless defined($hSM2sexs{$id});
     }
 }
 else {
     foreach my $id (@allSMs) {
-	$hSM2sexs{$id} = 2;
+    $hSM2sexs{$id} = 2;
     }
 }
 
@@ -555,13 +562,13 @@ close IN;
 my ($callstart,$callend);
 if ( $callregion ) {
     if ( $callregion =~ /^([^:]+):(\d+)(\-\d+)?$/ ) {
-	@chrs = ($1);
-	$callstart = $2;
-	$callend = $3 ? substr($3,1) : $hChrSizes{$1};
-	print STDERR "Call region is $1:$callstart-$callend\n";
+    @chrs = ($1);
+    $callstart = $2;
+    $callend = $3 ? substr($3,1) : $hChrSizes{$1};
+    print STDERR "Call region is $1:$callstart-$callend\n";
     }
     else {
-	die "Cannot recognize option --region $callregion\nExpected format: N:N-N\n";
+    die "Cannot recognize option --region $callregion\nExpected format: N:N-N\n";
     }
 }
 
@@ -623,7 +630,7 @@ elsif ( $uniformTargetBed ne "" ) {
     my $bedFn = +(split(/\//,$uniformTargetBed))[-1];
     push(@uniqBedFns,$bedFn);
     for(my $i=0; $i < @allSMs; ++$i) {
-	$hBedIndices{$allSMs[$i]} = 0;
+    $hBedIndices{$allSMs[$i]} = 0;
     }
 }
 elsif ( $multiTargetMap ne "" ) {
@@ -631,20 +638,20 @@ elsif ( $multiTargetMap ne "" ) {
     my %hSM2BedIndex = ();
     open(IN,$multiTargetMap) || die "Cannot open file $multiTargetMap\n";
     while(<IN>) {
-	my ($id,$bed) = split;
-	unless (defined($hBeds{$bed}) ) {
-	    $hBeds{$bed} = $#uniqBeds+1;
-	    push(@uniqBeds,$bed);
-	    my $bedFn = +(split(/\//,$bed))[-1];
-	    push(@uniqBedFns,$bedFn);
-	}
-	$hSM2BedIndex{$id} = $hBeds{$bed};
+    my ($id,$bed) = split;
+    unless (defined($hBeds{$bed}) ) {
+        $hBeds{$bed} = $#uniqBeds+1;
+        push(@uniqBeds,$bed);
+        my $bedFn = +(split(/\//,$bed))[-1];
+        push(@uniqBedFns,$bedFn);
+    }
+    $hSM2BedIndex{$id} = $hBeds{$bed};
     }
     close IN;
 
     for(my $i=0; $i < @allSMs; ++$i) {
-	die "Cannot find target information for sample $allSMs[$i]\n" unless (defined($hSM2BedIndex{$allSMs[$i]}));
-	$hBedIndices{$allSMs[$i]} = $hSM2BedIndex{$allSMs[$i]};
+    die "Cannot find target information for sample $allSMs[$i]\n" unless (defined($hSM2BedIndex{$allSMs[$i]}));
+    $hBedIndices{$allSMs[$i]} = $hSM2BedIndex{$allSMs[$i]};
     }
 }
 
@@ -661,35 +668,35 @@ foreach my $chr (@chrs) {
     die "Cannot find chromosome name $chr in the reference file\n" unless (defined($hChrSizes{$chr}));
     my @unitStarts = ();
     my @unitEnds = ();
-    
+
     #############################################################################
     ## STEP 8 : PARITION THE CHROMSOME INTO REGIONS
     #############################################################################
     for(my $j=0; $j < $hChrSizes{$chr}; $j += $unitChunk) {
-	my $start = sprintf("%d",$j+1);
-	my $end = ($j+$unitChunk > $hChrSizes{$chr}) ? $hChrSizes{$chr} : sprintf("%d",$j+$unitChunk);
+    my $start = sprintf("%d",$j+1);
+    my $end = ($j+$unitChunk > $hChrSizes{$chr}) ? $hChrSizes{$chr} : sprintf("%d",$j+$unitChunk);
 
-	## if --region was specified, check overlap and skip if necessary
-	next if ( defined($callstart) && ( ( $start > $callend ) || ( $end < $callstart ) ) );
+    ## if --region was specified, check overlap and skip if necessary
+    next if ( defined($callstart) && ( ( $start > $callend ) || ( $end < $callstart ) ) );
 
-	## if targeted sequencing, 
-	## check if the region overlaps with any of the known targets
-	my $inTarget = ($#uniqBeds < 0) ? 1 : 0;
-	if ( $inTarget == 0 ) {
-	    for(my $k=0; ($k < @uniqBeds) && ( $inTarget == 0) ; ++$k) {
-		foreach my $p (@{$targetIntervals[$k]->{$chr}}) {
-		    ## check if any of target overlaps
-		    unless ( ( $p->[1] < $start ) || ( $p->[0] > $end ) ) {
-			$inTarget = 1;
-			last;
-		    }
-		}
-	    }
-	}
-	if ( $inTarget == 1 ) {
-	    push(@unitStarts,$start);
-	    push(@unitEnds,$end);
-	}
+    ## if targeted sequencing,
+    ## check if the region overlaps with any of the known targets
+    my $inTarget = ($#uniqBeds < 0) ? 1 : 0;
+    if ( $inTarget == 0 ) {
+        for(my $k=0; ($k < @uniqBeds) && ( $inTarget == 0) ; ++$k) {
+        foreach my $p (@{$targetIntervals[$k]->{$chr}}) {
+            ## check if any of target overlaps
+            unless ( ( $p->[1] < $start ) || ( $p->[0] > $end ) ) {
+            $inTarget = 1;
+            last;
+            }
+        }
+        }
+    }
+    if ( $inTarget == 1 ) {
+        push(@unitStarts,$start);
+        push(@unitEnds,$end);
+    }
     }
 
     #############################################################################
@@ -699,14 +706,14 @@ foreach my $chr (@chrs) {
            ( &getConf("WRITE_TARGET_LOCI") eq "ALWAYS" ) ) &&
          ( &getConf("RUN_PILEUP") eq "TRUE" ) )
     {
-	die "No target file is given but WRITE_TARGET_LOCI is TRUE\n" if ( $#uniqBeds < 0 );
+    die "No target file is given but WRITE_TARGET_LOCI is TRUE\n" if ( $#uniqBeds < 0 );
 
-	## Generate target loci information
-	for(my $i=0; $i < @uniqBeds; ++$i) {
+    ## Generate target loci information
+    for(my $i=0; $i < @uniqBeds; ++$i) {
         my $printBedName = 0;
-	    my $outDir = "$targetDirReal/$uniqBedFns[$i]/chr$chr";
-	    make_path($outDir);
-	    for(my $j=0; $j < @unitStarts; ++$j) {
+        my $outDir = "$targetDirReal/$uniqBedFns[$i]/chr$chr";
+        make_path($outDir);
+        for(my $j=0; $j < @unitStarts; ++$j) {
                if( ( &getConf("WRITE_TARGET_LOCI") eq "ALWAYS" ) ||
                     (! -r "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") ||
                     ( -M "$uniqBeds[$i]" < -M "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci" ) )
@@ -721,18 +728,18 @@ foreach my $chr (@chrs) {
                   open(LOCI,">$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") || die "Cannot create $outDir/$chr.loci\n";
                   foreach my $p (@{$targetIntervals[$i]->{$chr}})
                   {
-		    my $start = ( $p->[0] < $unitStarts[$j] ) ? $unitStarts[$j] : $p->[0];
-		    my $end = ( $p->[1] < $unitEnds[$j] ) ? $p->[1] : $unitEnds[$j];
-		    #die "@{$p} $start $end\n";
-		    for(my $k=$start; $k <= $end; ++$k)
+            my $start = ( $p->[0] < $unitStarts[$j] ) ? $unitStarts[$j] : $p->[0];
+            my $end = ( $p->[1] < $unitEnds[$j] ) ? $p->[1] : $unitEnds[$j];
+            #die "@{$p} $start $end\n";
+            for(my $k=$start; $k <= $end; ++$k)
                     {
                       print LOCI "$chr\t$k\n";
                     }
                   }
                   close LOCI;
                 }
-	    }
-	}
+        }
+    }
     }
 
     #############################################################################
@@ -756,306 +763,306 @@ foreach my $chr (@chrs) {
     ## STEP 10-9 : RUN MaCH GENOTYPE REFINEMENT
     #############################################################################
     if ( &getConf("RUN_THUNDER") eq "TRUE" ) {
-	print MAK "thunder$chr:";
-	foreach my $pop (@pops) {
-	    my $thunderPrefix = "$thunderDir/chr$chr/$pop/thunder/chr$chr.filtered.PASS.beagled.$pop.thunder";
-	print MAK " $thunderPrefix.vcf.gz.tbi";
-	}
-	print MAK "\n\n";
-	
-	foreach my $pop (@pops) {
-	    my $splitPrefix = "$thunderDirReal/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
-	    open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
-	    my @splitVcfs = ();
-	    for(my $i=1;<IN>;++$i) {
-		chomp;
-		if ( /^\// ) {
-		    push(@splitVcfs,"$remotePrefix$_");
-		}
-		else {
-		    die "$splitPrefix.vcflist must contain absolute filepath\n";
-		}
-	    }
-	    close IN;
-	    my $nsplits = $#splitVcfs+1;
-	    
-	    my $thunderPrefix = "$thunderDir/chr$chr/$pop/thunder/chr$chr.filtered.PASS.beagled.$pop.thunder";
-	    my @thunderOuts = ();
-	    my $thunderOutPrefix = $thunderPrefix;
-	    for(my $i=0; $i < $nsplits; ++$i) {
-		my $j = $i+1;
-		my $thunderOut = "$thunderOutPrefix.$j";
-		push(@thunderOuts,$thunderOut);
-	    }
-	    
-	    print MAK "$thunderPrefix.vcf.gz.tbi: ".join(".vcf.gz.OK ",@thunderOuts).".vcf.gz.OK\n";
+    print MAK "thunder$chr:";
+    foreach my $pop (@pops) {
+        my $thunderPrefix = "$thunderDir/chr$chr/$pop/thunder/chr$chr.filtered.PASS.beagled.$pop.thunder";
+    print MAK " $thunderPrefix.vcf.gz.tbi";
+    }
+    print MAK "\n\n";
+
+    foreach my $pop (@pops) {
+        my $splitPrefix = "$thunderDirReal/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
+        open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
+        my @splitVcfs = ();
+        for(my $i=1;<IN>;++$i) {
+        chomp;
+        if ( /^\// ) {
+            push(@splitVcfs,"$remotePrefix$_");
+        }
+        else {
+            die "$splitPrefix.vcflist must contain absolute filepath\n";
+        }
+        }
+        close IN;
+        my $nsplits = $#splitVcfs+1;
+
+        my $thunderPrefix = "$thunderDir/chr$chr/$pop/thunder/chr$chr.filtered.PASS.beagled.$pop.thunder";
+        my @thunderOuts = ();
+        my $thunderOutPrefix = $thunderPrefix;
+        for(my $i=0; $i < $nsplits; ++$i) {
+        my $j = $i+1;
+        my $thunderOut = "$thunderOutPrefix.$j";
+        push(@thunderOuts,$thunderOut);
+        }
+
+        print MAK "$thunderPrefix.vcf.gz.tbi: ".join(".vcf.gz.OK ",@thunderOuts).".vcf.gz.OK\n";
             my $cmd = &getConf("LIGATEVCF")." ".join(".vcf.gz ",@thunderOuts).".vcf.gz 2> $thunderPrefix.vcf.gz.err | ".&getConf("BGZIP")." -c > $thunderPrefix.vcf.gz";
             writeLocalCmd($cmd);
-	    $cmd = &getConf("TABIX")." -f -pvcf $thunderPrefix.vcf.gz";
+        $cmd = &getConf("TABIX")." -f -pvcf $thunderPrefix.vcf.gz";
             writeLocalCmd($cmd);
 
-	    for(my $i=0; $i < $nsplits; ++$i) {
-		my $j = $i+1;
-		my $thunderOut = "$thunderOutPrefix.$j";
-		print MAK "$thunderOut.vcf.gz.OK:\n";
-		print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/thunder\n";
-		my $cmd = &getConf("THUNDER")." --shotgun $splitVcfs[$i] -o $remotePrefix$thunderOut > $remotePrefix$thunderOut.out 2> $remotePrefix$thunderOut.err";
+        for(my $i=0; $i < $nsplits; ++$i) {
+        my $j = $i+1;
+        my $thunderOut = "$thunderOutPrefix.$j";
+        print MAK "$thunderOut.vcf.gz.OK:\n";
+        print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/thunder\n";
+        my $cmd = &getConf("THUNDER")." --shotgun $splitVcfs[$i] -o $remotePrefix$thunderOut > $remotePrefix$thunderOut.out 2> $remotePrefix$thunderOut.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		print MAK "\t".&getMosixCmd($cmd)."\n";
-		$cmd = "touch $thunderOut.vcf.gz.OK";
-		print MAK "\t$cmd\n";
-		print MAK "\n";
-	    }
-	}
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        $cmd = "touch $thunderOut.vcf.gz.OK";
+        print MAK "\t$cmd\n";
+        print MAK "\n";
+        }
+    }
     }
 
     #############################################################################
     ## STEP 10-8 : SUBSET INTO POPULATION GROUPS FOR THUNDER REFINEMENT
     #############################################################################
     if ( &getConf("RUN_SUBSET") eq "TRUE" ) {
-	my $expandFlag = ( &getConf("RUN_BEAGLE") eq "TRUE" ) ? 1 : 0;
-    
-	print MAK "subset$chr:";
-	foreach my $pop (@pops) {
-	    print MAK " $thunderDir/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split.vcflist";
-	}
-	print MAK "\n\n";
-	
-	my $nLdSNPs = &getConf("LD_NSNPS");
-	my $nLdOverlap = &getConf("LD_OVERLAP");
-	my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
-	
-	if ( $expandFlag == 1 ) {
-	    print MAK "$beagleDir/chr$chr/subset.OK: beagle$chr\n";
-	}
-	else {
-	    print MAK "$beagleDir/chr$chr/subset.OK:\n";
-	}
-	my $beaglePrefix = "$beagleDir/chr$chr/chr$chr.filtered.PASS.beagled";
-	if ( $#pops > 0 ) {
-	    my $cmd = &getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamIndexRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
+    my $expandFlag = ( &getConf("RUN_BEAGLE") eq "TRUE" ) ? 1 : 0;
+
+    print MAK "subset$chr:";
+    foreach my $pop (@pops) {
+        print MAK " $thunderDir/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split.vcflist";
+    }
+    print MAK "\n\n";
+
+    my $nLdSNPs = &getConf("LD_NSNPS");
+    my $nLdOverlap = &getConf("LD_OVERLAP");
+    my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
+
+    if ( $expandFlag == 1 ) {
+        print MAK "$beagleDir/chr$chr/subset.OK: beagle$chr\n";
+    }
+    else {
+        print MAK "$beagleDir/chr$chr/subset.OK:\n";
+    }
+    my $beaglePrefix = "$beagleDir/chr$chr/chr$chr.filtered.PASS.beagled";
+    if ( $#pops > 0 ) {
+        my $cmd = &getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamIndexRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    print MAK "\n";
-	    foreach my $pop (@pops) {
-		$cmd = "\t".&getConf("TABIX")." -f -pvcf $remotePrefix$beaglePrefix.$pop.vcf.gz\n";
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        print MAK "\n";
+        foreach my $pop (@pops) {
+        $cmd = "\t".&getConf("TABIX")." -f -pvcf $remotePrefix$beaglePrefix.$pop.vcf.gz\n";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 print MAK "$cmd";
-	    }
-	}
-	else {
-	    print MAK "\tln -f -s $remotePrefix$beaglePrefix.vcf.gz $remotePrefix$beaglePrefix.$pops[0].vcf.gz\n";
-	    print MAK "\tln -f -s $remotePrefix$beaglePrefix.vcf.gz.tbi $remotePrefix$beaglePrefix.$pops[0].vcf.gz.tbi\n";
-	}
-	print MAK "\ttouch $beagleDir/chr$chr/subset.OK\n\n";
-	
-	foreach my $pop (@pops) {
-	    my $splitPrefix = "$thunderDir/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
-	    print MAK "$splitPrefix.vcflist: $beagleDir/chr$chr/subset.OK\n";
-	    print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/split/\n";
-	    my $cmd = &getConf("VCFSPLIT")." --in $remotePrefix$beaglePrefix.$pop.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
+        }
+    }
+    else {
+        print MAK "\tln -f -s $remotePrefix$beaglePrefix.vcf.gz $remotePrefix$beaglePrefix.$pops[0].vcf.gz\n";
+        print MAK "\tln -f -s $remotePrefix$beaglePrefix.vcf.gz.tbi $remotePrefix$beaglePrefix.$pops[0].vcf.gz.tbi\n";
+    }
+    print MAK "\ttouch $beagleDir/chr$chr/subset.OK\n\n";
+
+    foreach my $pop (@pops) {
+        my $splitPrefix = "$thunderDir/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
+        print MAK "$splitPrefix.vcflist: $beagleDir/chr$chr/subset.OK\n";
+        print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/split/\n";
+        my $cmd = &getConf("VCFSPLIT")." --in $remotePrefix$beaglePrefix.$pop.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n\n";
-	}
+        print MAK "\t".&getMosixCmd($cmd)."\n\n";
+    }
     }
 
     #############################################################################
     ## STEP 10-7 : RUN BEAGLE GENOTYPE REFINEMENT
     #############################################################################
     if ( &getConf("RUN_BEAGLE") eq "TRUE" ) {
-	my $beaglePrefix = "$beagleDir/chr$chr/chr$chr.filtered.PASS.beagled";
-	print MAK "beagle$chr: $beaglePrefix.vcf.gz.tbi\n\n";
+    my $beaglePrefix = "$beagleDir/chr$chr/chr$chr.filtered.PASS.beagled";
+    print MAK "beagle$chr: $beaglePrefix.vcf.gz.tbi\n\n";
 
-	my $splitPrefix = "$splitDirReal/chr$chr/chr$chr.filtered.PASS.split";
-	open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
-	my @splitVcfs = ();
-	while(<IN>) {
-	    chomp;
-	    push(@splitVcfs,$_);
-	}
-	close IN;
-	my $nsplits = $#splitVcfs+1;
+    my $splitPrefix = "$splitDirReal/chr$chr/chr$chr.filtered.PASS.split";
+    open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
+    my @splitVcfs = ();
+    while(<IN>) {
+        chomp;
+        push(@splitVcfs,$_);
+    }
+    close IN;
+    my $nsplits = $#splitVcfs+1;
 
-	my @beagleOuts = ();
-	my $beagleOutPrefix = "$beagleDir/chr$chr/split/bgl";
-	for(my $i=0; $i < $nsplits; ++$i) {
-	    my $j = $i+1;
-	    my $beagleOut = "$beagleOutPrefix.$j.chr$chr.PASS.$j";
-	    push(@beagleOuts,$beagleOut);
-	}
+    my @beagleOuts = ();
+    my $beagleOutPrefix = "$beagleDir/chr$chr/split/bgl";
+    for(my $i=0; $i < $nsplits; ++$i) {
+        my $j = $i+1;
+        my $beagleOut = "$beagleOutPrefix.$j.chr$chr.PASS.$j";
+        push(@beagleOuts,$beagleOut);
+    }
 
-	print MAK "$beaglePrefix.vcf.gz.tbi: ".join(".vcf.gz.tbi ",@beagleOuts).".vcf.gz.tbi\n";
+    print MAK "$beaglePrefix.vcf.gz.tbi: ".join(".vcf.gz.tbi ",@beagleOuts).".vcf.gz.tbi\n";
         my $cmd = &getConf("LIGATEVCF")." ".join(".vcf.gz ",@beagleOuts).".vcf.gz 2> $beaglePrefix.vcf.gz.err | ".&getConf("BGZIP")." -c > $beaglePrefix.vcf.gz";
         writeLocalCmd($cmd);
-	$cmd = &getConf("TABIX")." -f -pvcf $beaglePrefix.vcf.gz";
+    $cmd = &getConf("TABIX")." -f -pvcf $beaglePrefix.vcf.gz";
         writeLocalCmd($cmd);
-	print MAK "\n";
+    print MAK "\n";
 
-	my $beagleLikeDir = "$beagleDir/chr$chr/like";
-	for(my $i=0; $i < $nsplits; ++$i) {
-	    my $j = $i+1;
-	    my $beagleOut = "$beagleOutPrefix.$j.chr$chr.PASS.$j";
-	    print MAK "$beagleOut.vcf.gz.tbi:\n";
-	    print MAK "\tmkdir --p $beagleLikeDir\n";
-	    print MAK "\tmkdir --p $beagleDir/chr$chr/split\n";
+    my $beagleLikeDir = "$beagleDir/chr$chr/like";
+    for(my $i=0; $i < $nsplits; ++$i) {
+        my $j = $i+1;
+        my $beagleOut = "$beagleOutPrefix.$j.chr$chr.PASS.$j";
+        print MAK "$beagleOut.vcf.gz.tbi:\n";
+        print MAK "\tmkdir --p $beagleLikeDir\n";
+        print MAK "\tmkdir --p $beagleDir/chr$chr/split\n";
             my $sleepSecs = $i*$sleepMultiplier % 1000;
             if($sleepSecs != 0)
             {
               print MAK "\tsleep ".$sleepSecs."\n";
             }
-	    my $cmd = &getConf("VCF2BEAGLE")." --in $splitVcfs[$i] --out $remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz";
+        my $cmd = &getConf("VCF2BEAGLE")." --in $splitVcfs[$i] --out $remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    $cmd = &getConf("BEAGLE")." like=$remotePrefix$beagleLikeDir/chr$chr.PASS.".($i+1).".gz out=$remotePrefix$beagleOutPrefix.$j >$remotePrefix$beagleOutPrefix.$j.out 2>$remotePrefix$beagleOutPrefix.$j.err";
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        $cmd = &getConf("BEAGLE")." like=$remotePrefix$beagleLikeDir/chr$chr.PASS.".($i+1).".gz out=$remotePrefix$beagleOutPrefix.$j >$remotePrefix$beagleOutPrefix.$j.out 2>$remotePrefix$beagleOutPrefix.$j.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    $cmd = &getConf("BEAGLE2VCF"). " --filter --beagle $remotePrefix$beagleOut.gz --invcf $splitVcfs[$i] --outvcf $remotePrefix$beagleOut.vcf";
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        $cmd = &getConf("BEAGLE2VCF"). " --filter --beagle $remotePrefix$beagleOut.gz --invcf $splitVcfs[$i] --outvcf $remotePrefix$beagleOut.vcf";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    $cmd = &getConf("BGZIP"). " -f $remotePrefix$beagleOut.vcf";
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        $cmd = &getConf("BGZIP"). " -f $remotePrefix$beagleOut.vcf";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    $cmd = &getConf("TABIX"). " -f -pvcf $remotePrefix$beagleOut.vcf.gz";
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        $cmd = &getConf("TABIX"). " -f -pvcf $remotePrefix$beagleOut.vcf.gz";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    print MAK "\n";
-	}
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        print MAK "\n";
+    }
     }
 
     #############################################################################
     ## STEP 10-6 : SPLIT FILTERED VCF INTO CHUNKS FOR GENOTYPING
     #############################################################################
     if ( &getConf("RUN_SPLIT") eq "TRUE" ) {
-	# determine whether to expand to lower level target or not
-	my $expandFlag = ( &getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
-	$expandFlag = 1 if ( &getConf("RUN_EXTRACT") eq "TRUE" );
-	$expandFlag = 2 if ( &getConf("RUN_SVM") eq "TRUE" );
-	
-	print MAK "split$chr:";
-	my $splitPrefix = "$splitDir/chr$chr/chr$chr.filtered.PASS.split";
-	print MAK " $splitPrefix.vcflist";
-	print MAK "\n\n";
-	
-	my $nLdSNPs = &getConf("LD_NSNPS");
-	my $nLdOverlap = &getConf("LD_OVERLAP");
-	my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
-	
-	my $subsetPrefix = "$splitDir/chr$chr/chr$chr.filtered";
-	if ( $expandFlag == 1 ) {
-	    print MAK "$splitDir/chr$chr/subset.OK: filt$chr\n";
-	}
-	elsif ( $expandFlag == 2 ) {
-	    print MAK "$splitDir/chr$chr/subset.OK: $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK\n";
-	}
-	else {
-	    print MAK "$splitDir/chr$chr/subset.OK:\n";
-	}
-	print MAK "\tmkdir --p $splitDir/chr$chr\n";
+    # determine whether to expand to lower level target or not
+    my $expandFlag = ( &getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
+    $expandFlag = 1 if ( &getConf("RUN_EXTRACT") eq "TRUE" );
+    $expandFlag = 2 if ( &getConf("RUN_SVM") eq "TRUE" );
+
+    print MAK "split$chr:";
+    my $splitPrefix = "$splitDir/chr$chr/chr$chr.filtered.PASS.split";
+    print MAK " $splitPrefix.vcflist";
+    print MAK "\n\n";
+
+    my $nLdSNPs = &getConf("LD_NSNPS");
+    my $nLdOverlap = &getConf("LD_OVERLAP");
+    my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
+
+    my $subsetPrefix = "$splitDir/chr$chr/chr$chr.filtered";
+    if ( $expandFlag == 1 ) {
+        print MAK "$splitDir/chr$chr/subset.OK: filt$chr\n";
+    }
+    elsif ( $expandFlag == 2 ) {
+        print MAK "$splitDir/chr$chr/subset.OK: $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK\n";
+    }
+    else {
+        print MAK "$splitDir/chr$chr/subset.OK:\n";
+    }
+    print MAK "\tmkdir --p $splitDir/chr$chr\n";
         my $cmd = "(zcat $mvcf | head -100 | grep ^#; zcat $mvcf | grep -w PASS;) | ".&getConf("BGZIP")." -c > $subsetPrefix.PASS.vcf.gz";
         writeLocalCmd($cmd);
-	print MAK "\ttouch $splitDir/chr$chr/subset.OK\n\n";
-	
-	print MAK "$splitPrefix.vcflist: $splitDir/chr$chr/subset.OK\n";
-	print MAK "\tmkdir --p $splitDir/chr$chr\n";
+    print MAK "\ttouch $splitDir/chr$chr/subset.OK\n\n";
+
+    print MAK "$splitPrefix.vcflist: $splitDir/chr$chr/subset.OK\n";
+    print MAK "\tmkdir --p $splitDir/chr$chr\n";
         $cmd = &getConf("VCFSPLIT")." --in $remotePrefix$subsetPrefix.PASS.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	print MAK "\t".&getMosixCmd($cmd)."\n\n";
+    print MAK "\t".&getMosixCmd($cmd)."\n\n";
     }
 
     #############################################################################
     ## STEP 10-6b : SPLIT FILTERED VCF INTO CHUNKS FOR GENOTYPING
     #############################################################################
     if ( &getConf("RUN_EXTRACT") eq "TRUE" ) {
-	my $expandFlag = ( &getConf("RUN_PILEUP") eq "TRUE" ) ? 1 : 0;
-	my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
-	my $vcf = "$vcfParent/chr$chr.filtered.vcf";
-	my @vcfs = ();
-	my @svcfs = ();
-	for(my $j=0; $j < @unitStarts; ++$j) {
-	    $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-	    push(@vcfs,"$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf");
-	    push(@svcfs,"$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf");
-	}
+    my $expandFlag = ( &getConf("RUN_PILEUP") eq "TRUE" ) ? 1 : 0;
+    my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
+    my $vcf = "$vcfParent/chr$chr.filtered.vcf";
+    my @vcfs = ();
+    my @svcfs = ();
+    for(my $j=0; $j < @unitStarts; ++$j) {
+        $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        push(@vcfs,"$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf");
+        push(@svcfs,"$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf");
+    }
 
-	my $invcf = &getConf("VCF_EXTRACT");
-	unless ( ( $invcf =~ /.gz$/ ) && ( -s $invcf ) && ( -s "$invcf.tbi" ) ) {
-	    die "Input VCF file $invcf must be bgzipped and tabixed\n";
-	}
+    my $invcf = &getConf("VCF_EXTRACT");
+    unless ( ( $invcf =~ /.gz$/ ) && ( -s $invcf ) && ( -s "$invcf.tbi" ) ) {
+        die "Input VCF file $invcf must be bgzipped and tabixed\n";
+    }
 
-	print MAK "filt$chr: $vcf.OK".(($expandFlag == 1) ? " glf$chr" : "")."\n\n";
-	print MAK "$vcf.OK: ";
-	print MAK join(".OK ",@vcfs);
-	print MAK ".OK\n";
+    print MAK "filt$chr: $vcf.OK".(($expandFlag == 1) ? " glf$chr" : "")."\n\n";
+    print MAK "$vcf.OK: ";
+    print MAK join(".OK ",@vcfs);
+    print MAK ".OK\n";
         my $cmd = "(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) | ".&getConf("BGZIP")." -c > $vcf.gz";
         writeLocalCmd($cmd);
-	print MAK "\ttouch $vcf.OK\n\n";
+    print MAK "\ttouch $vcf.OK\n\n";
 
-	for(my $j=0; $j < @unitStarts; ++$j) {
-	    $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-	    print MAK "$svcfs[$j].OK:\n";
-	    print MAK "\tmkdir --p $vcfParent\n";
-	    $cmd = &getConf("TABIX")." $invcf $chr:$unitStarts[$j]-$unitEnds[$j] | cut -f 1-8 > $svcfs[$j]";
+    for(my $j=0; $j < @unitStarts; ++$j) {
+        $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        print MAK "$svcfs[$j].OK:\n";
+        print MAK "\tmkdir --p $vcfParent\n";
+        $cmd = &getConf("TABIX")." $invcf $chr:$unitStarts[$j]-$unitEnds[$j] | cut -f 1-8 > $svcfs[$j]";
             writeLocalCmd($cmd);
-	    print MAK "\ttouch $svcfs[$j].OK\n\n";
+        print MAK "\ttouch $svcfs[$j].OK\n\n";
 
-	    my @glfs = ();
-	    my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-	    for(my $i=0; $i < @allSMs; ++$i) {
-		my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-		my $smGlf = "$smGlfParent/$smGlfFn";
-		push(@glfs,$smGlf);
-	    }
+        my @glfs = ();
+        my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        for(my $i=0; $i < @allSMs; ++$i) {
+        my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
+        my $smGlf = "$smGlfParent/$smGlfFn";
+        push(@glfs,$smGlf);
+        }
 
-	    handleGlfIndexFile($smGlfParent, $chr,
+        handleGlfIndexFile($smGlfParent, $chr,
                                $unitStarts[$j], $unitEnds[$j]);
 
-	    my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
+        my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
             $glfAlias =~ s/$outDir/\$(OUT_DIR)/g;
 
-	    my $sleepSecs = ($j % 10)*$sleepMultiplier;
-	    $cmd = &getConf("GLFEXTRACT")." --invcf $svcfs[$j] --ped $glfAlias -b $vcfs[$j] > $vcfs[$j].log 2> $vcfs[$j].err";
+        my $sleepSecs = ($j % 10)*$sleepMultiplier;
+        $cmd = &getConf("GLFEXTRACT")." --invcf $svcfs[$j] --ped $glfAlias -b $vcfs[$j] > $vcfs[$j].log 2> $vcfs[$j].err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    print MAK "$vcfs[$j].OK: $svcfs[$j].OK ";
-	    if ( $expandFlag == 1 ) {
-		print MAK join(".OK ",@glfs);
-		print MAK ".OK";
-	    }
-	    print MAK "\n";
-#	    print MAK "\tmkdir --p $vcfParent\n";
+        print MAK "$vcfs[$j].OK: $svcfs[$j].OK ";
+        if ( $expandFlag == 1 ) {
+        print MAK join(".OK ",@glfs);
+        print MAK ".OK";
+        }
+        print MAK "\n";
+#       print MAK "\tmkdir --p $vcfParent\n";
             if($sleepSecs != 0)
             {
               print MAK "\tsleep $sleepSecs\n";
             }
-	    print MAK "\t".&getMosixCmd($cmd)."\n";
-	    print MAK "\ttouch $vcfs[$j].OK\n\n";
-	}
+        print MAK "\t".&getMosixCmd($cmd)."\n";
+        print MAK "\ttouch $vcfs[$j].OK\n\n";
+    }
     }
 
-	#############################################################################
-	## STEP 10.5 : RUN SVM FILTERING
-	#############################################################################
-	if ( &getConf("RUN_SVM") eq "TRUE") {
-	    my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
-	    my $svcf = "$vcfParent/chr$chr.${filterPrefix}filtered.sites.vcf";
-	    my $vcf = "$vcfParent/chr$chr.merged.vcf";
+    #############################################################################
+    ## STEP 10.5 : RUN SVM FILTERING
+    #############################################################################
+    if ( &getConf("RUN_SVM") eq "TRUE") {
+        my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
+        my $svcf = "$vcfParent/chr$chr.${filterPrefix}filtered.sites.vcf";
+        my $vcf = "$vcfParent/chr$chr.merged.vcf";
 
-	    my $expandFlag = ( &getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
+        my $expandFlag = ( &getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
 
-	    my @cmds = ();
+        my @cmds = ();
 
-	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
+        my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
 
-	    print MAK "svm$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+        print MAK "svm$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
 
             my $cmd = "";
 
             if ( &getConf("WGS_SVM") eq "TRUE")
             {
-			print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $remotePrefix$vcfDir/filtered.vcf.gz.OK\n";
+            print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $remotePrefix$vcfDir/filtered.vcf.gz.OK\n";
                         push(@wgsFilterDepSites, "$mvcfPrefix.${filterPrefix}filtered.sites.vcf");
                         $wgsFilterDepVcfs .= " $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK";
             }
-	    else
+        else
             {
                 if ( $expandFlag == 1 ) {
                     print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n";
@@ -1070,258 +1077,258 @@ foreach my $chr (@chrs) {
 
             # The following is always done per chr
 
-	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
+        $cmd = &getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
             writeLocalCmd($cmd);
-	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
+        $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
+        $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
-	    print MAK join("\n",@cmds);
-	    print MAK "\n";
-	}
+        print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+        print MAK join("\n",@cmds);
+        print MAK "\n";
+    }
 
     if ( &getConf("MERGE_BEFORE_FILTER") eq "TRUE" ) {
-	#############################################################################
-	## STEP 10-4B : VCF PILEUP after MERGING
-	#############################################################################
-	if ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) {
-	    # determine whether to expand to lower level target or not
-	    my $expandFlag = ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
+    #############################################################################
+    ## STEP 10-4B : VCF PILEUP after MERGING
+    #############################################################################
+    if ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) {
+        # determine whether to expand to lower level target or not
+        my $expandFlag = ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
 
-	    ## Generate gpileup statistics (.pvcf) for every BAMs + merged VCF
-	    my @gvcfs = ();
-	    my @vcfs = ();
-	    my @pvcfs = ();
-	    my @cmds = ();
-	    
-	    my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
-	    my $svcf = "$vcfParent/chr$chr.merged.sites.vcf";
-	    my $gvcf = "$vcfParent/chr$chr.merged.stats.vcf";
-	    my $vcf = "$vcfParent/chr$chr.merged.vcf";
+        ## Generate gpileup statistics (.pvcf) for every BAMs + merged VCF
+        my @gvcfs = ();
+        my @vcfs = ();
+        my @pvcfs = ();
+        my @cmds = ();
 
-	    for(my $i=0; $i < @allbams; ++$i) {
-		my $bam = $allbams[$i];
-		my $bamSM = $allbamSMs[$i];
-		my @F = split(/\//,$bam);
-		my $bamFn = pop(@F);
-		my $pvcfParent = "$pvcfDir/chr$chr";
-		my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
-		push(@pvcfs,$pvcf);
-		#my $cmd = &getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-		my $cmd = &getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+        my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
+        my $svcf = "$vcfParent/chr$chr.merged.sites.vcf";
+        my $gvcf = "$vcfParent/chr$chr.merged.stats.vcf";
+        my $vcf = "$vcfParent/chr$chr.merged.vcf";
+
+        for(my $i=0; $i < @allbams; ++$i) {
+        my $bam = $allbams[$i];
+        my $bamSM = $allbamSMs[$i];
+        my @F = split(/\//,$bam);
+        my $bamFn = pop(@F);
+        my $pvcfParent = "$pvcfDir/chr$chr";
+        my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
+        push(@pvcfs,$pvcf);
+        #my $cmd = &getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+        my $cmd = &getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".&getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
-	    }
+        push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".&getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
+        }
 
-	    print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
-	    if ( $expandFlag == 1 ) {
-		print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
-	    }
-	    else {
-		print MAK "\n\n";
-	    }
-	    print MAK join("\n",@cmds);
-	}
+        print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
+        if ( $expandFlag == 1 ) {
+        print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
+        }
+        else {
+        print MAK "\n\n";
+        }
+        print MAK join("\n",@cmds);
+    }
 
-	#############################################################################
-	## STEP 10-5B : HARD FILTERING AFTER MERGING
-	#############################################################################
-	if ( &getConf("RUN_FILTER") eq "TRUE" ) {
-	    my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
-	    my $svcf = "$vcfParent/chr$chr.merged.sites.vcf";
-	    my $gvcf = "$vcfParent/chr$chr.merged.stats.vcf";
-	    my $vcf = "$vcfParent/chr$chr.merged.vcf";
+    #############################################################################
+    ## STEP 10-5B : HARD FILTERING AFTER MERGING
+    #############################################################################
+    if ( &getConf("RUN_FILTER") eq "TRUE" ) {
+        my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
+        my $svcf = "$vcfParent/chr$chr.merged.sites.vcf";
+        my $gvcf = "$vcfParent/chr$chr.merged.stats.vcf";
+        my $vcf = "$vcfParent/chr$chr.merged.vcf";
 
-	    my @pvcfs = ();
-	    for(my $i=0; $i < @allbams; ++$i) {
-		my $bam = $allbams[$i];
-		my @F = split(/\//,$bam);
-		my $bamFn = pop(@F);
-		my $pvcfParent = "$pvcfDir/chr$chr";
-		my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
-		push(@pvcfs,$pvcf);
-	    }
+        my @pvcfs = ();
+        for(my $i=0; $i < @allbams; ++$i) {
+        my $bam = $allbams[$i];
+        my @F = split(/\//,$bam);
+        my $bamFn = pop(@F);
+        my $pvcfParent = "$pvcfDir/chr$chr";
+        my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
+        push(@pvcfs,$pvcf);
+        }
 
-	    my $expandFlag = ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
-	    my @cmds = ();
-	    my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/ --suffix .$chr.vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
+        my $expandFlag = ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
+        my @cmds = ();
+        my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/ --suffix .$chr.vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 
-	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
-	    print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
-	    if ( $expandFlag == 1 ) {
-		print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK pvcf$chr\n";
-	    }
-	    else {
-		print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK\n";
-	    }
-	    $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
+        my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
+        print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+        if ( $expandFlag == 1 ) {
+        print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK pvcf$chr\n";
+        }
+        else {
+        print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK\n";
+        }
+        $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
+        $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
             writeLocalCmd($cmd);
-	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
+        $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
+        $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
-	    print MAK join("\n",@cmds);
-	    print MAK "\n";
-	}
+        print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+        print MAK join("\n",@cmds);
+        print MAK "\n";
+    }
     }
     else {
-	#############################################################################
-	## STEP 10-4A : VCF PILEUP before MERGING
-	#############################################################################
-	if ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) {
-	    my $expandFlag = ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
+    #############################################################################
+    ## STEP 10-4A : VCF PILEUP before MERGING
+    #############################################################################
+    if ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) {
+        my $expandFlag = ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
 
-	    ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
-	    my @gvcfs = ();
-	    my @vcfs = ();
-	    my @pvcfs = ();
-	    my @cmds = ();
-	    
-	    for(my $j=0; $j < @unitStarts; ++$j) {
-		#print STDERR "Yay..\n";
-		my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-		my $svcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
-		my $gvcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
-		my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
+        ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
+        my @gvcfs = ();
+        my @vcfs = ();
+        my @pvcfs = ();
+        my @cmds = ();
 
-		push(@cmds,"$svcf.OK: ".( ($expandFlag == 1) ? "$vcf.OK" : "")."\n\tcut -f 1-8 $vcf > $svcf\n\ttouch $svcf.OK\n");
+        for(my $j=0; $j < @unitStarts; ++$j) {
+        #print STDERR "Yay..\n";
+        my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        my $svcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
+        my $gvcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
+        my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
 
-		for(my $i=0; $i < @allbams; ++$i) {
-		    my $bam = $allbams[$i];
-		    my $bamSM = $allbamSMs[$i];
-		    my @F = split(/\//,$bam);
-		    my $bamFn = pop(@F);
-		    my $pvcfParent = "$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-		    my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
-		    push(@pvcfs,$pvcf);
-		    #my $cmd = &getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-		    my $cmd = &getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+        push(@cmds,"$svcf.OK: ".( ($expandFlag == 1) ? "$vcf.OK" : "")."\n\tcut -f 1-8 $vcf > $svcf\n\ttouch $svcf.OK\n");
+
+        for(my $i=0; $i < @allbams; ++$i) {
+            my $bam = $allbams[$i];
+            my $bamSM = $allbamSMs[$i];
+            my @F = split(/\//,$bam);
+            my $bamFn = pop(@F);
+            my $pvcfParent = "$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+            my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
+            push(@pvcfs,$pvcf);
+            #my $cmd = &getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+            my $cmd = &getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".&getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
-		}
-	    }
-	    print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
-	    if ( $expandFlag == 1 ) {
-		print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
-	    }
-	    else {
-		print MAK "\n\n";
-	    }
-	    print MAK join("\n",@cmds);
-	}
+            push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".&getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
+        }
+        }
+        print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
+        if ( $expandFlag == 1 ) {
+        print MAK " $remotePrefix$vcfDir/chr$chr/chr$chr.merged.vcf.OK\n\n";
+        }
+        else {
+        print MAK "\n\n";
+        }
+        print MAK join("\n",@cmds);
+    }
 
-	#############################################################################
-	## STEP 10-5A : HARD FILTERING before MERGING
-	#############################################################################
-	if ( &getConf("RUN_FILTER") eq "TRUE" ) {
-	    my $expandFlag = ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
-	    my $gmFlag = ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
+    #############################################################################
+    ## STEP 10-5A : HARD FILTERING before MERGING
+    #############################################################################
+    if ( &getConf("RUN_FILTER") eq "TRUE" ) {
+        my $expandFlag = ( &getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
+        my $gmFlag = ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
 
-	    ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
-	    my @gvcfs = ();
-	    my @vcfs = ();
-	    my @cmds = ();
-	    
-	    for(my $j=0; $j < @unitStarts; ++$j) {
-		my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-		my $svcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
-		my $gvcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
-		my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
+        ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
+        my @gvcfs = ();
+        my @vcfs = ();
+        my @cmds = ();
 
-		if ( $expandFlag > 0 ) {
-		    my @pvcfs = ();
+        for(my $j=0; $j < @unitStarts; ++$j) {
+        my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        my $svcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
+        my $gvcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
+        my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
 
-		    for(my $i=0; $i < @allbams; ++$i) {
-			my $bam = $allbams[$i];
-			my $bamSM = $allbamSMs[$i];
-			my @F = split(/\//,$bam);
-			my $bamFn = pop(@F);
-			my $pvcfParent = "$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-			my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
-			push(@pvcfs,$pvcf);
-		    }
-		    
-		    my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
+        if ( $expandFlag > 0 ) {
+            my @pvcfs = ();
+
+            for(my $i=0; $i < @allbams; ++$i) {
+            my $bam = $allbams[$i];
+            my $bamSM = $allbamSMs[$i];
+            my @F = split(/\//,$bam);
+            my $bamFn = pop(@F);
+            my $pvcfParent = "$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+            my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
+            push(@pvcfs,$pvcf);
+            }
+
+            my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".&getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
-		}
-		else {
-		    my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
+            push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".&getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
+        }
+        else {
+            my $cmd = &getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".&getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
-		}
-		push(@gvcfs,$gvcf);
-		push(@vcfs,$vcf);
-	    }
-	    
-	    my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
-	    print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
-	    print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
-	    if ( $#uniqBeds < 0 ) {
+            push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".&getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
+        }
+        push(@gvcfs,$gvcf);
+        push(@vcfs,$vcf);
+        }
+
+        my $mvcfPrefix = "$remotePrefix$vcfDir/chr$chr/chr$chr";
+        print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+        print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
+        if ( $#uniqBeds < 0 ) {
               my $cmd = "\t".&getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf\n";
               $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
               print MAK "$cmd";
-	    }
-	    else {
+        }
+        else {
                 my $cmd = "(cat $gvcfs[0] | head -100 | grep ^#; cat @gvcfs | grep -v ^#;) > $mvcfPrefix.merged.stats.vcf";
                 writeLocalCmd($cmd);
-	    }
-	    my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
+        }
+        my $cmd = "\t".&getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".&getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
+        $cmd = &getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".&getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
             writeLocalCmd($cmd);
-	    $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
+        $cmd = "\t".&getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
+        $cmd = "\t".&getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".&getConf("DBSNP_VCF")." --FNRvcf ".&getConf("HM3_VCF")." --chr $chr --tabix ".&getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-	    print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
-	    print MAK join("\n",@cmds);
-	    print MAK "\n";
-	}
+        print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+        print MAK join("\n",@cmds);
+        print MAK "\n";
+    }
     }
 
     #############################################################################
     ## STEP 10-3 : GLFMULTIPLES
     #############################################################################
     if ( &getConf("RUN_GLFMULTIPLES") eq "TRUE" ) {
-	my $expandFlag = ( &getConf("RUN_PILEUP") eq "TRUE" ) ? 1 : 0;
-	my @cmds = ();
-	my @vcfs = ();
+    my $expandFlag = ( &getConf("RUN_PILEUP") eq "TRUE" ) ? 1 : 0;
+    my @cmds = ();
+    my @vcfs = ();
 
-	for(my $j=0; $j < @unitStarts; ++$j) {
-	    my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-	    my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
-	    my @glfs = ();
-	    my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+    for(my $j=0; $j < @unitStarts; ++$j) {
+        my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
+        my @glfs = ();
+        my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
 
-            handleGlfIndexFile($smGlfParent, $chr, 
+            handleGlfIndexFile($smGlfParent, $chr,
                                $unitStarts[$j], $unitEnds[$j]);
 
-	    for(my $i=0; $i < @allSMs; ++$i) {	    
-		my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-		my $smGlf = "$smGlfParent/$smGlfFn";
-		push(@glfs,$smGlf);
-	    }
-	    my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
+        for(my $i=0; $i < @allSMs; ++$i) {
+        my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
+        my $smGlf = "$smGlfParent/$smGlfFn";
+        push(@glfs,$smGlf);
+        }
+        my $glfAlias = "$smGlfParent/".&getConf("GLF_INDEX");
             $glfAlias =~ s/$outDir/\$(OUT_DIR)/g;
-	    push(@vcfs,$vcf);
-	    my $sleepSecs = ($j % 10)*$sleepMultiplier;
-	    my $cmd = &getConf("GLFMULTIPLES")." --ped $glfAlias -b $vcf > $vcf.log 2> $vcf.err";
+        push(@vcfs,$vcf);
+        my $sleepSecs = ($j % 10)*$sleepMultiplier;
+        my $cmd = &getConf("GLFMULTIPLES")." --ped $glfAlias -b $vcf > $vcf.log 2> $vcf.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-	    if ( $expandFlag == 1 ) {
+        if ( $expandFlag == 1 ) {
                 my $newcmd = "$vcf.OK: ".join(".OK ",@glfs).".OK\n\tmkdir --p $vcfParent\n";
                 if($sleepSecs != 0)
                 {
@@ -1329,9 +1336,9 @@ foreach my $chr (@chrs) {
                 }
                 $newcmd .= "\t".&getMosixCmd($cmd)."\n\ttouch $vcf.OK\n";
                 $newcmd =~ s/$outDir/\$(OUT_DIR)/g;
-	 	push(@cmds,"$newcmd");
-	    }
-	    else {
+        push(@cmds,"$newcmd");
+        }
+        else {
                 my $newcmd = "$vcf.OK:\n\tmkdir --p $vcfParent\n";
                 if($sleepSecs != 0)
                 {
@@ -1339,167 +1346,167 @@ foreach my $chr (@chrs) {
                 }
                 $newcmd .= "\t".&getMosixCmd($cmd)."\n\ttouch $vcf.OK\n";
                 push(@cmds,"$newcmd");
-	    }
-	}
-	my $out = "$vcfDir/chr$chr/chr$chr.merged";
-	print MAK "vcf$chr: $remotePrefix$out.vcf.OK\n\n";
-	print MAK "$remotePrefix$out.vcf.OK: ";
-	print MAK join(".OK ",@vcfs);
-	print MAK ".OK\n";
-	if ( $#uniqBeds < 0 ) {
+        }
+    }
+    my $out = "$vcfDir/chr$chr/chr$chr.merged";
+    print MAK "vcf$chr: $remotePrefix$out.vcf.OK\n\n";
+    print MAK "$remotePrefix$out.vcf.OK: ";
+    print MAK join(".OK ",@vcfs);
+    print MAK ".OK\n";
+    if ( $#uniqBeds < 0 ) {
           my $cmd = "\t".&getConf("VCFMERGE")." $unitChunk @vcfs > $out.vcf\n";
           $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
           print MAK "$cmd";
-	}
-	else {  ## targeted regions - rely on the loci info
+    }
+    else {  ## targeted regions - rely on the loci info
             my $cmd = "(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) > $out.vcf";
             writeLocalCmd($cmd);
-	}
-	print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";
-	print MAK "\ttouch $out.vcf.OK\n\n";
-	print MAK join("\n",@cmds);
-	print MAK "\n";
+    }
+    print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";
+    print MAK "\ttouch $out.vcf.OK\n\n";
+    print MAK join("\n",@cmds);
+    print MAK "\n";
     }
 
     #############################################################################
     ## STEP 10-2 : SAMTOOLS PILEUP TO GENERATE GLF
     #############################################################################
     if ( &getConf("RUN_PILEUP") eq "TRUE" ) {
-	## glf[$chr]: all-list-of-sample-glfs
-	my @outs = ();
-	my @cmds = ();
+    ## glf[$chr]: all-list-of-sample-glfs
+    my @outs = ();
+    my @cmds = ();
 
-	my $multiBam = 0;
+    my $multiBam = 0;
 
-	for(my $i=0; $i < @allSMs; ++$i) {
-	    my @bams = @{$hSM2bams{$allSMs[$i]}};
-	    for(my $j=0; $j < @unitStarts; ++$j) {
-		my $smGlfParent = "$remotePrefix$smGlfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-		my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-		my $smGlf = "$smGlfParent/$smGlfFn";
-		my @bamGlfs = ();
-		foreach my $bam (@bams) {
-		    my @F = split(/\//,$bam);
-		    my $bamFn = pop(@F);
-		    #my ($runID) = split(/\./,$bamFn);
-		    my $bamGlf = "$remotePrefix$bamGlfDir/$allSMs[$i]/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
-		    #my $bamGlf = "$remotePrefix$bamGlfDir/$runID/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
-		    push(@bamGlfs,$bamGlf);
-		}
-		push(@outs,"$smGlf.OK");
-		my $cmd = "$smGlf.OK:";
-		$cmd .= (" ".join(".OK ",@bamGlfs).".OK") if ( $#bamGlfs > 0 );
-		$cmd .= " bai" if ( &getConf("RUN_INDEX") eq "TRUE" );
-		$cmd .= "\n\tmkdir --p $smGlfParent\n\t";
-		#my $cmd = "$smGlf.OK:\n\tmkdir --p $smGlfParent\n\t";
-		if ( $#bamGlfs > 0 ) {
-		    $multiBam = 1;
-		    my $qualities = "0";
-		    my $minDepths = "1";
-		    my $maxDepths = "1000";
-		    for(my $k=1; $k < @bamGlfs; ++$k) {
-			$qualities .= ",0";
-			$minDepths .= ",1";
-			$maxDepths .= ",1000";
-		    }
+    for(my $i=0; $i < @allSMs; ++$i) {
+        my @bams = @{$hSM2bams{$allSMs[$i]}};
+        for(my $j=0; $j < @unitStarts; ++$j) {
+        my $smGlfParent = "$remotePrefix$smGlfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+        my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
+        my $smGlf = "$smGlfParent/$smGlfFn";
+        my @bamGlfs = ();
+        foreach my $bam (@bams) {
+            my @F = split(/\//,$bam);
+            my $bamFn = pop(@F);
+            #my ($runID) = split(/\./,$bamFn);
+            my $bamGlf = "$remotePrefix$bamGlfDir/$allSMs[$i]/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
+            #my $bamGlf = "$remotePrefix$bamGlfDir/$runID/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
+            push(@bamGlfs,$bamGlf);
+        }
+        push(@outs,"$smGlf.OK");
+        my $cmd = "$smGlf.OK:";
+        $cmd .= (" ".join(".OK ",@bamGlfs).".OK") if ( $#bamGlfs > 0 );
+        $cmd .= " bai" if ( &getConf("RUN_INDEX") eq "TRUE" );
+        $cmd .= "\n\tmkdir --p $smGlfParent\n\t";
+        #my $cmd = "$smGlf.OK:\n\tmkdir --p $smGlfParent\n\t";
+        if ( $#bamGlfs > 0 ) {
+            $multiBam = 1;
+            my $qualities = "0";
+            my $minDepths = "1";
+            my $maxDepths = "1000";
+            for(my $k=1; $k < @bamGlfs; ++$k) {
+            $qualities .= ",0";
+            $minDepths .= ",1";
+            $maxDepths .= ",1000";
+            }
 
-		    #unlink($smGlf);
-		    #unlink("$smGlf.OK");
+            #unlink($smGlf);
+            #unlink("$smGlf.OK");
 
-		    $cmd .= &getMosixCmd(&getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
+            $cmd .= &getMosixCmd(&getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		}
-		else {
-		    #$cmd .= "ln -f -s $bamGlfs[0] $smGlf";
-		    my $baqFlag = 1;
-		    foreach my $s (@nobaqSubstrings) {
-			if ( $bams[0] =~ m/($s)/ ) {
-			    $baqFlag = 0;
-			}
-		    }
-		    my $loci = "";
-		    my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
-		    if ( $#uniqBeds >= 0 ) {
-			my $idx = $hBedIndices{$allSMs[$i]};
-			$loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
-			if ( &getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
-			    $region = "";
-			    foreach my $p (@{$targetIntervals[$idx]->{$chr}}) {
-				my $rmin = ($p->[0] > $unitStarts[$j]) ? $p->[0] : $unitStarts[$j];  # take bigger one
-				my $rmax = ($p->[1] > $unitEnds[$j]) ? $unitEnds[$j] : $p->[1];  # take smaller one
-				$region .= " $chr:$rmin-$rmax" if ( $rmin <= $rmax );
-			    }
-			    ## if no target exists then set region as single base
-			    $region = "$chr:0-0" if ( $region eq "" );
-			}
-		    }
+        }
+        else {
+            #$cmd .= "ln -f -s $bamGlfs[0] $smGlf";
+            my $baqFlag = 1;
+            foreach my $s (@nobaqSubstrings) {
+            if ( $bams[0] =~ m/($s)/ ) {
+                $baqFlag = 0;
+            }
+            }
+            my $loci = "";
+            my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
+            if ( $#uniqBeds >= 0 ) {
+            my $idx = $hBedIndices{$allSMs[$i]};
+            $loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
+            if ( &getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
+                $region = "";
+                foreach my $p (@{$targetIntervals[$idx]->{$chr}}) {
+                my $rmin = ($p->[0] > $unitStarts[$j]) ? $p->[0] : $unitStarts[$j];  # take bigger one
+                my $rmax = ($p->[1] > $unitEnds[$j]) ? $unitEnds[$j] : $p->[1];  # take smaller one
+                $region .= " $chr:$rmin-$rmax" if ( $rmin <= $rmax );
+                }
+                ## if no target exists then set region as single base
+                $region = "$chr:0-0" if ( $region eq "" );
+            }
+            }
 
-		    if ( $baqFlag == 0 ) {
-			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
-		    }
-		    else {
-			$cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
-		    }
+            if ( $baqFlag == 0 ) {
+            $cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
+            }
+            else {
+            $cmd .= &getMosixCmd("(".&getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
+            }
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		}
-		$cmd .= "\n\ttouch $smGlf.OK\n";
-		push(@cmds,$cmd);
-	    }
-	}
+        }
+        $cmd .= "\n\ttouch $smGlf.OK\n";
+        push(@cmds,$cmd);
+        }
+    }
 
-	print MAK "glf$chr: ";
-	print MAK join(" ",@outs);
-	print MAK "\n\n";
+    print MAK "glf$chr: ";
+    print MAK join(" ",@outs);
+    print MAK "\n\n";
 
-	for(my $i=0; $i < @allbams; ++$i) {
-	    my $bam = $allbams[$i];
-	    my $bamSM = $allbamSMs[$i];
-	    my @F = split(/\//,$bam);
-	    my $bamFn = pop(@F);
-	    for(my $j=0; $j < @unitStarts; ++$j) {
-		my $bamGlf = "$remotePrefix$bamGlfDir/$bamSM/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
-		my $cmd;
-		my $baqFlag = 1;
-		foreach my $s (@nobaqSubstrings) {
-		    if ( $bam =~ m/($s)/ ) {
-			$baqFlag = 0;
-		    }
-		}
-		my $loci = "";
-		my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
-		if ( $#uniqBeds >= 0 ) {
-		    my $idx = $hBedIndices{$bamSM};
-		    $loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
-		    if ( &getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
-			$region = "";
-			foreach my $p (@{$targetIntervals[$idx]->{$chr}}) {
-			    my $rmin = ($p->[0] > $unitStarts[$j]) ? $p->[0] : $unitStarts[$j];  # take bigger one
-			    my $rmax = ($p->[1] > $unitEnds[$j]) ? $unitEnds[$j] : $p->[1];  # take smaller one
-			    $region .= " $chr:$rmin-$rmax" if ( $rmin <= $rmax );
-			}
-			## if no target exists then set region as single base
-			$region = "$chr:0-0" if ( $region eq "" );
-		    }
-		}
+    for(my $i=0; $i < @allbams; ++$i) {
+        my $bam = $allbams[$i];
+        my $bamSM = $allbamSMs[$i];
+        my @F = split(/\//,$bam);
+        my $bamFn = pop(@F);
+        for(my $j=0; $j < @unitStarts; ++$j) {
+        my $bamGlf = "$remotePrefix$bamGlfDir/$bamSM/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
+        my $cmd;
+        my $baqFlag = 1;
+        foreach my $s (@nobaqSubstrings) {
+            if ( $bam =~ m/($s)/ ) {
+            $baqFlag = 0;
+            }
+        }
+        my $loci = "";
+        my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
+        if ( $#uniqBeds >= 0 ) {
+            my $idx = $hBedIndices{$bamSM};
+            $loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
+            if ( &getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
+            $region = "";
+            foreach my $p (@{$targetIntervals[$idx]->{$chr}}) {
+                my $rmin = ($p->[0] > $unitStarts[$j]) ? $p->[0] : $unitStarts[$j];  # take bigger one
+                my $rmax = ($p->[1] > $unitEnds[$j]) ? $unitEnds[$j] : $p->[1];  # take smaller one
+                $region .= " $chr:$rmin-$rmax" if ( $rmin <= $rmax );
+            }
+            ## if no target exists then set region as single base
+            $region = "$chr:0-0" if ( $region eq "" );
+            }
+        }
 
-		if ( $baqFlag == 0 ) {
-		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
-		}
-		else {
-		    $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref  | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
-		}
+        if ( $baqFlag == 0 ) {
+            $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+        }
+        else {
+            $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." view ".&getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".&getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref  | ".&getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".&getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+        }
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-		if ( &getConf("RUN_INDEX") eq "TRUE" ) {
-		    push(@cmds,"$bamGlf.OK: bai\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
-		}
-		else {
-		    push(@cmds,"$bamGlf.OK:\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
-		}
-	    }
-	}
+        if ( &getConf("RUN_INDEX") eq "TRUE" ) {
+            push(@cmds,"$bamGlf.OK: bai\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
+        }
+        else {
+            push(@cmds,"$bamGlf.OK:\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".&getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
+        }
+        }
+    }
 
-	print MAK join("\n",@cmds);
-	print MAK "\n";
+    print MAK join("\n",@cmds);
+    print MAK "\n";
     }
 }
 
@@ -1523,10 +1530,10 @@ if ( &getConf("WGS_SVM") eq "TRUE")
             # Cat all the chr files together
             print MAK "\tcat $chrFile  | grep -v ^# >> $mergedSites\n";
         }
-        
+
         # Run SVM on the merged file.
         runSVM($mergedSites, $outMergedVcf);
-        
+
         # split svm file by chromosome.
         print MAK "\t".&getConf("VCF_SPLIT_CHROM")." --in $outMergedVcf --out $remotePrefix$vcfDir/chrCHR/chrCHR.filtered.sites.vcf --chrKey CHR\n";
     }
@@ -1539,25 +1546,25 @@ if ( &getConf("WGS_SVM") eq "TRUE")
 if ( &getConf("RUN_INDEX") eq "TRUE" ) {
     my @bamsToIndex = ();
     if ( &getConf("RUN_INDEX_FORCE") eq "TRUE" ) {
-	@bamsToIndex = @allbams;
+    @bamsToIndex = @allbams;
     }
     else {
-	foreach my $bam (@allbams) {
-	    unless ( -s "$bam.bai" ) {
-		push(@bamsToIndex,$bam);
-	    }
-	}
+    foreach my $bam (@allbams) {
+        unless ( -s "$bam.bai" ) {
+        push(@bamsToIndex,$bam);
+        }
+    }
     }
     print MAK "bai:";
     foreach my $bam (@bamsToIndex) {
-	print MAK " $bam.bai.OK";
+    print MAK " $bam.bai.OK";
     }
     print MAK "\n\n";
     foreach my $bam (@bamsToIndex) {
-	my $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." index $bam";
+    my $cmd = &getConf("SAMTOOLS_FOR_OTHERS")." index $bam";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
-	print MAK "$bam.bai.OK:\n\t".&getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n";
+    print MAK "$bam.bai.OK:\n\t".&getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n";
     }
 }
 
@@ -1863,7 +1870,7 @@ sub loadConf {
 
     open(IN,$conf) || die "Cannot open $conf file for reading, from $curPath";
     while(<IN>) {
-	&loadLine($_);
+    &loadLine($_);
     }
     close IN;
 }
@@ -1998,7 +2005,7 @@ sub getAbsPath {
 }
 
 #--------------------------------------------------------------
-#   parseTarget() : Read UCSC BED format as target information 
+#   parseTarget() : Read UCSC BED format as target information
 #                   allowing a certain offset from the target
 #                   merge overlapping extended intervals if possible
 #--------------------------------------------------------------
@@ -2008,37 +2015,37 @@ sub parseTarget {
     # read BED file and construct old loci file
     open(IN,$bed) || die "Cannot open $bed\n";
     while(<IN>) {
-	my ($chr,$start,$end) = split;
-	if ( $chr =~ /^chr/ ) {
-	    $chr = substr($chr,3);
-	}
-	$loci{$chr} = [] unless defined($loci{$chr});
+    my ($chr,$start,$end) = split;
+    if ( $chr =~ /^chr/ ) {
+        $chr = substr($chr,3);
+    }
+    $loci{$chr} = [] unless defined($loci{$chr});
 
-	$start = ( $start-$offset < 0 ) ? 0 : $start-$offset;
-	$end = $end + $offset;
-	push(@{$loci{$chr}},[$start+1,$end]);
+    $start = ( $start-$offset < 0 ) ? 0 : $start-$offset;
+    $end = $end + $offset;
+    push(@{$loci{$chr}},[$start+1,$end]);
     }
     close IN;
 
     # sort by starting position
     foreach my $chr (sort keys %loci) {
-	my @s = sort { $a->[0] <=> $b->[0] } @{$loci{$chr}};
-	## if regions overlap, merge them. 
-	for(my $j=1; $j < @s; ++$j) {
-	    if ( $s[$j-1]->[1] < $s[$j]->[0] ) {
-		## prev-L < prev-R < next-L < next-R
-		## do not merge intervals
-	    }
-	    else {
-		## merge the intervals
-		my $mergedMin = $s[$j-1]->[0];
-		my $mergedMax = $s[$j-1]->[1];
-		$mergedMax = $s[$j]->[1] if ( $mergedMax < $s[$j]->[1] );
-		splice(@s,$j-1,2,[$mergedMin,$mergedMax]);
-		--$j; 
-	    }
-	}
-	$loci{$chr} = \@s;
+    my @s = sort { $a->[0] <=> $b->[0] } @{$loci{$chr}};
+    ## if regions overlap, merge them.
+    for(my $j=1; $j < @s; ++$j) {
+        if ( $s[$j-1]->[1] < $s[$j]->[0] ) {
+        ## prev-L < prev-R < next-L < next-R
+        ## do not merge intervals
+        }
+        else {
+        ## merge the intervals
+        my $mergedMin = $s[$j-1]->[0];
+        my $mergedMax = $s[$j-1]->[1];
+        $mergedMax = $s[$j]->[1] if ( $mergedMax < $s[$j]->[1] );
+        splice(@s,$j-1,2,[$mergedMin,$mergedMax]);
+        --$j;
+        }
+    }
+    $loci{$chr} = \@s;
     }
     return \%loci;
 }
