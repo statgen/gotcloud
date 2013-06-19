@@ -73,26 +73,38 @@ sub AsGB {
 }
 
 #--------------------------------------------------------------
-#   AlignStorage (dir, indexfile)
+#   AlignStorage (indexfile, prefix)
 #
 #   Returns a string showing the storage requirements for the aligner
 #--------------------------------------------------------------
 sub AlignStorage {
-    my ($dir, $indexfile) = @_;
+    my ($indexfile, $prefix) = @_;
+
+    if(!defined $prefix) { $prefix=""; }
+    elsif($prefix && $prefix)
+    {
+        # add the trailing / if not on the prefix.
+        if ( ($prefix !~ /\/$/) ) { $prefix .= '/'; }
+    }
+
     my $totsize = 0;
     open(IN, $indexfile) ||
         die "Unable to open file '$indexfile': $!\n";
     $_ = <IN>;                    # Remove header, check it
+    if ($_ =~ /^#FASTQ_PREFIX\s*=\s*(.+)\s*$/) {  # Provides reference path to fastq files
+        $prefix = $1;
+        $_ = <IN>;
+    }
     if (! /MERGE_NAME/) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
     my $k = 0;
     while (<IN>) {
         my @c = split(' ',$_);
-        my $f = "$dir/$c[1]";
+        my $f = "$prefix$c[1]";
         my @stats = stat($f);
         if (! @stats) { die "Unable to find details on '$f': $!\n"; }
         $totsize += $stats[7];
         $k++;
-        $f = "$dir/$c[2]";
+        $f = "$prefix$c[2]";
         if ($f ne '.') {
             @stats = stat($f);
             if (! @stats) { die "Unable to find details on '$f': $!\n"; }
@@ -105,6 +117,7 @@ sub AlignStorage {
 
     my $gb = $opts{fastq2bam_factor}*$totsize;
     my $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . AsGB($gb) . "\n";
+    $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . $gb . "\n";
 
     #   Add a bit extra for temp files for the aligner. Use the average size of a FASTQ
     my $bamsize = ($opts{bam2glf_factor}*$totsize);

@@ -21,18 +21,18 @@ Conf.pm
 
 Functions to manage configuration files.
 
-The environment variable CONF_PATH (colon-delimited path of directories)
-may be set to specify a list of directories containing *.conf files.
-If this is not set, it is assumed to be $HOME/.config/gotcloud/.
-This means if you set CONF_PATH you may want to also include
-the one in your $HOME.
+Configuration settings have the following precedence:
+    1) array of strings containing key=value settings
+    2) array of config files
+    2a) precedence of config files is the order they are
+        specified with the first file having highest precedence
+        and the last file having lowest precedence (the defaults)
+If a value is set in multiple places, the highest precedence
+value is used.
 
-Configuration files are read in this order:
-    1) Default config as provided by loadConf (i.e. gotcloud/bin/gotcloudDefaults.conf)
-    1) Primary config as provided by loadConf (i.e. gotcloud/test/align/test.conf)
-    2) foreach dir in CONF_PATH, read $dir/*.conf
-
-If a value is set in multiple places, the last value is used.
+Note: To preserve precedence, the files/settings are actually
+      processed in reverse order.  Therefore, if a value is set
+      in multiple places, the last value is used.
 
 Configuration files consists of sections of key=value lines.
 A section is defined by a line of the form [section_name].
@@ -73,7 +73,6 @@ In the configuration example above, the final values will be:
 =cut
 
 our %CONF_HASH = ();                # Configuration values (hash of hashes)
-my $DEFAULT_CONF = $ENV{HOME} . '/.config/gotcloud/';  # User default conf files here
 my $VERBOSE = 0;
 
 #==================================================================
@@ -81,7 +80,7 @@ my $VERBOSE = 0;
 =head1 NAME
 
  #=============================================
- #  errs = loadConf ( defconfig, priconfig, verbose )
+ #  errs = loadConf ( confSettings, configFiles, verbose )
  #=============================================
 
 =head1 DESCRIPTION
@@ -89,53 +88,48 @@ my $VERBOSE = 0;
     Reads all the possible configuration files, extracting
     key=value data.  Will not return on errors
 
-    You must provide the path to the default config file
-    (defconfig). This file is always read.
-
-    If you provide a primary configuration file (priconfig)
-    this will be read next. This file is optional.
+    confSettings is an array of strings that contain
+    configuration settings as would be read out of a config
+    file.  These settings take precedence over anything
+    set in the config files.  configFiles contains a space
+    delimited list of configuration files with the first file
+    having the highest precedence (with the last file being
+    the default configuration).
 
     Set verbose to true to see more informational messages.
-
-    If the environment variable CONF_PATH is set, it must
-    be a colon-delimited list of directories to be
-    searched for conf files (*.conf)
 
     Returns the number of errors detected
 
 =head1 USAGE
 
-    if (loadConf('default.conf', ,'test.conf', $opts{verbose})) {
+    if (loadConf(/@configSettings, 'test.conf default.conf', $opts{verbose})) {
         die "Failed to read configuration files\n";
     }
 
 =cut
 
 sub loadConf {
-    my ($defconf, $priconf, $v) = @_;
-    if (defined($v) && $v) { $VERBOSE = 1; }
-    my $errs = ReadConfig($defconf);
-    if ($priconf) { $errs += ReadConfig($priconf); }
+    my ($settingsRef, $configsRef, $v) = @_;
+    if (defined($v) && $v) { $VERBOSE = $v; }
 
+    my $errs = 0;
+    # Process $configs in reverse order.
+    my $size = scalar @{$configsRef} - 1;
+    foreach my $index (0..$size)
+    {
+        $errs += ReadConfig($configsRef->[$size - $index]);
+    }
 
-    #   If CONF_PATH set, use this for all conf files
-    #   If not, just read user config files
-    my @dirlist = ();
-    if (! exists($ENV{CONF_PATH})) { push @dirlist, $DEFAULT_CONF; }
-    else { @dirlist = split(':', $ENV{CONF_PATH}); }
-    foreach my $p (@dirlist) {
-        if (! opendir(INDIR, $p)) {
-            if ($p ne $DEFAULT_CONF) {  # Only warn when not user conf files
-                warn "Failed to read configuration directory '$p'. Continuing. Error=$!\n";
-                $errs++;
-            }
-            next;
+    # Process the string settings in reverse order.
+    if ($VERBOSE) { warn "processing the highest-precedence settings\n"; }
+    my $size = scalar @{$settingsRef} - 1;
+    foreach my $index (0..$size)
+    {
+        if(parseKeyVal($settingsRef->[$size - $index]) != 0)
+        {
+            warn "Failed: Unable to parse configuration setting:\n  $settingsRef->[$index]\n";
+            $errs++;
         }
-        while (readdir INDIR) {
-            if (! /^(\w+)\.conf$/) { next; }
-            $errs += ReadConfig ("$p/$_");
-        }
-        closedir INDIR;
     }
 
     #   Resolve all variables of the form $(varname)
@@ -268,19 +262,37 @@ sub ReadConfig {
             next;
         }
         #   Rest looks like  key=value
-        if (! /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
+        if(parseKeyVal($_, $section) != 0)
+        {
             warn "Failed: Unable to parse config line \n" .
                 "  File='$file', line number=" . ($.+1) . "\n" .
                 "  Line=$_";
             $errs++;
             next;
         }
-        my ($key,$val) = ($1,$2);
-        if ( ! defined($val) ) { $val = ''; }    # Undefined is null string
-        $CONF_HASH{$section}{$key} = $val;
     }
     close(IN);
     return $errs;
+}
+
+sub parseKeyVal {
+    my ($line, $section) = @_;
+    if(!defined($section)) {$section = 'global';}
+
+    if ($line !~ /^\s*(\w+)\s*=\s*(.*)\s*$/ )
+    {
+        # failed to parse.
+        return 1;
+    }
+    my ($key,$val) = ($1,$2);
+    if ( ! defined($val) ) { $val = ''; }  # Undefined is null string
+    $CONF_HASH{$section}{$key} = $val;
+    if($VERBOSE >= 2)
+    {
+        print "$section:$key = $val\n";
+    }
+    #success.
+    return 0;
 }
 
 #==================================================================
