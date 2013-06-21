@@ -958,7 +958,7 @@ foreach my $chr (@chrs) {
         print MAK "$splitDir/chr$chr/subset.OK:\n";
     }
     print MAK "\tmkdir --p $splitDir/chr$chr\n";
-        my $cmd = "(zcat $mvcf | head -100 | grep ^#; zcat $mvcf | grep -w PASS;) | ".&getConf("BGZIP")." -c > $subsetPrefix.PASS.vcf.gz";
+        my $cmd = "zcat $mvcf | grep -E \\\"\\sPASS\\s|^#\\\" | ".&getConf("BGZIP")." -c > $subsetPrefix.PASS.vcf.gz";
         writeLocalCmd($cmd);
     print MAK "\ttouch $splitDir/chr$chr/subset.OK\n\n";
 
