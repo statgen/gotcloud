@@ -70,9 +70,23 @@ In the configuration example above, the final values will be:
       c=D.top        # Value for $(a) from red, not global
       e=.less        # Fails with warning that $(d) not defined in 'red'
 
+TODO List:
+    Provide methods for
+        $sectionref = GetSections()     # List of keys in %CONF_HASH
+        SetConfInSection(section, key, value)       # Set value for key in a section
+        $value = GetConfInSection(section, key)     # Return value for key in a section
+
 =cut
 
 our %CONF_HASH = ();                # Configuration values (hash of hashes)
+#
+#   VERBOSE settings:
+#       0       nothing shown
+#       >=1     processing activity shown
+#       >1      Die just does warn and returns ''  (for testing)
+#       >=3     config entries before and after substitutions written to STDERR (not warn)
+#       >3      parse of key=value shown
+#       
 my $VERBOSE = 0;
 
 #==================================================================
@@ -112,23 +126,27 @@ sub loadConf {
     my ($settingsRef, $configsRef, $v) = @_;
     if (defined($v) && $v) { $VERBOSE = $v; }
 
+    if ($VERBOSE) { warn "Processing configuration files:\n"; }
     my $errs = 0;
     # Process $configs in reverse order.
-    my $size = scalar @{$configsRef} - 1;
-    foreach my $index (0..$size)
-    {
-        $errs += ReadConfig($configsRef->[$size - $index]);
+    for (my $i=$#$configsRef; $i>=0; $i--) {
+        if ($VERBOSE) { warn "  Config: $configsRef->[$i]\n"; }
+        $errs += ReadConfig($configsRef->[$i]);
     }
 
     # Process the string settings in reverse order.
-    if ($VERBOSE) { warn "processing the highest-precedence settings\n"; }
-    my $size = scalar @{$settingsRef} - 1;
-    foreach my $index (0..$size)
-    {
-        if(parseKeyVal($settingsRef->[$size - $index]) != 0)
-        {
-            warn "Failed: Unable to parse configuration setting:\n  $settingsRef->[$index]\n";
+    if ($VERBOSE) { warn "  Config: Strings from caller\n"; }
+    for (my $i=$#$settingsRef; $i>=0; $i--) {
+        if (parseKeyVal($settingsRef->[$i])) {
+            warn "Failed: Unable to parse configuration setting:\n  $settingsRef->[$i]\n";
             $errs++;
+        }
+    }
+
+    if ($VERBOSE > 3) {
+        foreach my $sec (sort keys %CONF_HASH) {
+            print STDERR "Before substitution:  Section=$sec\n";
+            foreach my $k (sort keys %{$CONF_HASH{$sec}}) { print STDERR "  $k=$CONF_HASH{$sec}{$k}\n"; }
         }
     }
 
@@ -136,7 +154,7 @@ sub loadConf {
     foreach my $section (keys %CONF_HASH) {
         foreach my $key (keys $CONF_HASH{$section}) {
             for (1 .. 10) {             # Avoid any chance of forever looops
-                if ($CONF_HASH{$section}{$key} !~ /^(.*)\$\((\w+)\)(.*)$/) { next; }
+                if ($CONF_HASH{$section}{$key} !~ /^(.*)\$\((\w+)\)(.*)$/) { last; }
                 my ($pre, $var, $post) = ($1, $2, $3);
                 if (exists($CONF_HASH{$section}{$var})) {
                      $CONF_HASH{$section}{$key} = $pre . $CONF_HASH{$section}{$var} . $post;
@@ -153,6 +171,13 @@ sub loadConf {
                 $errs++;
                 $CONF_HASH{$section}{$key} = $pre . '_NOT_DEFINED_' . $post;
             }
+        }
+    }
+
+    if ($VERBOSE > 3) {
+        foreach my $sec (sort keys %CONF_HASH) {
+            print STDERR "After substitution:  Section=$sec\n";
+            foreach my $k (sort keys %{$CONF_HASH{$sec}}) { print STDERR "  $k=$CONF_HASH{$sec}{$k}\n"; }
         }
     }
     return $errs;
@@ -227,7 +252,9 @@ sub getConf {
 
     if (! defined($CONF_HASH{$section}{$key})) {
         if (! $required) { return ''; }
-        die "Failed: Required configuration key '$key' in section '$section' not found in the configuration files\n";
+        warn "Failed: Required configuration key '$key' in section '$section' not found in the configuration files\n";
+        if ($VERBOSE > 1) { return ''; }        # Sometimes do not die (for testing)
+        exit(7);
     }
     return $CONF_HASH{$section}{$key};
 }
@@ -251,7 +278,6 @@ sub ReadConfig {
         warn "Failed: Unable to open config file '$file': $!\n";
         return 1;
     }
-    if ($VERBOSE) { warn "Reading config file '$file'\n"; }
     while (<IN>) {
         next if (/^#/ );                # Ignore comments
         next if (/^\s*$/);              # Ignore blank lines
@@ -275,6 +301,13 @@ sub ReadConfig {
     return $errs;
 }
 
+#==================================================================
+#   errs = parseKeyVal ($line, $section)
+#       Uses global config area %CONF_HASH
+#       $section defaults to 'global' 
+#
+#   Returns:  number of errors detected
+#==================================================================
 sub parseKeyVal {
     my ($line, $section) = @_;
     if(!defined($section)) {$section = 'global';}
@@ -287,12 +320,9 @@ sub parseKeyVal {
     my ($key,$val) = ($1,$2);
     if ( ! defined($val) ) { $val = ''; }  # Undefined is null string
     $CONF_HASH{$section}{$key} = $val;
-    if($VERBOSE >= 2)
-    {
-        print "$section:$key = $val\n";
+    if($VERBOSE > 3) { warn "    $section:$key = $val\n";
     }
-    #success.
-    return 0;
+    return 0;  # Success
 }
 
 #==================================================================

@@ -299,19 +299,21 @@ if(getConf("FASTQ"))
 #----------------------------------------------------------------------------
 #   Perform phone home and check storage requirements.
 #----------------------------------------------------------------------------
-#   All set now, phone home to check for a new version. We don't care about failures.
-system($opts{phonehome});
-
-#   Last warning to user about storage requirements
-# check if fastq_prefix is specified.
+# Check if fastq_prefix is specified.
 my $fastqpref = getConf('FASTQ_PREFIX');
-if( !defined($fastqpref) || ($fastqpref eq '') )
+if( !$fastqpref )
 {
     # FASTQ_PREFIX is not set, so use BASE_PREFIX.
     $fastqpref = getConf('BASE_PREFIX');
 }
 
-system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
+if (! $opts{'dry-run'}) {
+    #   All set now, phone home to check for a new version. We don't care about failures.
+    system($opts{phonehome});
+    #   Last warning to user about storage requirements
+    system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
+}
+
 
 #############################################################################
 #   Read the Index File
