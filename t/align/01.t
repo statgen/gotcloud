@@ -25,7 +25,7 @@ chdir("$basepath/t/align");          # CD to my directory
 ###################################################################
 my ($aref, $f);
 my $VERBOSE=$ARGV[0];           # If arg=0, no show but show last lines. If 1 show all
-
+my $alloutput = '';
 #
 #   Run the aligner (always does --out /tmp --dry-run)
 #       input - options to pass to program
@@ -34,7 +34,9 @@ sub run_align {
     my ($conf, $opts) = @_;
     if (! defined($opts)) { $opts = ''; }
     my $c = "../../bin/align.pl -conf $conf $opts -outdir /tmp --dry-run";
-    my @r = split("\n", `$c 2>&1`);
+    my $lines = `$c 2>&1`;
+    $alloutput .= "################ $conf output ################\n" . $lines . "\n";
+    my @r = split("\n", $lines);
     return \@r;
 }
 
@@ -79,7 +81,7 @@ $aref = run_align($f);
 #warn "\n" . $f . "\n";
 like ($aref->[0], qr/Created .+align_Sample2.Makefile/, 'Makefile 2 created');
 show(0);
-like ($aref->[1], qr/Created .+align_Sample1.Makefile/, 'Makefile 1 created');
+like ($aref->[1], qr/Created .+align_Sample3.Makefile/, 'Makefile 3 created');
 show(1);
 
 $f = '08.conf';
@@ -94,6 +96,5 @@ show(1);
 
 
 if (defined($VERBOSE)) {
-    warn "\n\n\n############# Here is output #####################\n";
-    warn join("\n", @$aref);
+    warn "\n\n\n############# Here is output #####################\n" . $alloutput;
 }
