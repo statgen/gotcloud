@@ -14,14 +14,12 @@
 ###################################################################
 
 use strict;
+use warnings;
 use Cwd;
 use Getopt::Long;
 use File::Path qw(make_path);
 use File::Basename;
 use Cwd 'abs_path';
-use Scalar::Util qw(looks_like_number);
-
-my %hConf = ();
 
 # Set the umake base directory.
 $_ = abs_path($0);
@@ -29,13 +27,25 @@ my($scriptName, $scriptPath) = fileparse($_);
 my $scriptDir = abs_path($scriptPath);
 if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
 my $gotcloudRoot = $1;
-$hConf{"GOTCLOUD_ROOT"} = $gotcloudRoot;
+
+push @INC,$scriptPath;                  # Use lib is a BEGIN block and does not work
+require GC_Common;
+require Conf;
+#require Multi;
+
+#############################################################################
+#   Global Variables
+############################################################################
+my @confSettings;
+push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
+
 
 #############################################################################
 ## STEP 1 : Load configuration file
 ############################################################################
 my %opts = (
     phonehome => "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $scriptName",
+    pipelinedefaults => $scriptPath . '/gotcloudDefaults.conf',
 );
 
 my $help = "";
@@ -121,42 +131,24 @@ if($testdir ne "") {
     exit;
 }
 
-#--------------------------------------------------------------
-#   Convert command line options to conf settings
-#--------------------------------------------------------------
-if( defined $bamprefix && ($bamprefix ne "") )
-{
-    setConf("BAM_PREFIX", $bamprefix);
-}
-
-if( defined $refprefix && ($refprefix ne "") )
-{
-    setConf("REF_PREFIX", $refprefix);
-}
-
-if( defined $baseprefix && ($baseprefix ne "") )
-{
-    setConf("BASE_PREFIX", $baseprefix);
-}
+#   Set the configuration values for applicable command-line options.
+if ($bamprefix)  { push(@confSettings, "BAM_PREFIX = $bamprefix"); }
+if ($refprefix)  { push(@confSettings, "REF_PREFIX = $refprefix"); }
+if ($baseprefix) { push(@confSettings, "BASE_PREFIX = $baseprefix"); }
+if ($outprefix)  { push(@confSettings, "OUT_PREFIX = $outprefix"); }
+if ($outdir)     { push(@confSettings, "OUT_DIR = $outdir"); }
 
 #--------------------------------------------------------------
 #   Load configuration settings
 #--------------------------------------------------------------
-&loadOverride($override);
-&loadConf($conf);
+my @configs = split(' ', $conf);
+push(@configs, $opts{pipelinedefaults});
 
-if($localdefaults ne "")
-{
-    &loadConf($localdefaults);
+if (loadConf(\@confSettings, \@configs, $verbose)) {
+    die "Failed to read configuration files\n";
 }
-&loadConf($scriptPath."/gotcloudDefaults.conf");
 
-if ( $outprefix ne "" ) {
-    $hConf{"OUT_PREFIX"} = $outprefix;
-}
-if ( $outdir ne "" ) {
-    $hConf{"OUT_DIR"} = $outdir;
-}
+
 
 #-------------
 # Handle cluster setup.
@@ -170,7 +162,7 @@ if ( $batchtype eq "" ) {
 if ($batchtype eq "")
 {
   $batchtype = "local";
-  $hConf{"BATCH_TYPE"} = "local";
+  setConf("BATCH_TYPE", "local");
 }
 
 if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
@@ -191,30 +183,30 @@ my @orderFlags = ();
 if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ) {
     foreach my $o (@orders) {
     push(@orderFlags, 0);
-    $hConf{$o} = "FALSE";
+    setConf($o, "FALSE");
     }
     if ( $snpcallOpt ) {
     foreach my $i (1,2,3,4,5,7) { # PILEUP to SPLIT
         $orderFlags[$i] = 1;
-        $hConf{$orders[$i]} = "TRUE";
+        setConf($orders[$i], "TRUE");
     }
     }
     if ( $extractOpt ) {
     foreach my $i (1,6,7) { # PILEUP, EXTRACT, SPLIT
         $orderFlags[$i] = 1;
-        $hConf{$orders[$i]} = "TRUE";
+        setConf($orders[$i], "TRUE");
     }
     }
     if ( $beagleOpt ) {
     foreach my $i (8,9) {
         $orderFlags[$i] = 1;
-        $hConf{$orders[$i]} = "TRUE";
+        setConf($orders[$i], "TRUE");
     }
     }
     if ( $thunderOpt ) {
     foreach my $i (10) {
         $orderFlags[$i] = 1;
-        $hConf{$orders[$i]} = "TRUE";
+        setConf($orders[$i], "TRUE");
     }
     }
 }
@@ -309,12 +301,12 @@ if($failReqFile eq "1")
 }
 
 # convert the reference to absolute path.
-my $newpath = getAbsPath(getConf("REF"), "REF");
-$hConf{"REF"} = $newpath;
+my $newpath = getAbsPath(&getConf("REF"), "REF");
+setConf("REF", $newpath);
 # Verify the REF file is readable.
 if(! -r getConf("REF") )
 {
-    warn "ERROR: Could not read required REF: ".getConf("REF")."\n";
+    warn "ERROR: Could not read required REF: ".&getConf("REF")."\n";
     $failReqFile = "1";
 }
 
@@ -324,9 +316,9 @@ if( (&getConf("RUN_SVM") eq "TRUE") ||
 {
     # convert dbsnp & HM3 to absolute paths
     $newpath = getAbsPath(getConf("DBSNP_VCF"), "REF");
-    $hConf{"DBSNP_VCF"} = $newpath;
+    setConf("DBSNP_VCF", $newpath);
     $newpath = getAbsPath(getConf("HM3_VCF"), "REF");
-    $hConf{"HM3_VCF"} = $newpath;
+    setConf("HM3_VCF", $newpath);
 
     # Verify the DBSNP file is readable.
     if(! -r getConf("DBSNP_VCF") )
@@ -355,11 +347,11 @@ if( (&getConf("RUN_SVM") eq "TRUE") ||
 if(&getConf("RUN_SVM") eq "TRUE")
 {
     # Convert OMNI to absolute path.
-    $newpath = getAbsPath(getConf("OMNI_VCF"), "REF");
-    $hConf{"OMNI_VCF"} = $newpath;
-    if(! -r getConf("OMNI_VCF"))
+    $newpath = getAbsPath(&getConf("OMNI_VCF"), "REF");
+    setConf("OMNI_VCF", $newpath);
+    if(! -r &getConf("OMNI_VCF"))
     {
-        warn "ERROR: Could not read required OMNI_VCF: ".getConf("OMNI_VCF")."\n";
+        warn "ERROR: Could not read required OMNI_VCF: ".&getConf("OMNI_VCF")."\n";
         $failReqFile = "1";
     }
 }
@@ -368,8 +360,8 @@ my @chrs = split(/\s+/,&getConf("CHRS"));
 if ( &getConf("RUN_FILTER") eq "TRUE" )
 {
     # convert the INDEL_PREFIX to an absolute path.
-    $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
-    $hConf{"INDEL_PREFIX"} = $newpath;
+    $newpath = getAbsPath(&getConf("INDEL_PREFIX"), "REF");
+    setConf("INDEL_PREFIX", $newpath);
     # check for the INDEL files for each chromosome
     foreach my $chr (@chrs)
     {
@@ -1792,216 +1784,6 @@ sub runSVM
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     print MAK "$cmd";
-}
-
-
-#--------------------------------------------------------------
-#   setConf(key, value, force)
-#
-#   Sets a value in a global hash (%hConf) to save the value
-#   for various key=value pairs. First key wins, so if a
-#   second key is provided, only the value for the first is kept.
-#   If $force is specified, we change the conf value even if
-#   it is set.
-#--------------------------------------------------------------
-sub setConf {
-    my ($key, $value, $force) = @_;
-    if (! defined($force)) { $force = 0; }
-
-    if ((! $force) && (defined($hConf{$key}))) { return; }
-    $hConf{$key} = $value;
-}
-
-#--------------------------------------------------------------
-#   loadLine(line)
-#
-#   Parse the specified configuration line, extracting key=value data
-#   Will not return on errors
-#--------------------------------------------------------------
-sub loadLine
-{
-    return if ( /^#/ );  # ignore lines that start with # (comment lines)
-    return if (/^\s*$/); # Ignore blank lines
-    s/#.*$//;          # trim in-line comment lines starting with #
-    my ($key,$val);
-    if ( /^\s*(\w+)\s*=\s*(.*)\s*$/ ) {
-        ($key,$val) = ($1,$2);
-        $key =~ s/^\s+//;  # remove leading whitespaces
-        $key =~ s/\s+$//;  # remove trailing whitespaces
-        $val =~ s/^\s+//;
-        $val =~ s/\s+$//;
-    }
-    else {
-        die "Cannot parse line $_ at line $.\n";
-    }
-
-    # Skip if the key has already been defined.
-    return if ( defined($hConf{$key}) );
-
-    if ( !defined($val) ) {
-        $val = "";     # if value is undefined, set it as empty string
-    }
-
-#TODO - remove
-#    # check if predefined key exist and substitute it if needed
-#    while ( $val =~ /\$\((\S+)\)/ ) {
-#        my $subkey = $1;
-#        my $subval = &getConf($subkey);
-#        if ($subval eq "") {
-#            die "Cannot parse configuration value $val at line $., $subkey not previously defined\n";
-#        }
-#        $val =~ s/\$\($subkey\)/$subval/;
-#    }
-    setConf($key, $val);
-}
-
-
-#--------------------------------------------------------------
-#   loadConf(config)
-#
-#   Read a configuration file, extracting key=value data
-#   Calls loadLine(line)
-#   Will not return on errors
-#--------------------------------------------------------------
-sub loadConf {
-    my $conf = shift;
-
-    my $curPath = getcwd();
-
-    open(IN,$conf) || die "Cannot open $conf file for reading, from $curPath";
-    while(<IN>) {
-    &loadLine($_);
-    }
-    close IN;
-}
-
-
-#--------------------------------------------------------------
-#   loadOveride(commands)
-#
-#   Read the passed in overide string of configuration overrides,
-#   extracting extracting key=value data separated by ';'
-#   Calls loadLine(line)
-#   Will not return on errors
-#--------------------------------------------------------------
-sub loadOverride {
-my $commands = shift;
-my @commlist = split(";",$commands);
-foreach (@commlist) {
- &loadLine($_);
- }
-}
-
-
-#--------------------------------------------------------------
-#   value = getIntConf(key, required)
-#
-#   Calls into getConf with the specified parameters, but if set,
-#   verifies it is a number.
-#--------------------------------------------------------------
-sub getIntConf {
-    my ($key, $required) = @_;
-    my $val = getConf($key, $required);
-
-    if($val)
-    {
-        die "$key can only be set to a number, not $val" unless (looks_like_number($val));
-    }
-    return $val;
-}
-
-
-#--------------------------------------------------------------
-#   value = getConf(key, required)
-#
-#   Gets a value in a global hash (%hConf).
-#   If required is not TRUE and the key does not exist, return ''
-#   If required is TRUE and the key does not exist, die
-#--------------------------------------------------------------
-sub getConf {
-    my ($key, $required) = @_;
-    if (! defined($required)) { $required = 0; }
-
-    if (! defined($hConf{$key}) ) {
-        if (! $required) { return '' }
-        die "Required key '$key' not found in configuration files\n";
-    }
-
-    my $val = $hConf{$key};
-    #   Substitute for variables of the form $(varname)
-    foreach (0 .. 50) {             # Avoid infinite loop
-        if ($val !~ /\$\((\S+)\)/) { last; }
-        my $subkey = $1;
-        my $subval = getConf($subkey);
-        if ($subval eq '' && $required) {
-            die "Unable to substitue for variable '$subkey' in configuration variable.\n" .
-                "  key=$key\n  value=$val\n";
-        }
-        $val =~ s/\$\($subkey\)/$subval/;
-    }
-    return $val;
-}
-
-#--------------------------------------------------------------
-#   value = getAbsPath(file, type)
-#
-#   Get the absolute path for the specified file.
-#   Heirachy for determining absolute path from a relative path:
-#      1) Based on Type:
-#          a) BAM: BAM_PREFIX
-#      2) Based on BASE_PREFIX (if <TYPE>_PREFIX is not set)
-#      3) Relative to the current working directory,
-#--------------------------------------------------------------
-sub getAbsPath {
-    my ($file, $type) = @_;
-
-    # Check if the path is already absolute
-    if ( ($file =~ /^\//) )
-    {
-        return($file);
-    }
-
-    # Relative path.
-    my $newPath = "";
-    my $absPath = "";
-    # Check if type was set.
-    if( defined($type) && ($type ne "") )
-    {
-        # Check if a directory was defined for this type.
-        my $val1 = &getConf($type."_PREFIX");
-        if( defined($val1) && ($val1 ne "") )
-        {
-            $newPath = "$val1/$file";
-        }
-    }
-
-    if($newPath eq "")
-    {
-        # Type specific directory is not set,
-        # so check if BASE_PREFIX is set.
-        my $val = getConf("BASE_PREFIX");
-        if( defined($val) && ($val ne "") )
-        {
-            $newPath = "$val/$file";
-        }
-    }
-
-    if($newPath eq "")
-    {
-        $newPath = $file;
-    }
-
-    # Convert to absolute path
-    my $fullPath = abs_path($newPath);
-    if( !defined($fullPath) || ($fullPath eq '') )
-    {
-        if( ($newPath =~ /^\//) )
-        {
-            die("ERROR: Could not find $newPath\n");
-        }
-        die("ERROR: Could not find $newPath in ".getcwd()."\n");
-    }
-    return($fullPath);
 }
 
 #--------------------------------------------------------------
