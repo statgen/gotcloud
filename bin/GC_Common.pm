@@ -8,6 +8,7 @@
 # terms of the GNU General Public License as published by the Free Software
 # Foundation; See http://www.gnu.org/copyleft/gpl.html
 ###################################################################
+use Scalar::Util qw(looks_like_number);
 
 =head1 NAME
 
@@ -71,6 +72,32 @@ sub getAbsPath {
         die "ERROR: Could not find $newPath in " . getcwd() . "\n";
     }
     return($fullPath);
+}
+
+#==================================================================
+
+=head1 NAME
+
+ #=============================================
+ #  value = getIntConf( key, required )
+ #=============================================
+
+=head1 DESCRIPTION
+
+    Get the value for a config value. If it is set,
+    verify the value is a number.  If not, die.
+
+=cut
+
+sub getIntConf {
+    my ($key, $required) = @_;
+    my $val = getConf($key, $required);
+
+    if (! $val) { return $val; }
+    if (! looks_like_number($val)) {
+        die "$key can only be set to a number, not $val\n";
+    }
+    return $val;
 }
 
 
