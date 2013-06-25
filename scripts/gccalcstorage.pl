@@ -37,7 +37,7 @@ Getopt::Long::GetOptions( \%opts,qw(
 
 #   Simple help if requested, sanity check input options
 if ($opts{help} || $#ARGV < 1) {
-    warn "$me$mesuffix [options] align fastqdir indexfile\n" .
+    warn "$me$mesuffix [options] align indexfile prefix\n" .
         "  or\n" .
         "$me$mesuffix [options] snpcall|umake indexfile\n" .
         "Use this to make an estimate of the storage requirements for GotCloud.\n" .
