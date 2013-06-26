@@ -451,6 +451,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         die "Unable to open '$makef' for writing.  $!\n";
 
     print MAK "OUT_DIR=" . getConf('OUT_DIR') . "\n";
+    print MAK "SHELL := /bin/bash -o pipefail\n";
     print MAK ".DELETE_ON_ERROR:\n\n\n";
 
     #   Start
@@ -652,7 +653,7 @@ sub logCatchFailure {
     #   What caused the failure.
     $makeCmd .= " (echo \"`grep -i -e abort -e error -e failed $log`\" >&2; ";
     #   Show failed step.
-    $makeCmd .= "echo \"\\nFailed $commandName step\" >&2; ";
+    $makeCmd .= "echo \"Failed $commandName step\" >&2; ";
     #   Copy the log to the failed logs directory.
     $makeCmd .= "mkdir -p \$(OUT_DIR)/failLogs; cp $log \$(OUT_DIR)/failLogs/\$(notdir $log); ";
     #   Show log name to look at.
@@ -764,19 +765,19 @@ sub mapBwa {
     if($fastq2 ne '.') {
         $absFastq2 = getAbsPath($fastq2, 'FASTQ');
         my $sampeLog = "\$(basename \$(basename \$\@)).sampe.log";
-        $allSteps .= "\t(" . getConf('BWA_EXE') . " sampe $rgCommand " . getConf('REF') .
+        my $sampeCmd = "(" . getConf('BWA_EXE') . " sampe $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 $absFastq2 | " . getConf('SAMTOOLS_EXE') . " view -uhS - | " .
             getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
-            " - \$(basename \$(basename " . "\$\@))) 2> $sampeLog\n";
-        $allSteps .= logCatchFailure('sampe', "(grep -q -v -i -e abort -e error -e failed $sampeLog || exit 1)", $sampeLog);
+            " - \$(basename \$(basename " . "\$\@))) 2> $sampeLog";
+        $allSteps .= logCatchFailure('sampe', $sampeCmd, $sampeLog);
     }
     else {
         my $samseLog = "\$(basename \$(basename \$\@)).samse.log";
-        $allSteps .= "\t(" . getConf('BWA_EXE') . " samse $rgCommand " . getConf('REF') .
+        my $samseCmd = "(" . getConf('BWA_EXE') . " samse $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 | " . getConf("SAMTOOLS_EXE") . " view -uhS - | " .
             getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') . ' - ' .
-            "\$(basename \$(basename \$\@))) 2> $samseLog\n";
-        $allSteps .= logCatchFailure('samse', "(grep -q -v -i -e abort -e error -e failed $samseLog || exit 1)", $samseLog);
+            "\$(basename \$(basename \$\@))) 2> $samseLog";
+        $allSteps .= logCatchFailure('samse', $samseCmd, $samseLog);
     }
     $allSteps .= "\ttouch \$\@\n\n";
 
