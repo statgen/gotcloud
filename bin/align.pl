@@ -296,6 +296,12 @@ if(getConf("FASTQ"))
     $missingReqFile++;
 }
 
+if(getConf("BWA_MAX_MEM"))
+{
+    warn "ERROR: BWA_MAX_MEM is deprecated and has been replaced by SORT_MAX_MEM, please update your configuration file and rerun\n";
+    $missingReqFile++;
+}
+
 #----------------------------------------------------------------------------
 #   Perform phone home and check storage requirements.
 #----------------------------------------------------------------------------
@@ -760,7 +766,7 @@ sub mapBwa {
         my $sampeLog = "\$(basename \$(basename \$\@)).sampe.log";
         $allSteps .= "\t(" . getConf('BWA_EXE') . " sampe $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 $absFastq2 | " . getConf('SAMTOOLS_EXE') . " view -uhS - | " .
-            getConf('SAMTOOLS_EXE') . " sort -m " . getConf('BWA_MAX_MEM') .
+            getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
             " - \$(basename \$(basename " . "\$\@))) 2> $sampeLog\n";
         $allSteps .= logCatchFailure('sampe', "(grep -q -v -i -e abort -e error -e failed $sampeLog || exit 1)", $sampeLog);
     }
@@ -768,7 +774,7 @@ sub mapBwa {
         my $samseLog = "\$(basename \$(basename \$\@)).samse.log";
         $allSteps .= "\t(" . getConf('BWA_EXE') . " samse $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 | " . getConf("SAMTOOLS_EXE") . " view -uhS - | " .
-            getConf('SAMTOOLS_EXE') . " sort -m " . getConf('BWA_MAX_MEM') . ' - ' .
+            getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') . ' - ' .
             "\$(basename \$(basename \$\@))) 2> $samseLog\n";
         $allSteps .= logCatchFailure('samse', "(grep -q -v -i -e abort -e error -e failed $samseLog || exit 1)", $samseLog);
     }
@@ -828,7 +834,7 @@ sub mapMosaik {
     $allSteps .= "\tmkdir -p \$(\@D)\n";
 
     my $sortPrefix = "\$(basename \$(basename \$\@))";
-    my $sortcmd = getConf('SAMTOOLS_EXE') . " sort -m " . getConf('BWA_MAX_MEM') .
+    my $sortcmd = getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
         " \$(basename \$^) $sortPrefix 2> $sortPrefix.log";
     $allSteps .= "\t$sortcmd\n";
     $allSteps .= logCatchFailure('sort', "(grep -q -i -e abort -e error -e failed $sortPrefix.log; [ \$\$? -eq 1 ])", "$sortPrefix.log");
