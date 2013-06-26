@@ -99,12 +99,17 @@ sub AlignStorage {
     my $k = 0;
     while (<IN>) {
         my @c = split(' ',$_);
-        my $f = "$prefix$c[1]";
+        my $f = "$c[1]";
+        # Check if the path is not absolute and needs the prefix.
+        if ($f !~ /^\//) { $f = "$prefix$c[1]"; }
+
         my @stats = stat($f);
         if (! @stats) { die "Unable to find details on '$f': $!\n"; }
         $totsize += $stats[7];
         $k++;
-        $f = "$prefix$c[2]";
+        $f = "$c[2]";
+        # Check if the path is not absolute and needs the prefix.
+        if ($f !~ /^\//) { $f = "$prefix$c[2]"; }
         if ($f ne '.') {
             @stats = stat($f);
             if (! @stats) { die "Unable to find details on '$f': $!\n"; }
