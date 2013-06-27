@@ -75,6 +75,7 @@ my %opts = (
     keeplog => 0,
     conf => '',
     verbose => 0,
+    maxlocaljobs => 10,
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
@@ -94,6 +95,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     verbose=i
     numjobspersample|numjobs=i
     numconcurrentsamples|numcs=i
+    maxlocaljobs=i
 )) || die "Failed to parse options\n";
 
 #   Simple help if requested, sanity check input options
@@ -615,6 +617,21 @@ warn "Waiting while samples are processed...\n";
 my $t = time();
 $_ = $Multi::VERBOSE;               # Avoid Perl warning
 if ($opts{verbose}) { $Multi::VERBOSE = 1; }
+
+my $totaljobs = 1;
+if(defined $opts{numconcurrentsamples}) { $totaljobs = $opts{numconcurrentsamples}; }
+if(defined $opts{numjobspersample}) { $totaljobs *= $opts{numjobspersample}; }
+if(((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq '') ||
+   (getConf('BATCH_TYPE') eq 'local')) && $totaljobs > $opts{maxlocaljobs})
+{
+    die "ERROR: can't run $totaljobs jobs with 'BATCH_TYPE = local', " .
+        "max is $opts{maxlocaljobs}\n" .
+        "Rerun with a different 'BATCH_TYPE' or override the local maximum ".
+        "using '--maxlocaljobs $totaljobs'\n" .
+        "#  These commands would have been run:\n" .
+        '  ' . join("\n  ",@mkcmds) . "\n";
+}
+
 
 my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples});
 if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
