@@ -53,6 +53,7 @@ my $testdir = "";
 my $outdir = "";
 my $conf = "";
 my $numjobs = 0;
+my $maxlocaljobs = 10;
 my $snpcallOpt = "";
 my $extractOpt = "";
 my $beagleOpt = "";
@@ -72,11 +73,14 @@ my $batchtype = '';
 my $batchopts = '';
 my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
 
+
+
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
                            "outdir|out_dir=s",\$outdir,
                            "conf=s",\$conf,
                            "numjobs=i",\$numjobs,
+                           "maxlocaljobs=i",\$maxlocaljobs,
                "snpcall",\$snpcallOpt,
                "extract",\$extractOpt,
                "beagle",\$beagleOpt,
@@ -1567,19 +1571,29 @@ print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
 if($numjobs != 0) {
-  print STDERR "Running $makef\n\n";
-  my $cmd = "make -f $makef -j $numjobs > $makef.log";
-  my $t = time();
- #           my $rc = 0xffff & system($cmd);
- #           exit($rc);
-  system($cmd);
-  $rc = ${^CHILD_ERROR_NATIVE};
-  $t = time() - $t;
-  print STDERR " Commands finished in $t secs";
-  if ($rc) { print STDERR " WITH ERRORS.  Check the logs\n"; }
-  else { print STDERR " with no errors reported\n"; }
-# system($cmd) &&
-#    die "Makefile, $makef failed d=$cmd\n";
+    my $cmd = "make -f $makef -j $numjobs > $makef.log";
+    if(($batchtype eq 'local') && ($numjobs > $maxlocaljobs))
+    {
+        die "ERROR: can't run $numjobs jobs with 'BATCH_TYPE = local', " .
+            "max is $maxlocaljobs\n" .
+            "Rerun with a different 'BATCH_TYPE' or override the local maximum ".
+            "using '--maxlocaljobs $numjobs'\n" .
+            "#  These commands would have been run:\n" .
+            "  $cmd\n";
+    }
+
+    print STDERR "Running $makef\n\n";
+    my $t = time();
+    #           my $rc = 0xffff & system($cmd);
+    #           exit($rc);
+    system($cmd);
+    $rc = ${^CHILD_ERROR_NATIVE};
+    $t = time() - $t;
+    print STDERR " Commands finished in $t secs";
+    if ($rc) { print STDERR " WITH ERRORS.  Check the logs\n"; }
+    else { print STDERR " with no errors reported\n"; }
+    # system($cmd) &&
+    #    die "Makefile, $makef failed d=$cmd\n";
 }
 else {
 
