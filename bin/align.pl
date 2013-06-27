@@ -209,7 +209,7 @@ foreach my $f (@reqRefs)
     $missingReqFile++;
 }
 
-if (getConf('RUN_QPLOT')) { $missingReqFile += CheckFor_REF_File('.GCcontent'); }
+if (getConf('RUN_QPLOT')) { $missingReqFile += CheckFor_REF_File('.winsize100.gc', 1); }
 
 #   Check for the required sub REF files.
 my @mapExtensions;
@@ -482,8 +482,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
       print MAK getConf('QC_DIR') . "/$mergeName.qplot.done: " . getConf('FINAL_BAM_DIR') . "/$mergeName.recal.bam.done\n";
       print MAK "\tmkdir -p \$(\@D)\n";
       my $s = getConf('QPLOT_EXE') . " --reference " . getConf('REF') . " --dbsnp " .
-        getConf('DBSNP_VCF') . " --gccontent " . getConf('REF') . ".GCcontent " .
-        "--stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel " .
+        getConf('DBSNP_VCF') . " --stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel " .
         "$mergeName" . "_recal,$mergeName" . "_dedup \$(basename \$^) " .
         getConf('DEDUP_TMP')."/$mergeName.dedup.bam 2> \$(basename \$\@).log";
       print MAK logCatchFailure("QPLOT", $s, "\$(basename \$\@).log");

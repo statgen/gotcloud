@@ -66,7 +66,7 @@ QCStats::~QCStats()
 
 void QCStats::ReportWarningCount()
 {
-    if(nWarnings>0) fprintf(stderr, "Total number of warnings: %lu \n", nWarnings);
+    if(nWarnings>0) fprintf(stderr, "Total number of warnings: %llu \n", nWarnings);
 }
 
 void QCStats::Init(int n)
@@ -455,13 +455,13 @@ void QCStats::UpdateStats(SamRecord & sam, QSamFlag &filter, double minMapQualit
     };
 
     if (readGroups.size() > 0) {
-        const String* p_rg = sam.getStringTag("RG");
+      const String* p_rg = sam.getStringTag("RG");
       if (p_rg == NULL) return;
       const String& rg = *p_rg;
       bool match = true;
       for (unsigned int i = 0; i < readGroups.size(); i++) {
         for (unsigned int j = 0; j < readGroups[i].size(); j++ ){
-          if (j == rg.Length()) {
+          if (j == (unsigned int) rg.Length()) {
             match = false;
             break;
           }

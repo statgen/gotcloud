@@ -14,6 +14,34 @@ bool fileExists(const char* path) {
   }
 }
 
+void stripSuffix(const char* suffix, String* fn) {
+  String s1 = suffix;
+  String s2 = *fn;
+  if (s1.Length() > s2.Length()) // suffix is longer
+    return;
+
+  String s3 = s2.Right(s1.Length());
+  if (s1 == s3) { // match suffix
+    *fn = s2.Left(s2.Length() - s1.Length());
+  } else {
+    return;
+  }
+}
+
+/**
+ * strip suffix from @param reference
+ * e.g. strip hg19.fa, hg19.fa.gz, hg19.fa.bgz or hg19.fasta, hg19.fasta.gz, hg19.fasta.bgz
+ * to hg19
+ */
+String getReferenceGenomeBasename(const String& reference) {
+  String ret = reference;
+  stripSuffix(".gz", &ret);
+  stripSuffix(".bgz", &ret);
+  stripSuffix(".fasta", &ret);
+  stripSuffix(".fa", &ret);
+  return ret;
+}
+
 int main(int argc, char *argv[])
 {
   bool unpaired = false;
@@ -54,9 +82,7 @@ int main(int argc, char *argv[])
       LONG_PARAMETER_GROUP("References")
       LONG_STRINGPARAMETER("reference",&reference)
       LONG_STRINGPARAMETER("dbsnp", &dbSNPFile)
-      LONG_STRINGPARAMETER("gccontent", &gcContentFile)
-      LONG_PARAMETER_GROUP("Create gcContent file")
-      EXCLUSIVE_PARAMETER("create_gc",&createGCContentFile)
+      LONG_PARAMETER_GROUP("GC content file options")
       LONG_INTPARAMETER("winsize", &windowSize)
       LONG_PARAMETER_GROUP("Region list")
       LONG_STRINGPARAMETER("regions", &regions)
@@ -87,8 +113,10 @@ int main(int argc, char *argv[])
       LONG_PARAMETER_GROUP("Plot labels")
       LONG_STRINGPARAMETER("label", &label)
       LONG_STRINGPARAMETER("bamLabel", &bamLabel)
+      LONG_PARAMETER_GROUP("Obsoleted (DO NOT USE)")
+      LONG_STRINGPARAMETER("gccontent", &gcContentFile)
+      EXCLUSIVE_PARAMETER("create_gc",&createGCContentFile)
       END_LONG_PARAMETERS();
-
 
   pl.Add(new LongParameters("\n", longParameters));
 
@@ -101,22 +129,41 @@ int main(int argc, char *argv[])
 
   pl.Status();
 
-  if(bamFiles.Length()==0)
-    error("No SAM/BAM files provided!\n");
+#define QPLOT_VERSION 20130619
+  fprintf(stderr, "QPLOT (Ver: %d) started.\n", QPLOT_VERSION);
+  fprintf(stderr, "QPLOT Documentation: http://genome.sph.umich.edu/wiki/QPLOT\n");
+  fprintf(stderr, "\n");
+  
+  // if(bamFiles.Length()==0)
+  //   fprintf(stderr, "No SAM/BAM files provided and no QPLOT outputs!\n");
   
   if(reference.Length()==0)
     error("Reference not provided!\n");
 
-  if (gcContentFile.Length() == 0) {
-    error("Please specify pre-computed GC content file or use [ --create_gc --gccontent GCContentFileName ]  flag\n");
+  if (gcContentFile.Length()) {
+    fprintf(stderr, "--gccontent is obselete, now GC content files is automaticall determined.\n");
+    fprintf(stderr, "see http://genome.sph.umich.edu/wiki/QPLOT for details\n");
+    exit(1);
   }
+  if (createGCContentFile) {
+    fprintf(stderr, "--create_gc is obselete, now creating GC content files is automaticall determined.\n");
+    fprintf(stderr, "see http://genome.sph.umich.edu/wiki/QPLOT for details\n");
+    exit(1);
+  }
+  
+  // determine GC content file name
+  fprintf(stderr, "Reference genome file [ %s ] is used.\n", reference.c_str());
+  String referenceGenomeBase = getReferenceGenomeBasename(reference);
+  if (windowSize <= 0) {
+    error("Please specify a positive number for window size!\n");
+  }
+  gcContentFile.printf("%s.winsize%d.gc",
+                       referenceGenomeBase.c_str(),
+                       windowSize);
+  fprintf(stderr, "GC content file [ %s ] is used for window size %d.\n", gcContentFile.c_str(), windowSize);
+                       
+  // check if GC content file exists
   if (!fileExists(gcContentFile)) {
-    if (!createGCContentFile) {
-      fprintf(stderr,
-              "GC content file [ %s ] does not exists. You may use --create_gc file to create one.\n",
-              gcContentFile.c_str());
-      exit(1);
-    }
     // create GC content file
     FILE* fp = fopen(gcContentFile.c_str(), "wb");
     if (fp == NULL) {
@@ -125,21 +172,19 @@ int main(int argc, char *argv[])
     } else {
       fclose(fp);
     }
-
     GCContent GC;
     fprintf(stderr, "Creating GC content file...\n");
     GC.OutputGCContent(reference, windowSize, gcContentFile, regions, invertRegion);
     fprintf(stderr, "GC content file [ %s ] created.\n", gcContentFile.c_str());
-  } else { 
-    if (createGCContentFile) {
-      fprintf(stderr, "GC content file [ %s ] already exists, ignore [ --create_gc ] flag.\n", gcContentFile.c_str());
-    };
   }
 
   if(regions.Length() == 0 && invertRegion) {
     error("Need to specify --regions whenusing --invertRegion");
   }
 
+  if(bamFiles.Length()==0)
+    error("No SAM/BAM files provided, stopped!\n");
+  
   fprintf(stderr, "The following files are to be processed...\n\n");
   for(int i=0; i<bamFiles.Length();i++)
     fprintf(stderr, "%s\n", bamFiles[i].c_str());
@@ -217,7 +262,15 @@ int main(int argc, char *argv[])
   qc.OutputStats(statsFile);
 
   if(RcodeFile.Length()>0){
-    qc.Plot(plotFile, RCODE);
+    if (plotFile.Length() > 0 ) {
+      qc.Plot(plotFile, RCODE);
+    } else {
+      // make a default pdf file
+      String defaultPlotFile = RcodeFile;
+      stripSuffix(".R", &defaultPlotFile);
+      defaultPlotFile += ".pdf";
+      qc.Plot(defaultPlotFile, RCODE);
+    }
   }
 
   if(plotFile.Length()>0)

@@ -15,7 +15,7 @@ void DepthCounter::addBase(const uint64_t& pos) {
 #endif
     if (pos >= vector2->getStart() + vector2->getLen()) {
         static int errorCount = 0;
-        fprintf(stderr, "Ignore %lu, v1[start = %lu, len = %lu], v2[start = %lu, len = %lu \n",
+        fprintf(stderr, "Ignore %llu, v1[start = %llu, len = %llu], v2[start = %llu, len = %llu \n",
                 pos,
                 vector1->getStart(), vector1->getLen(),
                 vector2->getStart(), vector2->getLen());

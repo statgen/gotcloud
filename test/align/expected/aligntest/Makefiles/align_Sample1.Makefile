@@ -18,8 +18,8 @@ $(QC_DIR)/Sample1.genoCheck.done: $(FINAL_BAM_DIR)/Sample1.recal.bam.done
 
 $(QC_DIR)/Sample1.qplot.done: $(FINAL_BAM_DIR)/Sample1.recal.bam.done
 	mkdir -p $(@D)
-	@echo "$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --gccontent $(REF).GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample1_recal,Sample1_dedup $(basename $^) $(DEDUP_TMP)/Sample1.dedup.bam 2> $(basename $@).log"
-	@$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --gccontent $(REF).GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample1_recal,Sample1_dedup $(basename $^) $(DEDUP_TMP)/Sample1.dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample1_recal,Sample1_dedup $(basename $^) $(DEDUP_TMP)/Sample1.dedup.bam 2> $(basename $@).log"
+	@$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample1_recal,Sample1_dedup $(basename $^) $(DEDUP_TMP)/Sample1.dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 

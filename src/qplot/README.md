@@ -61,8 +61,8 @@ Binary Download
 ---------------
 
 We have prepared a pre-compiled (under Ubuntu) qplot along with source
-code . You can download it from: [qplot.20120602.tar.gz (File Size:
-1.7G)](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20120602.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20120602.tar.gz")
+code . You can download it from: [qplot.20130619.tar.gz (File Size:
+1.7G)](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20130619.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20130619.tar.gz")
 
 The executable file is under qplot/bin/qplot.
 
@@ -79,7 +79,7 @@ Source Code Distribution
 ------------------------
 
 We provide a source code only download in
-[qplot-source.20120602.tar.gz](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20120602.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20120602.tar.gz").
+[qplot-source.20130619.tar.gz](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20130619.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20130619.tar.gz").
 Optionally, you can download example file and/or data file:
 
 [example](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-example.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-example.tar.gz"):
@@ -97,7 +97,7 @@ You can put above file(s) in the same folder and follow these steps:
 
 <!-- -->
 
-    tar zvxf qplot-source.20120602.tar.gz
+    tar zvxf qplot-source.20130619.tar.gz
 
 A new folder *qplot* will be created.
 
@@ -106,7 +106,7 @@ A new folder *qplot* will be created.
 <!-- -->
 
     cd qplot
-    make libStatGen
+    (cd ../libStatGen; make cloneLib)
 
 This step will download a necessary software library
 [libStatGen](http://genome.sph.umich.edu/wiki/C%2B%2B_Library:_libStatGen "http://genome.sph.umich.edu/wiki/C%2B%2B_Library:_libStatGen")
@@ -116,7 +116,7 @@ and compile source code into a binary code library.
 
 <!-- -->
 
-    make all
+    make
 
 This step will then build qplot. Upon success, the executable qplot can
 be found under qplot/bin/.
@@ -154,22 +154,25 @@ Here is the qplot help page by invoking qplot without any command line
 arguments:
 
      some_linux_host > qplot/bin/qplot
-     
-                 References : --reference [/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.v37.fa],
-                              --dbsnp [/net/fantasia/home/zhanxw/software/qplot/data/dbSNP130.UCSC.coordinates.tbl],
-                              --gccontent [/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.w100.gc]
-      Create gcContent file : --create_gc [], --winsize [100]
-                Region list : --regions [], --invertRegion
-               Flag filters : --read1_skip, --read2_skip, --paired_skip,
-                              --unpaired_skip
-             Dup and QCFail : --dup_keep, --qcfail_keep
-            Mapping filters : --minMapQuality [0.00]
-         Records to process : --first_n_record [-1]
-           Lanes to process : --lanes []
-      Read group to process : --readGroup []
-         Input file options : --noeof
-               Output files : --plot [], --stats [], --Rcode [], --xml []
-                Plot labels : --label [], --bamLabel []
+       The following parameters are available.  Ones with "[]" are in effect:
+        
+        
+        
+                       References : --reference [/net/fantasia/home/zhanxw/software/qplot/data/human.g1k.v37.fa],
+                                    --dbsnp [/net/fantasia/home/zhanxw/software/qplot/data/dbSNP130.UCSC.coordinates.tbl]
+          GC content file options : --winsize [100]
+                      Region list : --regions [], --invertRegion
+                     Flag filters : --read1_skip, --read2_skip, --paired_skip,
+                                    --unpaired_skip
+                   Dup and QCFail : --dup_keep, --qcfail_keep
+                  Mapping filters : --minMapQuality [0.00]
+               Records to process : --first_n_record [-1]
+                 Lanes to process : --lanes []
+            Read group to process : --readGroup []
+               Input file options : --noeof
+                     Output files : --plot [], --stats [], --Rcode [], --xml []
+                      Plot labels : --label [], --bamLabel []
+           Obsoleted (DO NOT USE) : --gccontent [], --create_gc
 
 Input files
 -----------
@@ -193,13 +196,22 @@ must be consistent with the reference created above. Second column is
 downloaded UCSC dbSNP file, one way to do it is:
 `cat dbsnp_129_b36.rod|grep "single" | awk '$4-$3==1' |cut -f2,4 > dbSNP_129_b36.tbl`
 
--   `--gccontent`
+-   ` **OBSOLETED** --gccontent, --create_gc `
 
 Although GC content can be calculated on the fly each time, it is much
-more efficient to load a precomputed GC content from a file. To generate
-the file, use the following command:
+more efficient to load a precomputed GC content from a file. GC content
+file name is automatically determined in this format:
+<reference\_genome\_base\_file\_name\>.winsize<gc\_content\_window\_size\>.gc.
+For example, if your reference genome is human.g1k.v37.fa and the window
+size is 100, then the GC content file name is:
+human.g1k.v37.winsize100.gc .
 
-    qplot --rerefence reference.fa --windowsize winsize --create_gc reference.gc
+As it said, there is no need to use --gccontent to specify GC content
+file in each run.
+
+-   ` input files `
+
+QPLOT take SAM/BAM files.
 
 *Note*: Before running qplot, it is critical to check how the chromosome
 names are coded. Some BAM/SAM files use just numbers, others use chr +
@@ -448,5 +460,7 @@ Contact
 
 Questions and requests should be sent to Bingshan Li
 ([bingshan@umich.edu](mailto:bingshan@umich.edu "mailto:bingshan@umich.edu"))
+or Xiaowei Zhan
+([zhanxw@umich.edu](mailto:zhanxw@umich.edu "mailto:zhanxw@umich.edu"))
 or Goncalo Abecasis
 ([goncalo@umich.edu](mailto:goncalo@umich.edu "mailto:goncalo@umich.edu"))

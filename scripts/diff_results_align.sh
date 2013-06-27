@@ -86,6 +86,8 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ $SKIP_FILES \
     -I '^\[bwa_sai2sam_pe_core\] time elapses: ' \
     -I '^\[bwa_sai2sam_pe_core\] refine gapped alignments\.\.\. ' \
     -I '^\[bwa_sai2sam_pe_core\] print alignments\.\.\. ' \
+    -I '^pdf(file=".*QCFiles/Sample[1-3].qplot.pdf", height=12, width=12);$' \
+
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
@@ -121,14 +123,13 @@ diff -r $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -I '@echo ".* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-3].recal.bam .* 2> $(basename $@).log"$' \
     -I '@.* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-3].recal.bam .* 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed Recalibration step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/Sample[1-3].recal.bam.done: .*/Sample[1-3].dedup.bam.done$' \
-    -I '@echo ".* --reference .* --dbsnp .* --gccontent .*.GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-3]_recal,Sample[1-3]_dedup $(basename $^) .*/Sample[1-3].dedup.bam 2> $(basename $@).log"$' \
--I '@.* --reference .* --dbsnp .* --gccontent .*.GCcontent --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-3]_recal,Sample[1-3]_dedup $(basename $^) .*/Sample[1-3].dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@echo ".* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-3]_recal,Sample[1-3]_dedup $(basename $^) .*/Sample[1-3].dedup.bam 2> $(basename $@).log"$' \
+    -I '@.* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-3]_recal,Sample[1-3]_dedup $(basename $^) .*/Sample[1-3].dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed Makefile results validation. See mismatches in $DIFFRESULTS"
     exit 2
 fi
-
 
 for file in $QEMPS; do
     sort $RESULTS_DIR/$QEMP_SUBDIR/$file | diff - $EXPECTED_DIR/$QEMP_SUBDIR/$file >> $DIFFRESULTS

@@ -44,6 +44,13 @@ class GCContent
   void CalcStatsByGC(uint8_t *);
   void IncrementStatsByGC(uint32_t start, int len);
   void OutputFreq(String);
+  /**
+   * Output a @param gcContentFile and using
+   * @param genome - reference genome file name
+   * @param windowSize - GC content window size
+   * @param regionFile - region file name
+   * @param invertRegion - whether invert specified region
+   */
   void OutputGCContent(String & genome, int windowSize, String &gcContentFile, String &regionFile, bool invertRegion);
 };
 

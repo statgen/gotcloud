@@ -14,9 +14,9 @@ HTML_TEMPLATE = Template(
     <title>Interactive Graphs (Flot)</title>
     <link href="http://zhanxw.com/flot/layout.css" rel="stylesheet" type="text/css">
     <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="../excanvas.min.js"></script><![endif]-->
-    <script language="javascript" type="text/javascript" src="http://zhanxw.com/flot/jquery.min.js"></script>
-    <script language="javascript" type="text/javascript" src="http://zhanxw.com/flot/jquery.flot.min.js"></script>
-    <script language="javascript" type="text/javascript" src="http://zhanxw.com/flot/jquery.flot.navigate.min.js"></script>
+    <script language="javascript" type="text/javascript" src="http://zhanxw-anno.appspot.com/static/jquery.min.js"></script>
+    <script language="javascript" type="text/javascript" src="http://zhanxw-anno.appspot.com/static/jquery.flot.min.js"></script>
+    <script language="javascript" type="text/javascript" src="http://zhanxw-anno.appspot.com/static/jquery.flot.navigate.min.js"></script>
     <style type="text/css" media="screen">
     html {
       padding: 0px;
