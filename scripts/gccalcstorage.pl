@@ -37,7 +37,7 @@ Getopt::Long::GetOptions( \%opts,qw(
 
 #   Simple help if requested, sanity check input options
 if ($opts{help} || $#ARGV < 1) {
-    warn "$me$mesuffix [options] align fastqdir indexfile\n" .
+    warn "$me$mesuffix [options] align indexfile prefix\n" .
         "  or\n" .
         "$me$mesuffix [options] snpcall|umake indexfile\n" .
         "Use this to make an estimate of the storage requirements for GotCloud.\n" .
@@ -99,12 +99,17 @@ sub AlignStorage {
     my $k = 0;
     while (<IN>) {
         my @c = split(' ',$_);
-        my $f = "$prefix$c[1]";
+        my $f = "$c[1]";
+        # Check if the path is not absolute and needs the prefix.
+        if ($f !~ /^\//) { $f = "$prefix$c[1]"; }
+
         my @stats = stat($f);
         if (! @stats) { die "Unable to find details on '$f': $!\n"; }
         $totsize += $stats[7];
         $k++;
-        $f = "$prefix$c[2]";
+        $f = "$c[2]";
+        # Check if the path is not absolute and needs the prefix.
+        if ($f !~ /^\//) { $f = "$prefix$c[2]"; }
         if ($f ne '.') {
             @stats = stat($f);
             if (! @stats) { die "Unable to find details on '$f': $!\n"; }
