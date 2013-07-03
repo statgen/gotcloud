@@ -214,6 +214,10 @@ if (getConf('RUN_QPLOT')) { $missingReqFile += CheckFor_REF_File('.winsize100.gc
 #   Check for the required sub REF files.
 my @mapExtensions;
 my $removeExt = 0;
+
+# Ensure the map type is in all caps.
+setConf('MAP_TYPE', uc(getConf('MAP_TYPE')));
+
 if (getConf('MAP_TYPE') eq 'BWA') {
     @mapExtensions = qw(.amb .ann .bwt .fai .pac .sa);
 }
@@ -285,24 +289,33 @@ if($missingExe)
 #----------------------------------------------------------------------------
 #   Check for deprecated required settings
 #----------------------------------------------------------------------------
-# Check to see if the old REF is set instead of the new one.
-if(getConf('FA_REF'))
+
+# Deprecated settings and their replacements:
+my %deprecated = (
+    FA_REF => "REF",
+    FASTQ => "FASTQ_PREFIX",
+    BWA_MAX_MEM => "SORT_MAX_MEM",
+    VERIFY_BAM_ID_OPTIONS => "verifyBamID_USER_PARAMS",
+    MORE_RECAB_PARAMS => "recab_USER_PARAMS",
+    ALT_RECAB => "recab_CMD",
+    ALT_DEDUP => "dedup_CMD",
+);
+
+my $deprecatedFiles = 0;
+foreach my $key (keys %deprecated )
 {
-    warn "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
-    $missingReqFile++;
+    if(getConf("$key"))
+    {
+        warn "ERROR: '$key' is deprecated and has been replaced by '$deprecated{$key}'\n";
+        $deprecatedFiles++;
+    }
 }
 
-if(getConf("FASTQ"))
+if($deprecatedFiles)
 {
-    warn "ERROR: FASTQ is deprecated and has been replaced by FASTQ_PREFIX, please update your configuration file and rerun\n";
-    $missingReqFile++;
+    die "EXITING: Deprecated configuration.  Please update your configyration and rerun.\n";
 }
 
-if(getConf("BWA_MAX_MEM"))
-{
-    warn "ERROR: BWA_MAX_MEM is deprecated and has been replaced by SORT_MAX_MEM, please update your configuration file and rerun\n";
-    $missingReqFile++;
-}
 
 #----------------------------------------------------------------------------
 #   Perform phone home and check storage requirements.
@@ -427,6 +440,7 @@ if(getConf('BAM_INDEX'))
     close(BAM_IDX);
 }
 
+my @perMergeStep = split(' ', getConf("PER_MERGE_STEPS"));
 
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
@@ -465,59 +479,23 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     }
     print MAK "\ttouch \$\@\n\n";
 
-    if (getConf('RUN_VERIFY_BAM_ID')) {
-        #   Verify Bam ID
-        print MAK getConf('QC_DIR') . "/$mergeName.genoCheck.done: " .
-            getConf('FINAL_BAM_DIR') . "/$mergeName.recal.bam.done\n";
+
+    # Loop through the defined steps.
+    foreach my $step (@perMergeStep)
+    {
+        print MAK getConf($step."_DIR") . "/$mergeName." . getConf($step."_EXT",1).".done:";
+
+        my @depends = split(/\s+/, getConf($step."_DEPEND",1));
+        foreach my $depend (@depends)
+        {
+            print MAK " " . getConf($depend."_DIR",1) . "/$mergeName." . getConf($depend."_EXT",1).".done";
+        }
+        print MAK "\n";
         print MAK "\tmkdir -p \$(\@D)\n";
-        my $s = getConf('VERIFY_BAM_ID_EXE') . " --verbose --vcf " . getConf('HM3_VCF') .
-            " --bam \$(basename \$^) --out \$(basename \$\@) " . getConf('VERIFY_BAM_ID_OPTIONS') .
-            " 2> \$(basename \$\@).log";
-        print MAK logCatchFailure("VerifyBamID", $s, "\$(basename \$\@).log");
+        my $cmd = getConf($step."_CMD",1) . " 2> \$(basename \$\@).log";
+        print MAK logCatchFailure($step, $cmd, "\$(basename \$\@).log");
         print MAK "\ttouch \$\@\n\n";
     }
-
-    #   If qplot is configured on, run it.
-    if (getConf('RUN_QPLOT')) {
-      print MAK getConf('QC_DIR') . "/$mergeName.qplot.done: " . getConf('FINAL_BAM_DIR') . "/$mergeName.recal.bam.done\n";
-      print MAK "\tmkdir -p \$(\@D)\n";
-      my $s = getConf('QPLOT_EXE') . " --reference " . getConf('REF') . " --dbsnp " .
-        getConf('DBSNP_VCF') . " --stats \$(basename \$\@).stats --Rcode \$(basename \$\@).R --minMapQuality 0 --bamlabel " .
-        "$mergeName" . "_recal,$mergeName" . "_dedup \$(basename \$^) " .
-        getConf('DEDUP_TMP')."/$mergeName.dedup.bam 2> \$(basename \$\@).log";
-      print MAK logCatchFailure("QPLOT", $s, "\$(basename \$\@).log");
-      print MAK "\ttouch \$\@\n\n";
-    }
-
-    #   Recalibrate the Deduped/Merged BAM
-    print MAK getConf('FINAL_BAM_DIR') . "/$mergeName.recal.bam.done: " . getConf('DEDUP_TMP') . "/$mergeName.dedup.bam.done\n";
-    print MAK "\tmkdir -p \$(\@D)\n";
-    print MAK "\tmkdir -p ".getConf('RECAL_TMP')."\n";
-    if (! getConf('ALT_RECAB')) {
-        print MAK logCatchFailure("Recalibration", getConf('BAM_EXE') . " recab --refFile " . getConf('REF') .
-            " --dbsnp ".getConf('DBSNP_VCF') . " --storeQualTag OQ --in \$(basename \$^) --out " .
-            getConf('RECAL_TMP')."/$mergeName.recal.bam ".getConf('MORE_RECAB_PARAMS')." 2> " .
-            "\$(basename \$\@).log", "\$(basename \$\@).log");
-    }
-    else {
-        my $newRecab = getConf('ALT_RECAB');
-        eval($newRecab);
-    }
-    print MAK "\tcp " . getConf('RECAL_TMP') . "/$mergeName.recal.bam \$(basename \$\@)\n";
-    print MAK "\t" . getConf('SAMTOOLS_EXE') . " index \$(basename \$\@)\n";
-    print MAK "\ttouch \$\@\n\n";
-
-    #   Dedup the Merged BAM
-    print MAK getConf('DEDUP_TMP') . "/$mergeName.dedup.bam.done: " . getConf('MERGE_TMP') . "/$mergeName.merged.bam.done\n";
-    print MAK "\tmkdir -p \$(\@D)\n";
-    if (! getConf('ALT_DEDUP')) {
-        print MAK logCatchFailure("Deduping", getConf('BAM_EXE') . " dedup --in \$(basename \$^) --out \$(basename \$\@) " .
-            "--log \$(basename \$\@).metrics 2> \$(basename \$\@).err", "\$(basename \$\@).err");
-    }
-    else {
-        print MAK "\t" . getConf('ALT_DEDUP') . "\n";
-    }
-    print MAK "\ttouch \$\@\n\n";
 
     #   Get the commands for each fastq that goes into this
     foreach my $tmpfastq1 (@{$mergeToFq1{$mergeName}}) {

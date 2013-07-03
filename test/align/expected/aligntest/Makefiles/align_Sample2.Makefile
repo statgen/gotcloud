@@ -9,35 +9,39 @@ $(OUT_DIR)/Sample2.OK: $(FINAL_BAM_DIR)/Sample2.recal.bam.done $(QC_DIR)/Sample2
 	rm -f $(SAI_FILES) $(ALN_FILES) $(POL_FILES) $(DEDUP_FILES) $(RECAL_FILES)
 	touch $@
 
-$(QC_DIR)/Sample2.genoCheck.done: $(FINAL_BAM_DIR)/Sample2.recal.bam.done
+$(QC_DIR)/Sample2.genoCheck.done: $(FINAL_BAM_DIR)/Sample2.recal.bam.done $(FINAL_BAM_DIR)/Sample2.recal.bam.bai.done
 	mkdir -p $(@D)
-	@echo "$(VERIFY_BAM_ID_EXE) --verbose --vcf $(HM3_VCF) --bam $(basename $^) --out $(basename $@)  2> $(basename $@).log"
-	@$(VERIFY_BAM_ID_EXE) --verbose --vcf $(HM3_VCF) --bam $(basename $^) --out $(basename $@)  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed VerifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(VERIFY_BAM_ID_EXE) --bam $(basename $<) --out $(basename $@) --verbose --vcf $(HM3_VCF)   2> $(basename $@).log"
+	@$(VERIFY_BAM_ID_EXE) --bam $(basename $<) --out $(basename $@)  --verbose --vcf $(HM3_VCF)   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
-$(QC_DIR)/Sample2.qplot.done: $(FINAL_BAM_DIR)/Sample2.recal.bam.done
+$(QC_DIR)/Sample2.qplot.done: $(FINAL_BAM_DIR)/Sample2.recal.bam.done $(FINAL_BAM_DIR)/Sample2.dedup.bam.done
 	mkdir -p $(@D)
-	@echo "$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample2_recal,Sample2_dedup $(basename $^) $(DEDUP_TMP)/Sample2.dedup.bam 2> $(basename $@).log"
-	@$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample2_recal,Sample2_dedup $(basename $^) $(DEDUP_TMP)/Sample2.dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal,dedup $(basename $^) 2> $(basename $@).log"
+	@$(QPLOT_EXE) --reference $(REF) --dbsnp $(DBSNP_VCF) --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal,dedup $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed qplot step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	rm -f $(basename $@).log
+	touch $@
+
+$(FINAL_BAM_DIR)/Sample2.recal.bam.bai.done: $(DEDUP_TMP)/Sample2.recal.bam.done
+	mkdir -p $(@D)
+	@echo "$(SAMTOOLS_EXE) index $(basename $^) 2> $(basename $@).log"
+	@$(SAMTOOLS_EXE) index $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed index step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
 $(FINAL_BAM_DIR)/Sample2.recal.bam.done: $(DEDUP_TMP)/Sample2.dedup.bam.done
 	mkdir -p $(@D)
-	mkdir -p $(RECAL_TMP)
-	@echo "$(BAM_EXE) recab --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ --in $(basename $^) --out $(RECAL_TMP)/Sample2.recal.bam $(MORE_RECAB_PARAMS) 2> $(basename $@).log"
-	@$(BAM_EXE) recab --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ --in $(basename $^) --out $(RECAL_TMP)/Sample2.recal.bam $(MORE_RECAB_PARAMS) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed Recalibration step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(BAM_EXE) recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ   2> $(basename $@).log"
+	@$(BAM_EXE) recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
-	cp $(RECAL_TMP)/Sample2.recal.bam $(basename $@)
-	$(SAMTOOLS_EXE) index $(basename $@)
 	touch $@
 
 $(DEDUP_TMP)/Sample2.dedup.bam.done: $(MERGE_TMP)/Sample2.merged.bam.done
 	mkdir -p $(@D)
-	@echo "$(BAM_EXE) dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err"
-	@$(BAM_EXE) dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err || (echo "`grep -i -e abort -e error -e failed $(basename $@).err`" >&2; echo "Failed Deduping step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).err $(OUT_DIR)/failLogs/$(notdir $(basename $@).err); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).err) for more details" >&2; exit 1;)
-	rm -f $(basename $@).err
+	@echo "$(BAM_EXE) dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics   2> $(basename $@).log"
+	@$(BAM_EXE) dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed dedup step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	rm -f $(basename $@).log
 	touch $@
 
 $(MERGE_TMP)/Sample2.merged.bam.done: $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done 

@@ -2,7 +2,7 @@ NFiles=2;
 colvec=c(1,2);
 grid.col='gray';
 pchvec=c(1,2);
-legend.txt=c('Sample1_recal','Sample1_dedup');
+legend.txt=c('recal','dedup');
 lty.vec=c(1);
 pdf(file="QCFiles/Sample1.qplot.pdf", height=12, width=12);
 par(mfrow=c(2,2)); par(cex.main=1.4); par(cex.lab=1.2); par(cex.axis=1.2);par(mar=c(5.1, 4.1, 4.1, 4.1))
@@ -180,7 +180,7 @@ legend("topright",legend=depth.legend.txt, col=colvec, lty=lty.vec);
 abline(v=pretty(range(0,MAX.X), n= 10), lty="dotted", col = "lightgray")
 abline(h=pretty(range(0,MAX.Y*1.2), n= 10), lty="dotted", col = "lightgray")
 
-labelvec=c('Sample1_recal','Sample1_dedup');
+labelvec=c('recal','dedup');
 legend.txt=c('Total', 'Mapped', 'Paired', 'ProperPair','Dup', 'QCFail');
 x=c(0.010,0.010);
 y=c(0.006,0.006);
@@ -213,7 +213,7 @@ ratio = 1;
 ylim = range(-max(x2), max(x1)) * 1.2;
 y1lim = range(0, max(x1)) * 1.2;
 y2lim = range(-max(x2), 0) * 1.2;
-barplot(x1, ylim= ylim, axes = F, names.arg=c('Sample1_recal','Sample1_dedup'), xlab='Bam file index', col='light blue', main='\nMean depth of sequencing / Empirical Q20 count');
+barplot(x1, ylim= ylim, axes = F, names.arg=c('recal','dedup'), xlab='Bam file index', col='light blue', main='\nMean depth of sequencing / Empirical Q20 count');
 barplot(-x2, ylim= ylim, axes = F, add = T, col = 'light pink');
 tick.pos = pretty(y1lim);
 tick.text = as.character(pretty(y1lim));

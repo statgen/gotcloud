@@ -42,7 +42,7 @@ SKIP_FILES+=" "${BAIS[@]/#/"-x "}
 SKIP_FILES+=" "${QEMPS[@]/#/"-x "}
 SKIP_FILES+=" "${MERGE_BAMS[@]/#/"-x "}
 
-QEMP_SUBDIR=tmp/alignment.recal
+QEMP_SUBDIR=bams
 
 #   Diff the results
 #set -e                          # Fail on errors
@@ -87,7 +87,6 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ $SKIP_FILES \
     -I '^\[bwa_sai2sam_pe_core\] refine gapped alignments\.\.\. ' \
     -I '^\[bwa_sai2sam_pe_core\] print alignments\.\.\. ' \
     -I '^pdf(file=".*QCFiles/Sample[1-3].qplot.pdf", height=12, width=12);$' \
-
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
@@ -102,29 +101,31 @@ diff -r $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -I '^[A-Z_][A-Z_]* = '\
     -I '^OUT_DIR=.*$'\
     -I '^$(OUT_DIR)/Sample[1-3].OK: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].genoCheck.done .*/Sample[1-3].qplot.done$' \
-    -I '^.*/Sample[1-3].genoCheck.done: .*/Sample[1-3].recal.bam.done$' \
-    -I '@echo ".* --verbose --vcf .* --bam $(basename $^) --out $(basename $@)  2> $(basename $@).log"$' \
-    -I '@.* --verbose --vcf .* --bam $(basename $^) --out $(basename $@)  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed VerifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
-    -I '^.*/Sample[1-3].qplot.done: .*/Sample[1-3].recal.bam.done$' \
+    -I '^.*/Sample[1-3].recal.bam.bai.done: .*/Sample[1-3].recal.bam.done$' \
+    -I '^.*/Sample[1-3].genoCheck.done: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].recal.bam.bai.done$' \
+    -I '@echo ".* --bam $(basename $<) --out $(basename $@) --verbose --vcf .*  2> $(basename $@).log"$' \
+    -I '@.* --bam $(basename $<) --out $(basename $@) --verbose --vcf .*  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '^.*/Sample[1-3].qplot.done: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].dedup.bam.done$' \
     -I '@echo ".* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"$' \
-    -I '@.* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@.* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R[1-2].bam.done: .*/fastq/Sample_[1-3]/File[1-2]_R1.sai.done.*/fastq/Sample_[1-3]/File[1-2]_R2.sai.done$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R[1-2].sai.done:$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R1.bam.done: .*/fastq/Sample_[1-3]/File[1-2]_R1.bam.done$' \
     -I '.* mergeBam --out $(basename $@) $(subst .*,--in .*,$(basename $^))' \
     -I '^.*/Sample[1-2].merged.bam.done: .*/fastq/Sample_[1-2]/File1_R1.bam.done .*/fastq/Sample_[1-2]/File2_R1.bam.done $' \
     -I '^.*/Sample3.merged.bam.done: .*/fastq/Sample_3/File1_R1.bam.done $' \
-    -I '@echo ".* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err"$' \
-    -I '@.* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics 2> $(basename $@).err || (echo "`grep -i -e abort -e error -e failed $(basename $@).err`" >&2; echo "\\nFailed Deduping step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).err $(OUT_DIR)/failLogs/$(notdir $(basename $@).err); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).err) for more details" >&2; exit 1;)$' \
+    -I '@echo ".* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics   2> $(basename $@).log"$' \
+    -I '@.* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed dedup step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/Sample[1-3].dedup.bam.done: .*/Sample[1-3].merged.bam.done$' \
     -I 'cp .*/Sample[1-3].recal.bam $(basename $@)$' \
-    -I '.* index $(basename $@)$' \
+    -I '@echo ".* index $(basename $^) 2> $(basename $@).log"$' \
+    -I '@.* index $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed index step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I 'mkdir -p .*$' \
-    -I '@echo ".* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-3].recal.bam .* 2> $(basename $@).log"$' \
-    -I '@.* recab --refFile .* --dbsnp .* --storeQualTag OQ --in $(basename $^) --out .*/Sample[1-3].recal.bam .* 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed Recalibration step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@echo ".* recab --in $(basename $^) --out $(basename $@) --refFile .* --dbsnp .* --storeQualTag OQ   2> $(basename $@).log"$' \
+    -I '@.* recab --in $(basename $^) --out $(basename $@) --refFile .* --dbsnp .* --storeQualTag OQ   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/Sample[1-3].recal.bam.done: .*/Sample[1-3].dedup.bam.done$' \
-    -I '@echo ".* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-3]_recal,Sample[1-3]_dedup $(basename $^) .*/Sample[1-3].dedup.bam 2> $(basename $@).log"$' \
-    -I '@.* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel Sample[1-3]_recal,Sample[1-3]_dedup $(basename $^) .*/Sample[1-3].dedup.bam 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "\\nFailed QPLOT step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@echo ".* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal,dedup $(basename $^) 2> $(basename $@).log"$' \
+    -I '@.* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal,dedup $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed qplot step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed Makefile results validation. See mismatches in $DIFFRESULTS"
