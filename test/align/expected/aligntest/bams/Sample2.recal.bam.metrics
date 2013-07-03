@@ -1,5 +1,7 @@
 Reading ReferenceID 0
 
+Open reference
+Done! Sequence length 63025520
 Reading ReferenceID -1
 
 --------------------------------------------------------------------------
@@ -15,8 +17,16 @@ Size of pairedKeyMap (must be zero) : 0
 Total number of missing mates: 0
 --------------------------------------------------------------------------
 Sorting the indices of 1 duplicated records
+# mapped Reads observed: 3332; Q>0: 3236
+# unmapped Reads observed: 0
+# Duplicate Reads skipped: 0
+# Mapping Quality 0 Reads skipped: 96
+# Mapping Quality 255 Reads skipped: 0
+# Bases observed: 200894 - #match: 197980; #mismatch: 2914
+# Bases Skipped for DBSNP: 7634, for Map Qual = 0: 96, for MapQual = 255: 0, for BaseQual < 5: 220
+Writing recalibration table aligntest/bams/Sample2.recal.bam.qemp
 
-Writing aligntest/tmp/alignment.dedup/Sample2.dedup.bam
+Writing aligntest/bams/Sample2.recal.bam
 Successfully marked 1 unpaired and 0 paired duplicate reads
 
 Dedup complete!

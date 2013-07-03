@@ -1,26 +1,26 @@
-Stats\BAM	aligntest/bams/Sample2.recal.bam	aligntest/tmp/alignment.dedup/Sample2.dedup.bam
-TotalReads(e6)	0.01	0.01
-MappingRate(%)	33.33	33.33
-MapRate_MQpass(%)	33.33	33.33
-TargetMapping(%)	0.00	0.00
-ZeroMapQual(%)	0.96	0.96
-MapQual<10(%)	1.05	1.05
-PairedReads(%)	100.00	100.00
-ProperPaired(%)	21.58	21.58
-MappedBases(e9)	0.00	0.00
-Q20Bases(e9)	0.00	0.00
-Q20BasesPct(%)	75.63	80.26
-MeanDepth	1.47	1.47
-GenomeCover(%)	0.24	0.24
-EPS_MSE	313.61	4.26
-EPS_Cycle_Mean	17.89	17.89
-GCBiasMSE	0.00	0.00
-ISize_mode	76	76
-ISize_medium	79	79
-DupRate(%)	0.01	0.01
-QCFailRate(%)	0.00	0.00
-BaseComp_A(%)	30.0	30.0
-BaseComp_C(%)	20.7	20.7
-BaseComp_G(%)	21.7	21.7
-BaseComp_T(%)	27.6	27.6
-BaseComp_O(%)	0.0	0.0
+Stats\BAM	aligntest/bams/Sample2.recal.bam
+TotalReads(e6)	0.01
+MappingRate(%)	33.33
+MapRate_MQpass(%)	33.33
+TargetMapping(%)	0.00
+ZeroMapQual(%)	0.96
+MapQual<10(%)	1.05
+PairedReads(%)	100.00
+ProperPaired(%)	21.58
+MappedBases(e9)	0.00
+Q20Bases(e9)	0.00
+Q20BasesPct(%)	75.63
+MeanDepth	1.47
+GenomeCover(%)	0.24
+EPS_MSE	313.61
+EPS_Cycle_Mean	17.89
+GCBiasMSE	0.00
+ISize_mode	76
+ISize_medium	79
+DupRate(%)	0.01
+QCFailRate(%)	0.00
+BaseComp_A(%)	30.0
+BaseComp_C(%)	20.7
+BaseComp_G(%)	21.7
+BaseComp_T(%)	27.6
+BaseComp_O(%)	0.0
