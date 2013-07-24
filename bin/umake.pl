@@ -25,29 +25,13 @@ use Cwd 'abs_path';
 $_ = abs_path($0);
 my($scriptName, $scriptPath) = fileparse($_);
 my $scriptDir = abs_path($scriptPath);
-if ($scriptDir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptDir'\n"; }
-my $gotcloudRoot = $1;
-
+my $gotcloudRoot = $scriptDir;
+if ($scriptDir =~ /(.*)\/bin/) { $gotcloudRoot = $1;}
 push @INC,$scriptPath;                  # Use lib is a BEGIN block and does not work
-require GC_Common;
-require Conf;
-#require Multi;
-
-#############################################################################
-#   Global Variables
-############################################################################
-my @confSettings;
-push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
-
 
 #############################################################################
 ## STEP 1 : Load configuration file
 ############################################################################
-my %opts = (
-    phonehome => "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $scriptName",
-    pipelinedefaults => $scriptPath . '/gotcloudDefaults.conf',
-);
-
 my $help = "";
 my $testdir = "";
 my $outdir = "";
@@ -63,6 +47,8 @@ my $override = "";
 my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
+my $copyglf = "";
+my $chroms = "";
 
 my $baseprefix = '';
 my $bamprefix = '';
@@ -71,9 +57,7 @@ my $refprefix = '';
 
 my $batchtype = '';
 my $batchopts = '';
-my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
-
-
+my $gcroot = '';
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -95,7 +79,10 @@ my $optResult = GetOptions("help",\$help,
                            "refprefix|ref_prefix=s",\$refprefix,
 #                           "vcfdir|vcf_dir=s",\$vcfdir,
                            "localdefaults=s",\$localdefaults,
-                           "verbose", \$verbose
+                           "verbose", \$verbose,
+                           "copyglf=s", \$copyglf,
+                           "chrs|chroms=s", \$chroms,
+                           "gotcloudroot=s", \$gcroot
     );
 
 my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
@@ -106,7 +93,47 @@ if ($help) {
     die "$usage\n";
 }
 
-my $here = getcwd();                # Where I am now
+# Check the conf file for GOTCLOUD_ROOT
+my @configs = split(' ', $conf);
+if(!$gcroot)
+{
+    foreach my $file (@configs)
+    {
+        my $fileContents;
+        open my $openFile, '<', $file or die $!;
+        $fileContents = <$openFile>;
+        close $openFile;
+
+        if ($fileContents =~ m/^\s*GOTCLOUD_ROOT\s*=\s*(.*)/)
+        {
+            $gcroot = "$1";
+            last;
+        }
+    }
+}
+
+if($gcroot)
+{
+    $gotcloudRoot = $gcroot;
+    $scriptPath = "$gotcloudRoot/bin/";
+    push @INC,$scriptPath;
+}
+
+#############################################################################
+#   Global Variables
+############################################################################
+my @confSettings;
+push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
+
+require GC_Common;
+require Conf;
+#require Multi;
+
+my %opts = (
+    phonehome => "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $scriptName",
+    pipelinedefaults => $scriptPath . '/gotcloudDefaults.conf',
+);
+my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
 
 #   Special case for convenient testing
 if($testdir ne "") {
@@ -124,8 +151,12 @@ if($testdir ne "") {
     {
         die "ERROR, $testdir does not exist, please download the test data to that directory\n";
     }
-    my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall " .
-        "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
+    my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall ";
+    if($gcroot)
+    {
+        $cmd .= "--gotcloudRoot $gcroot ";
+    }
+    $cmd .= "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
     $cmd = "$gotcloudRoot/scripts/diff_results_umake.sh $outdir $gotcloudRoot/test/umake/expected";
@@ -144,17 +175,22 @@ if ($refprefix)  { push(@confSettings, "REF_PREFIX = $refprefix"); }
 if ($baseprefix) { push(@confSettings, "BASE_PREFIX = $baseprefix"); }
 if ($outprefix)  { push(@confSettings, "OUT_PREFIX = $outprefix"); }
 if ($outdir)     { push(@confSettings, "OUT_DIR = $outdir"); }
+if ($copyglf)    { push(@confSettings, "COPY_GLF = $copyglf"); }
+if ($chroms)     { $chroms =~ s/,/ /g; push(@confSettings, "CHRS = $chroms"); }
 
 #--------------------------------------------------------------
 #   Load configuration settings
 #--------------------------------------------------------------
-my @configs = split(' ', $conf);
 push(@configs, $opts{pipelinedefaults});
 
 if (loadConf(\@confSettings, \@configs, $verbose)) {
     die "Failed to read configuration files\n";
 }
 
+#--------------------------------------------------------------
+#   Set variables from configuration settings
+#--------------------------------------------------------------
+$copyglf = getConf("COPY_GLF");
 
 
 #-------------
@@ -252,7 +288,17 @@ foreach my $v (@validOrders) {
     }
 }
 
+print STDERR "Key configurations:\n";
+print STDERR "GOTCLOUD_ROOT: ".getConf("GOTCLOUD_ROOT")."\n";
+print STDERR "OUT_DIR:       $outdir\n";
+print STDERR "BAM_INDEX:     ".getConf("BAM_INDEX")."\n";
+print STDERR "REF:           ".getConf("REF")."\n";
+print STDERR "CHRS:          ".getConf("CHRS")."\n";
+print STDERR "BATCH_TYPE:    $batchtype\n";
+print STDERR "BATCH_OPTS:    $batchopts\n";
+print STDERR "\n";
 print STDERR "Processing the following steps...\n";
+
 my $numSteps = 0;
 for(my $i=0; $i < @orderFlags; ++$i) {
     if ( $orderFlags[$i] == 1 ) {
@@ -349,6 +395,12 @@ if( (getConf("RUN_SVM") eq "TRUE") ||
         warn "ERROR: Could not read required HM3_VCF.tbi: ".getConf("HM3_VCF").".tbi\n";
         $failReqFile = "1";
     }
+}
+
+if(!getConf("BAM_INDEX"))
+{
+    warn "ERROR: 'BAM_INDEX' required, but not set.\n";
+    $failReqFile = "1";
 }
 
 if(getConf("RUN_SVM") eq "TRUE")
@@ -1005,14 +1057,16 @@ foreach my $chr (@chrs) {
             print MAK "\ttouch $svcfs[$j].OK\n\n";
 
             my @glfs = ();
-            my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+            my $smGlfBase = "chr$chr/$unitStarts[$j].$unitEnds[$j]";
+            my $smGlfParent = "$remotePrefix$smGlfDirReal/$smGlfBase";
+            my $smGlfParentCopy = ( $copyglf ? "$copyglf/$smGlfBase" : $smGlfParent );
             for(my $i=0; $i < @allSMs; ++$i) {
                 my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
                 my $smGlf = "$smGlfParent/$smGlfFn";
                 push(@glfs,$smGlf);
             }
 
-            handleGlfIndexFile($smGlfParent, $chr,
+            handleGlfIndexFile($smGlfParentCopy, $smGlfParent, $chr,
                                $unitStarts[$j], $unitEnds[$j]);
 
             my $glfAlias = "$smGlfParent/".getConf("GLF_INDEX");
@@ -1020,6 +1074,9 @@ foreach my $chr (@chrs) {
 
             my $sleepSecs = ($j % 10)*$sleepMultiplier;
             $cmd = getConf("GLFEXTRACT")." --invcf $svcfs[$j] --ped $glfAlias -b $vcfs[$j] > $vcfs[$j].log 2> $vcfs[$j].err";
+            if ( $copyglf ) {
+                $cmd = "mkdir --p $copyglf/chr$chr && rsync -arv $smGlfParent $copyglf/chr$chr && $cmd && rm -rf $smGlfParentCopy";
+            }
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$vcfs[$j].OK: $svcfs[$j].OK ";
             if ( $expandFlag == 1 ) {
@@ -1312,8 +1369,9 @@ foreach my $chr (@chrs) {
             my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
             my @glfs = ();
             my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+            my $smGlfParentCopy = ( $copyglf ? "$copyglf/chr$chr/$unitStarts[$j].$unitEnds[$j]" : $smGlfParent );
 
-            handleGlfIndexFile($smGlfParent, $chr,
+            handleGlfIndexFile($smGlfParentCopy, $smGlfParent, $chr, 
                                $unitStarts[$j], $unitEnds[$j]);
 
             for(my $i=0; $i < @allSMs; ++$i) {
@@ -1326,6 +1384,9 @@ foreach my $chr (@chrs) {
             push(@vcfs,$vcf);
             my $sleepSecs = ($j % 10)*$sleepMultiplier;
             my $cmd = getConf("GLFMULTIPLES")." --ped $glfAlias -b $vcf > $vcf.log 2> $vcf.err";
+            if ( $copyglf ) {
+                $cmd = "mkdir --p $copyglf/chr$chr && rsync -arv $smGlfParent $copyglf/chr$chr && $cmd && rm -rf $smGlfParentCopy";
+            }
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             if ( $expandFlag == 1 ) {
                 my $newcmd = "$vcf.OK: ".join(".OK ",@glfs).".OK\n\tmkdir --p $vcfParent\n";
@@ -1616,21 +1677,42 @@ exit($rc);
 #--------------------------------------------------------------
 sub handleGlfIndexFile
 {
-    my ($smGlfParent, $chr, $unitStart, $unitEnd) = @_;
+    my ($smGlfParentCopy, $smGlfParent, $chr, $unitStart, $unitEnd) = @_;
 
     # Ensure the path exists.
     make_path($smGlfParent);
 
     my $glfIndexFile = "$smGlfParent/".getConf("GLF_INDEX");
+    my $writeGlf = 1;
     # check if the glf index is already created.
-    if( (! -r "$glfIndexFile") ||
-        ( -M "$bamIndex" < -M "$glfIndexFile" ) )
+    if(-r "$glfIndexFile")
+    {
+        # glfIndexFile exists, check if the first line is a match.
+        open(AL,"<$glfIndexFile") || die "Cannot open file $glfIndexFile\n";
+        my $firstLine = <AL>;
+        close AL;
+        if(1 <= @allSMs)
+        {
+            my $smGlfFn = "$allSMs[0].$chr.$unitStart.$unitEnd.glf";
+            my $smGlf = "$smGlfParentCopy/$smGlfFn";
+            my $expectedLine = "$allSMs[0]\t$allSMs[0]\t0\t0\t$hSM2sexs{$allSMs[0]}\t$smGlf\n";
+            # don't write the glfIndex file if:
+            #    1) the first line is identical to the expected line (checks for copyGlf changes)
+            #    2) the glfIndexFile is newer than the bamIndex
+            if( ($expectedLine eq $firstLine) && ( -M "$bamIndex" >= -M "$glfIndexFile" ) )
+            {
+                $writeGlf = 0;
+            }
+        }
+    }
+
+    if($writeGlf)
     {
         open(AL,">$glfIndexFile") || die "Cannot open file $glfIndexFile for writing\n";
         print STDERR "Creating glf INDEX at $chr:$unitStart-$unitEnd..\n";
         for(my $i=0; $i < @allSMs; ++$i) {
             my $smGlfFn = "$allSMs[$i].$chr.$unitStart.$unitEnd.glf";
-            my $smGlf = "$smGlfParent/$smGlfFn";
+            my $smGlf = "$smGlfParentCopy/$smGlfFn";
             print AL "$allSMs[$i]\t$allSMs[$i]\t0\t0\t$hSM2sexs{$allSMs[$i]}\t$smGlf\n";
         }
         close AL;
