@@ -152,7 +152,7 @@ sub loadConf {
 
     #   Resolve all variables of the form $(varname)
     foreach my $section (keys %CONF_HASH) {
-        foreach my $key (keys $CONF_HASH{$section}) {
+        foreach my $key (keys %{$CONF_HASH{$section}}) {
             for (1 .. 10) {             # Avoid any chance of forever looops
                 if ($CONF_HASH{$section}{$key} !~ /^(.*)\$\((\w+)\)(.*)$/) { last; }
                 my ($pre, $var, $post) = ($1, $2, $3);
