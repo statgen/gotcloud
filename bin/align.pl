@@ -938,10 +938,10 @@ align.pl - Convert FASTQs to BAMs
 
 =head1 SYNOPSIS
 
-  align.pl -test ~/testaligner    # Run short self check
-  align.pl -conf ~/mydata.conf -out ~/testdir
-  align.pl -batchtype slurm -conf ~/mydata.conf -index ~/mydata.index
-  align.pl -conf ~/mydata.conf -index ~/mydata.index -ref /usr/local/ref
+  align.pl --test ~/testaligner    # Run short self check
+  align.pl --conf ~/mydata.conf --out ~/testdir
+  align.pl --batchtype slurm --conf ~/mydata.conf --index ~/mydata.index
+  align.pl --conf ~/mydata.conf --index ~/mydata.index --ref /usr/local/ref
 
 
 =head1 DESCRIPTION
@@ -1000,68 +1000,68 @@ A sample might look like this (tabs are not visible):
 
 =over 4
 
-=item B<-batchopts  options_string>
+=item B<--batchopts  options_string>
 
 Specifies options to be passed to the batch engine.
 You almost always will need to quote I<options_string>.
 This is only valid if B<batchtype> is specified.
 
-=item B<-batchtype local | slurm | sge | pbs | flux>
+=item B<--batchtype local | slurm | sge | pbs | flux | mosix>
 
 Specifies the batch system to be used when executing the commands.
 These determine exactly how B<runcluster> will run the command.
 the type 'flux' is an alias for 'pbs'.
 The default is B<local>.
 
-=item B<-conf file>
+=item B<--conf file>
 
 Specifies a space delimited list of configuration files to be used.
 The first file in the list has the highest precedence in the case of repeated values.
 
-=item B<-dry-run>
+=item B<--dry-run>
 
 If specified no commands will actually be executed, but you will be shown
 the commands that would be run.
 
-=item B<-fastq_prefix dir>
+=item B<--fastq_prefix dir>
 
 This specifies a directory prefix which should be added to relative paths in the fastq index file.
 
-=item B<-ref_prefix dir>
+=item B<--ref_prefix dir>
 
 This specifies a directory prefix which should be added to relative reference file paths.
 
-=item B<-base_prefix dir>
+=item B<--base_prefix dir>
 
 This specifies a directory prefix which should be added to all relative paths if a different prefix is not specified.
 
-=item B<-help>
+=item B<--help>
 
 Generates this output.
 
-=item B<-index_file str>
+=item B<--index_file str>
 
 Specifies the name of the index file containing the table of fastqs to process.
 This value must be set in the configuration file or specified by this option.
 
-=item B<-keeplog>
+=item B<--keeplog>
 
 If specified, the log files used in this process will not be deleted.
 The default is to remove the log files.
 
-=item B<-keeptmp>
+=item B<--keeptmp>
 
 If specified, the temporary files used in this process will not be deleted.
 The default is to remove the temporary files.
 
-=item B<-numconcurrentsamples N>
+=item B<--numconcurrentsamples N>
 
 Specifies the number of samples to be processed concurrently.
 This effectively defaults to '2'.
 The number of processesors to be used at the same time on the local machine
 or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
 
-=item B<-numjobspersample N>
+=item B<--numjobspersample N>
 
 Specifies the number of jobs to run per sample. In practice this is
 the value of the B<-j> flag for the make command.
@@ -1070,18 +1070,18 @@ If not specified, the flag is not set on the make command to be executed.
 The number of processesors to be used at the same time on the local machine
 or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
 
-=item B<-out_dir dir>
+=item B<--out_dir dir>
 
 Specifies the toplevel directory where the output is created.
 
-=item B<-ref_dir dir>
+=item B<--ref_dir dir>
 
 Specifies the location of the reference files.
 The default is B</usr/local/gotcloud.ref> but will depend completely
 on where you got the reference files and where they were installed.
 This value must be set in the configuration file or specified by this option.
 
-=item B<-runcluster path>
+=item B<--runcluster path>
 
 Specifies the path to the script which is called to invoke the command to be run
 in batch mode.
@@ -1089,37 +1089,37 @@ This defaults to B<../scripts/runcluster.pl>, relative to where this script is i
 This script expects the first parameter to be B<batchtype>, followed by the
 command to be executed.
 
-=item B<-test out_dir>
+=item B<--test out_dir>
 
 Run a small test case putting the output in the directory B<out_dir> and verify the output.
 
-=item B<-verbose>
+=item B<--verbose>
 
 Specifies that additional details are to be printed out.
 
-=item B<-maxlocaljobs>
+=item B<--maxlocaljobs N>
 
 Specifies the maximum number of jobs that can be run with batchtype local (the default).  Default is 10.
 
-=item B<-gotcloudroot>
+=item B<--gotcloudroot dir>
 
 Specifies an alternate path to other gotcloud files rather than using the path to this script.
 
-=item B<-pipelinedefaults>
+=item B<--pipelinedefaults file>
 
 Specifies an alternate set of default settings rather than using '$gotcloudroot/bin/gotcloudDefaults.conf'.
 
-=item B<-phonehome>
+=item B<--phonehome file>
 
 Specifies an alternate phonehome call rather than using '$gotcloudroot/scripts/gcphonehome.pl -verbose -pgmname GotCloud align'.
 
-=item B<-calcstorage>
+=item B<--calcstorage file>
 
 Specifies an alternate phonehome script rather than using '$gotcloudroot/scripts/gcphonehome.pl align'.
 
 =back
 
-=head1 PARAEMETERS
+=head1 PARAMETERS
 
 The program accepts no parameters - all input is specified as options.
 

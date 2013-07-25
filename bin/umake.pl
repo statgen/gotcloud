@@ -43,8 +43,8 @@ my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
 my $outprefix = "";
-my $override = "";
-my $localdefaults = "";
+#my $override = "";
+#my $localdefaults = "";
 my $callregion = "";
 my $verbose = "";
 my $copyglf = "";
@@ -70,7 +70,7 @@ my $optResult = GetOptions("help",\$help,
                            "beagle",\$beagleOpt,
                            "thunder",\$thunderOpt,
                            "outprefix=s",\$outprefix,
-                           "override=s",\$override,
+#                           "override=s",\$override,
                            "region=s",\$callregion,
                            "batchtype|batch_type=s",\$batchtype,
                            "batchopts|batch_opts=s",\$batchopts,
@@ -78,11 +78,11 @@ my $optResult = GetOptions("help",\$help,
                            "bamprefix|bam_prefix=s",\$bamprefix,
                            "refprefix|ref_prefix=s",\$refprefix,
 #                           "vcfdir|vcf_dir=s",\$vcfdir,
-                           "localdefaults=s",\$localdefaults,
+#                           "localdefaults=s",\$localdefaults,
                            "verbose", \$verbose,
                            "copyglf=s", \$copyglf,
                            "chrs|chroms=s", \$chroms,
-                           "gotcloudroot=s", \$gcroot
+                           "gotcloudroot|gcroot=s", \$gcroot
     );
 
 my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
@@ -90,7 +90,8 @@ die "Error in parsing options\n$usage\n" unless ( ($optResult) && (($conf) || ($
 
 # check if help.
 if ($help) {
-    die "$usage\n";
+    system("perldoc $0");
+    exit 1;
 }
 
 # Check the conf file for GOTCLOUD_ROOT
@@ -149,14 +150,14 @@ if($testdir ne "") {
     # First check that the test directory exists.
     if(! -r $testdir)
     {
-        die "ERROR, $testdir does not exist, please download the test data to that directory\n";
+        die "ERROR, '$testdir' does not exist, please download the test data to that directory\n";
     }
-    my $cmd = "$0 -conf $testdir/umake_test.conf --snpcall ";
+    my $cmd = "$0 --conf $testdir/umake_test.conf --snpcall ";
     if($gcroot)
     {
         $cmd .= "--gotcloudRoot $gcroot ";
     }
-    $cmd .= "-outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
+    $cmd .= "--outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
     $cmd = "$gotcloudRoot/scripts/diff_results_umake.sh $outdir $gotcloudRoot/test/umake/expected";
@@ -1980,9 +1981,9 @@ umake.pl - Preform variant calling, generating VCF
 
 =head1 SYNOPSIS
 
-  umake.pl -test ~/testumake    # Run short self check
-  umake.pl -conf ~/mydata.conf -outdir ~/testdir
-  umake.pl -batchtype slurm -conf ~/mydata.conf
+  umake.pl --test ~/testumake    # Run short self check
+  umake.pl --conf ~/mydata.conf --outdir ~/testdir
+  umake.pl --batchtype slurm --conf ~/mydata.conf
 
 
 =head1 DESCRIPTION
@@ -2029,43 +2030,102 @@ bam data. The data is tab delimited.
 
 =over 4
 
-=item B<-conf file>
+=item B<--conf file>
 
 Specifies the configuration file to be used.
 The default configuration is B<gotcloudDefaults.conf> found in the same directory
 where this program resides.
 If this file is not found, you must specify this option on the command line.
 
-=item B<-dry-run>
-
-If specified no commands will actually be executed, but you will be shown
-the commands that would be run.
-
-=item B<-help>
+=item B<--help>
 
 Generates this output.
 
-=item B<-nowait>
-
-Do not wait for the tasks that were submitted to the cluster to end.
-This is forced when B<batchtype pbs> is specified.
-
-=item B<-numjobs N>
+=item B<--numjobs N>
 
 The value of the B<-j> flag for the make command.
 If not specified, the flag is not set on the make command to be executed.
 
-=item B<-outdir dir>
+=item B<--outdir dir>
 
 Specifies the toplevel directory where the output is created.
 
-=item B<-test outdir>
+=item B<--test outdir>
 
 Run a small test case putting the output in the directory B<outdir> and verify the output.
 
+=item B<--maxlocaljobs N>
+
+Specifies the maximum number of jobs that can be run with batchtype local (the default).  Default is 10.
+
+=item B<--snpcall>
+
+Run the snpcall set of steps (pileup, glfmultiples, vcfpileup, filter, svm, split).
+
+=item B<--extract>
+
+Run the extract set of steps (pileup, glfextract, and split).
+
+=item B<--beagle>
+
+Run the beagle set of steps (beagle and subset).
+
+=item B<--thunder>
+
+Run thunder.
+
+=item B<--outprefix dir>
+
+Specifies the makefile name's prefix.
+
+=item B<--region N:N-N>
+
+Specifies the region (inclusive) on which to make calls. Format:  chr:start-end
+
+=item B<--batchopts  options_string>
+
+Specifies options to be passed to the batch engine.
+You almost always will need to quote I<options_string>.
+This is only valid if B<batchtype> is specified.
+
+=item B<--batchtype local | slurm | sge | pbs | flux | mosix>
+
+Specifies the batch system to be used when executing the commands.
+These determine exactly how B<runcluster> will run the command.
+the type 'flux' is an alias for 'pbs'.
+The default is B<local>.
+
+=item B<--ref_prefix dir>
+
+This specifies a directory prefix which should be added to relative reference file paths.
+
+=item B<--bam_prefix dir>
+
+This specifies a directory prefix which should be added to relative paths in the bam index file.
+
+=item B<--base_prefix dir>
+
+This specifies a directory prefix which should be added to all relative paths if a different prefix is not specified.
+
+=item B<--verbose>
+
+Specifies that additional details are to be printed out.
+
+=item B<--copyglf dir>
+
+Specifies the directory that glf files should be copied to prior to running glfExtract/glfMultiples.  This can be used when running on a cluster if it would be faster to copy the glfs locally first.
+
+=item B<--chrs str>
+
+Comma separated list of choromsomes to process.  Overrides the 'CHRS' configuration setting.
+
+=item B<--gotcloudroot dir>
+
+Specifies an alternate path to other gotcloud files rather than using the path to this script.
+
 =back
 
-=head1 PARAEMETERS
+=head1 PARAMETERS
 
 The program accepts no parameters - all input is specified as options.
 
