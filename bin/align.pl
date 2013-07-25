@@ -48,29 +48,24 @@ use Cwd 'abs_path';
 $_ = abs_path($0);
 my ($me, $scriptdir, $mesuffix) = fileparse($_, '\.pl');
 $scriptdir = abs_path($scriptdir);
-if ($scriptdir !~ /(.*)\/bin/) { die "Unable to set basepath. No 'bin' found in '$scriptdir'\n"; }
-my $basepath = $1;
+my $gotcloudRoot = $scriptdir;
+if ($scriptdir =~ /(.*)\/bin/) { $gotcloudRoot = $1; }
 
 push @INC,$scriptdir;                   # Use lib is a BEGIN block and does not work
-require GC_Common;
-require Conf;
-require Multi;
 
 #############################################################################
 #   Global Variables
 ############################################################################
-my @confSettings;
-push(@confSettings, "GOTCLOUD_ROOT = $basepath");
 my $GCURL = 'http://genome.sph.umich.edu/wiki/GotCloud:_Genetic_Reference_and_Resource_Files';
 
 #--------------------------------------------------------------
 #   Initialization - Sort out the options and parameters
 #--------------------------------------------------------------
 my %opts = (
-    runcluster => "$basepath/scripts/runcluster.pl",
-    pipelinedefaults => $scriptdir . '/gotcloudDefaults.conf',
-    phonehome => "$basepath/scripts/gcphonehome.pl -pgmname GotCloud $me",
-    calcstorage => "$basepath/scripts/gccalcstorage.pl $me",
+    runcluster => '',
+    pipelinedefaults => '',
+    phonehome => '',
+    calcstorage => '',
     keeptmp => 0,
     keeplog => 0,
     conf => '',
@@ -96,6 +91,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     numjobspersample|numjobs=i
     numconcurrentsamples|numcs=i
     maxlocaljobs=i
+    gotcloudroot|gcroot=s
 )) || die "Failed to parse options\n";
 
 #   Simple help if requested, sanity check input options
@@ -107,6 +103,44 @@ if ($opts{help}) {
     exit 1;
 }
 
+#--------------------------------------------------------------
+#   Check for GOTCLOUD_ROOT in the conf files.
+#--------------------------------------------------------------
+# Check the conf file for GOTCLOUD_ROOT
+my @configs = split(' ', $opts{conf});
+if(!$opts{gotcloudroot})
+{
+    foreach my $file (@configs)
+    {
+        my $fileContents;
+        open my $openFile, '<', $file or die $!;
+        $fileContents = <$openFile>;
+        close $openFile;
+
+        if ($fileContents =~ m/^\s*GOTCLOUD_ROOT\s*=\s*(.*)/)
+        {
+            $opts{gotcloudroot} = "$1";
+            last;
+        }
+    }
+}
+
+if($opts{gotcloudroot})
+{
+    $gotcloudRoot = $opts{gotcloudroot};
+    $scriptdir = "$gotcloudRoot/bin/";
+    push @INC,$scriptdir;
+}
+require GC_Common;
+require Conf;
+require Multi;
+
+my @confSettings;
+push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
+
+#--------------------------------------------------------------
+#   Check if we are running the test case.
+#--------------------------------------------------------------
 #   Special case for convenient testing
 if ($opts {test}) {
     my $outdir=abs_path($opts{test});
@@ -117,21 +151,48 @@ if ($opts {test}) {
     system("rm -rf $testoutdir") &&
         die "Unable to clear the test output directory '$testoutdir'\n";
     print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
-    my $testdir = $basepath . '/test/align';
+    my $testdir = $gotcloudRoot . '/test/align';
     if(! -r $testdir)
     {
         die "ERROR, '$testdir' does not exist, please download the test data to that directory\n";
     }
     my $cmd = "$0 -conf $testdir/test.conf -out $testoutdir";
+    if($opts{gotcloudroot})
+    {
+        $cmd .= " --gotcloudRoot $gotcloudRoot";
+    }
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
-    $cmd = "$basepath/scripts/diff_results_align.sh $outdir $basepath/test/align/expected";
+    $cmd = "$gotcloudRoot/scripts/diff_results_align.sh $outdir $gotcloudRoot/test/align/expected";
     system($cmd) &&
         die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
     print "Successfully ran the test case, congratulations!\n";
     exit;
 }
+
+
+#############################################################################
+#   Set defaults for command-line options if they weren't set.
+#############################################################################
+if(!$opts{runcluster})
+{
+    $opts{runcluster} = "$gotcloudRoot/scripts/runcluster.pl",
+}
 $opts{runcluster} = abs_path($opts{runcluster});    # Make sure this is fully qualified
+
+if(!$opts{pipelinedefaults})
+{
+    $opts{pipelinedefaults} = "$gotcloudRoot/bin/gotcloudDefaults.conf";
+}
+if(!$opts{phonehome})
+{
+    $opts{phonehome} = "$gotcloudRoot/scripts/gcphonehome.pl -verbose -pgmname GotCloud $me";
+}
+if(!$opts{calcstorage})
+{
+    $opts{calcstorage} = "$gotcloudRoot/scripts/gccalcstorage.pl $me";
+}
+
 
 if ((! $opts{conf}) || (! -r $opts{conf})) {
     die "Conf file '$opts{conf}' does not exist or was not specified\n";
@@ -167,7 +228,6 @@ if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchops}"); 
 #############################################################################
 #   Load configuration variables from conf file
 #   Load config values. The default conf file is almost never seen by the user,
-my @configs = split(' ', $opts{conf});
 push(@configs, $opts{pipelinedefaults});
 
 if (loadConf(\@confSettings, \@configs, $opts{verbose})) {
@@ -965,11 +1025,15 @@ the commands that would be run.
 
 =item B<-fastq_prefix dir>
 
-This specifies a directory prefix which should be added to the paths in the index file.
-This file contains a path to a fastq file.
-This path can be relative to the current working directory or a fully-qualified path.
-If it is relative, then with the B<fastq_prefix> option, you can add a directory
-name to this relative path.
+This specifies a directory prefix which should be added to relative paths in the fastq index file.
+
+=item B<-ref_prefix dir>
+
+This specifies a directory prefix which should be added to relative reference file paths.
+
+=item B<-base_prefix dir>
+
+This specifies a directory prefix which should be added to all relative paths if a different prefix is not specified.
 
 =item B<-help>
 
@@ -989,11 +1053,6 @@ The default is to remove the log files.
 
 If specified, the temporary files used in this process will not be deleted.
 The default is to remove the temporary files.
-
-=item B<-nowait>
-
-Do not wait for the tasks that were submitted to the cluster to end.
-This is forced for certain B<batchtype> settings.
 
 =item B<-numconcurrentsamples N>
 
@@ -1037,6 +1096,26 @@ Run a small test case putting the output in the directory B<out_dir> and verify 
 =item B<-verbose>
 
 Specifies that additional details are to be printed out.
+
+=item B<-maxlocaljobs>
+
+Specifies the maximum number of jobs that can be run with batchtype local (the default).  Default is 10.
+
+=item B<-gotcloudroot>
+
+Specifies an alternate path to other gotcloud files rather than using the path to this script.
+
+=item B<-pipelinedefaults>
+
+Specifies an alternate set of default settings rather than using '$gotcloudroot/bin/gotcloudDefaults.conf'.
+
+=item B<-phonehome>
+
+Specifies an alternate phonehome call rather than using '$gotcloudroot/scripts/gcphonehome.pl -verbose -pgmname GotCloud align'.
+
+=item B<-calcstorage>
+
+Specifies an alternate phonehome script rather than using '$gotcloudroot/scripts/gcphonehome.pl align'.
 
 =back
 
