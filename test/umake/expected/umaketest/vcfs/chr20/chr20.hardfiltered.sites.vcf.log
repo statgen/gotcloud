@@ -3,7 +3,7 @@ Analysis started on Wed Jan 30 11:24:37 2013
 The following filters are in effect:
 m20 : MQ >= 20.00
 dp60 : DP >= 60.00
-DP1200 : DP <= 1200.00
+DP60000 : DP <= 60000.00
 ns30 : NS >= 30.00
 AB70 : AB <= 0.70
 STR20 : STR <= 0.20
