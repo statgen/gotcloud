@@ -73,15 +73,34 @@ int main(int argc, char ** argv)
    StringToArray(maxDepths, highDepthFilter, n);
 
    glfHandler * glf = new glfHandler[n];
+   std::vector<std::string> glfNames;
 
-   for (int i = 0; i < n; i++)
-      if (!glf[i].Open(argv[i]))
+   // Skip empty glf files.
+   int nStub = 0;
+   for (int i = 0, j = 0; i < n; i++)
+   {
+      if (!glf[j].Open(argv[i]))
          error("Failed to open genotype likelihood file [%s]\n", argv[i]);
-
+      if( (!glf[j].NextSection() ) || (glf[j].maxPosition == 0) )
+      {
+          ++nStub;
+          printf("Ignoring Empty glf file %s ...\n", argv[i]);
+          glf[j].Close();
+      }
+      else
+      {
+          glf[j].Rewind();
+          glfNames.push_back(argv[i]);
+          ++j;
+      }
+   }
+   n -= nStub;
    printf("Calling genotypes for files ...\n");
    for (int i = 0; i < n; i++)
+   {
       if (glf[i].isOpen())
-         printf("  %s\n", argv[i]);
+        printf("  %s\n", glfNames[i].c_str());
+   }
    printf("\n");
 
    glfHandler output;
@@ -101,9 +120,9 @@ int main(int argc, char ** argv)
             error("Genotype files '%s' and '%s' are not compatible ...\n"
                 "    File '%s' has section %s with %d entries ...\n"
                 "    File '%s' section %s with %d entries ...\n",
-                argv[0], argv[i],
+                argv[0], glfNames[i].c_str(),
                 argv[0], (const char *) glf[0].label, glf[0].maxPosition,
-                argv[i], (const char *) glf[i].label, glf[i].maxPosition);
+                glfNames[i].c_str(), (const char *) glf[i].label, glf[i].maxPosition);
             }
          }
 
@@ -217,6 +236,8 @@ int main(int argc, char ** argv)
          glf[i].Close();
 
    output.Close();
+
+   delete [] glf;
    }
 
 
