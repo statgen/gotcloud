@@ -188,6 +188,55 @@ sub loadConf {
 =head1 NAME
 
  #=============================================
+ #  dumpConf ( outputFile )
+ #=============================================
+
+=head1 DESCRIPTION
+
+    Write all of the configuration settings to the specified
+    output file or stderr (if no file is specified).
+
+    Returns the number of errors detected
+
+=head1 USAGE
+
+    dumpConf();
+    dumpConf("/home/mktrost/output/align.conf");
+
+=cut
+
+sub dumpConf
+{
+    my ($outputFile) = @_;
+    open(OUT,"> ".($outputFile || '-')) || die "Cannot open $outputFile for writing.  $!\n";
+
+    # first print out the global section.
+    my $defaultSection = 'global';
+    foreach my $key (keys %{$CONF_HASH{$defaultSection}})
+    {
+        print OUT "$key = $CONF_HASH{$defaultSection}{$key}\n";
+    }
+    # Print out the rest of the sections.
+    foreach my $section (keys %CONF_HASH)
+    {
+        next if($section eq $defaultSection);
+        foreach my $key (keys %{$CONF_HASH{$section}})
+        {
+            print OUT "$key = $CONF_HASH{$section}{$key}\n";
+        }
+    }
+    if((defined($outputFile)) && $outputFile eq '')
+    {
+        close(OUT);
+    }
+
+}
+
+#==================================================================
+
+=head1 NAME
+
+ #=============================================
  #  setConf ( key, value )
  #=============================================
 

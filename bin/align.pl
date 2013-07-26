@@ -396,14 +396,18 @@ if (! $opts{'dry-run'}) {
 }
 
 
+#----------------------------------------------------------------------------
+#   Output the configuration settings.
+#----------------------------------------------------------------------------
+system("mkdir -p $out_dir/Makefiles") &&
+    die "Unable to create directory '$out_dir/Makefiles'\n";
+dumpConf("$out_dir/Makefiles/align.conf");
+
 #############################################################################
 #   Read the Index File
 #############################################################################
 open(IN,$index_file) ||
     die "Unable to open index_file '$index_file': $!\n";
-
-system("mkdir -p $out_dir") &&
-    die "Unable to create directory '$out_dir'\n";
 
 #   Read the first line and check if it is a header or a reference
 my $line = <IN>;
@@ -520,8 +524,6 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     #   Create Makefile for this mergeFile
     #----------------------------------------------------------------------------
     #   Open the output Makefile for this merge file.
-    system("mkdir -p $out_dir/Makefiles") &&
-        die "Unable to create directory '$out_dir/Makefiles'\n";
     my $makef = "$out_dir/Makefiles/align_$mergeName.Makefile";
     open(MAK,'>' . $makef) ||
         die "Unable to open '$makef' for writing.  $!\n";

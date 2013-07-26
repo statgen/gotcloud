@@ -291,7 +291,7 @@ foreach my $v (@validOrders) {
 
 print STDERR "Key configurations:\n";
 print STDERR "GOTCLOUD_ROOT: ".getConf("GOTCLOUD_ROOT")."\n";
-print STDERR "OUT_DIR:       $outdir\n";
+print STDERR "OUT_DIR:       ".getConf("OUT_DIR")."\n";
 print STDERR "BAM_INDEX:     ".getConf("BAM_INDEX")."\n";
 print STDERR "REF:           ".getConf("REF")."\n";
 print STDERR "CHRS:          ".getConf("CHRS")."\n";
@@ -487,6 +487,18 @@ if($missingExe)
     die "EXITING: Missing required exes.  Try typing 'make' in the gotcloud/src directory\n";
 }
 
+#----------------------------------------------------------------------------
+#   Output the configuration settings.
+#----------------------------------------------------------------------------
+$outdir = getConf("OUT_DIR");
+unless ( $outdir =~ /^\// ) {
+    $outdir = getcwd()."/".$outdir;
+    setConf('OUT_DIR', $outdir);
+}
+
+system("mkdir -p $outdir") &&
+die "Unable to create directory '$outdir'\n";
+dumpConf("$outdir/".getConf("OUT_PREFIX").".conf");
 
 
 #############################################################################
@@ -574,22 +586,14 @@ else {
 
 my @pops = sort keys %hPops;
 
-## Create BAM INDICES
-my $outDir = getConf("OUT_DIR");
-unless ( $outDir =~ /^\// ) {
-    $outDir = getcwd()."/".$outDir;
-}
-
 #############################################################################
 ## STEP 3 : Create MAKEFILE
 ############################################################################
 my $makef = getConf("OUT_DIR")."/".getConf("OUT_PREFIX").".Makefile";
 my @nobaqSubstrings = split(/\s+/,getConf("NOBAQ_SUBSTRINGS"));
 
-`mkdir --p $outDir`;
-
 open(MAK,">$makef") || die "Cannot open $makef for writing\n";
-print MAK "OUT_DIR=$outDir\n";
+print MAK "OUT_DIR=$outdir\n";
 print MAK "GOTCLOUD_ROOT=$gotcloudRoot\n\n";
 print MAK ".DELETE_ON_ERROR:\n\n";
 
@@ -631,16 +635,16 @@ if ( $callregion ) {
 my $unitChunk = getConf("UNIT_CHUNK");
 my $bamGlfDir = "\$(OUT_DIR)/".getConf("BAM_GLF_DIR");
 my $smGlfDir = "\$(OUT_DIR)/".getConf("SM_GLF_DIR");
-my $smGlfDirReal = "$outDir/".getConf("SM_GLF_DIR");
+my $smGlfDirReal = "$outdir/".getConf("SM_GLF_DIR");
 my $vcfDir = "\$(OUT_DIR)/".getConf("VCF_DIR");
 my $pvcfDir = "\$(OUT_DIR)/".getConf("PVCF_DIR");
 my $splitDir = "\$(OUT_DIR)/".getConf("SPLIT_DIR");
-my $splitDirReal = "$outDir/".getConf("SPLIT_DIR");
+my $splitDirReal = "$outdir/".getConf("SPLIT_DIR");
 my $targetDir = "\$(OUT_DIR)/".getConf("TARGET_DIR");
-my $targetDirReal = "$outDir/".getConf("TARGET_DIR");
+my $targetDirReal = "$outdir/".getConf("TARGET_DIR");
 my $beagleDir = "\$(OUT_DIR)/".getConf("BEAGLE_DIR");
 my $thunderDir = "\$(OUT_DIR)/".getConf("THUNDER_DIR");
-my $thunderDirReal = "$outDir/".getConf("THUNDER_DIR");
+my $thunderDirReal = "$outdir/".getConf("THUNDER_DIR");
 my $remotePrefix = getConf("REMOTE_PREFIX");
 
 my $bamIndexRemote = ($bamIndex =~ /^\//) ? "$remotePrefix$bamIndex" : ($remotePrefix.getcwd()."/".$bamIndex);
@@ -1071,7 +1075,7 @@ foreach my $chr (@chrs) {
                                $unitStarts[$j], $unitEnds[$j]);
 
             my $glfAlias = "$smGlfParent/".getConf("GLF_INDEX");
-            $glfAlias =~ s/$outDir/\$(OUT_DIR)/g;
+            $glfAlias =~ s/$outdir/\$(OUT_DIR)/g;
 
             my $sleepSecs = ($j % 10)*$sleepMultiplier;
             $cmd = getConf("GLFEXTRACT")." --invcf $svcfs[$j] --ped $glfAlias -b $vcfs[$j] > $vcfs[$j].log 2> $vcfs[$j].err";
@@ -1381,7 +1385,7 @@ foreach my $chr (@chrs) {
                 push(@glfs,$smGlf);
             }
             my $glfAlias = "$smGlfParent/".getConf("GLF_INDEX");
-            $glfAlias =~ s/$outDir/\$(OUT_DIR)/g;
+            $glfAlias =~ s/$outdir/\$(OUT_DIR)/g;
             push(@vcfs,$vcf);
             my $sleepSecs = ($j % 10)*$sleepMultiplier;
             my $cmd = getConf("GLFMULTIPLES")." --ped $glfAlias -b $vcf > $vcf.log 2> $vcf.err";
@@ -1396,7 +1400,7 @@ foreach my $chr (@chrs) {
                     $newcmd .= "\tsleep $sleepSecs\n";
                 }
                 $newcmd .= "\t".getMosixCmd($cmd)."\n\ttouch $vcf.OK\n";
-                $newcmd =~ s/$outDir/\$(OUT_DIR)/g;
+                $newcmd =~ s/$outdir/\$(OUT_DIR)/g;
                 push(@cmds,"$newcmd");
             }
             else {

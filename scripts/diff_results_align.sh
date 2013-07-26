@@ -93,8 +93,12 @@ if [ "$?" != "0" ]; then
     exit 2
 fi
 
+# Do not compare the align.conf files because
+# many of the settings have the paths in them
+# which will vary between runs.
+
 # Check the Makefiles
-diff -r $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
+diff -r -x align.conf $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -x "*.log" \
     -I '.* aln .* .*fastq/Sample_[1-3]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
     -I '(.* sampe -r .* $(basename $^) .*fastq/Sample_[1-3]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-3]/File[1-2]_R2.fastq.gz | .* view -uhS - | .* sort -m .* - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
