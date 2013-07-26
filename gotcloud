@@ -73,6 +73,22 @@ elsif ( $ARGV[0] eq "snpcall") {
     }
     exec("$bindir/umake.pl", "--snpcall",@ARGV);
 }
+elsif ( $ARGV[0] eq "vc") {
+    shift(@ARGV);
+    if( -f "$bindir/umake.pl" )
+    {
+      $bindir = $bindir;
+    }
+    elsif ( -f "$dir/umake.pl" )
+    {
+      $bindir = $dir;
+    }
+    else
+    {
+      die "ERROR: could not find umake.pl for variant-calling"
+    }
+    exec("$bindir/umake.pl", @ARGV);
+}
 elsif ( $ARGV[0] eq "ldrefine") {
     shift(@ARGV);
     if( -f "$bindir/umake.pl" )
@@ -115,6 +131,7 @@ gotcloud [command] [options]
    align           Run the alignment pipeline
    snpcall         Run the snp calling pipeline
    ldrefine        Run the LD-aware genotype refinement pipeline
+   vc              Run the variant call steps that are configured on in your configuration file
 
  Visit http://genome.sph.umich.edu/wiki/GotCloud for more detailed documentation
 
