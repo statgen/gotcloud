@@ -3,6 +3,8 @@
 use strict;
 use English;
 use Getopt::Long;
+use FindBin;
+use lib "$FindBin::Bin";
 
 my $cmd = "";
 my $cmdPath = $0;
@@ -11,7 +13,7 @@ my $out = "";
 my $cmdDir = $cmdPath; $cmdDir =~ s/\/[^\/]+$//; $cmdDir =~ s/\/[^\/]+$//;
 #my $bin = "$cmdDir/invNorm/bin/invNorm";
 my $bin = "/net/fantasia/home/hmkang/code/working/umake/invNorm/bin/invNorm";
-my @ignores = qw(AC AF);
+my @ignores = qw(AC AF HWDAF);
 my @bfiles = ();
 my @nfiles = ();
 my $svmlearn = "/net/fantasia/home/gjun/bin/svm-train";
@@ -45,7 +47,7 @@ my $result = GetOptions("invcf=s",\$invcf,
 		"keyword=s",\$keyword,
 		"model=s",\$model,
 		"threshold=i",\$cutoff,
-		"ignoreALL",\$ignoreALL
+		"ignoreALL",\$ignoreALL,
 		);
 
 #my $usage = "Usage: perl run_svm.pl --invcf [$invcf] --out [$out] --ignore [@ignores] --include [@includes] --checkNA\n";
@@ -165,7 +167,7 @@ while(<$in>) {
 					push(@names,$key);
 				}
 				else {
-					die "Cannot recognize $key in $infos[$i], supposed to be $names[$j] at $j, $chrom:$pos $info\n" unless ($names[$j] eq $key );
+					die "Cannot recognize $key in $infos[$i], supposed to be $names[$j] at $j, $chrom:$pos:$ref:$alt $info\n" unless ($names[$j] eq $key );
 				}
 				++$j;
 			}
@@ -174,7 +176,7 @@ while(<$in>) {
 		$ncols = $#names+1;
 	}
 	elsif ( $ncols != $#values+1 ) {
-		die "Number of columns are not identical at $chrom:$pos\n";
+		die "Number of columns are not identical at $chrom:$pos:$ref:$alt\n";
 	}
 	print OUT join("\t",@values);
 	print OUT "\n";
@@ -202,9 +204,9 @@ unless($model)
 		while(<$in>)
 		{
                     next if ( /^#/ );  # skip lines that start with #
-                    # Only use the first two columns
-                    my ($chr, $pos, $remainder) = split;
-                    $valid{"$chr:$pos"} = 1;
+                    # Only use the first 5 columns
+                    my ($chr, $pos, $id, $ref, $alt) = split;
+                    $valid{"$chr:$pos:$ref:$alt"} = 1;
 		}
 		close($in);
 	}
@@ -218,10 +220,10 @@ unless($model)
 		        while(<$in>)
                         {
                             next if ( /^#/ );  # skip lines that start with #
-                            # Only use the first two columns
-                            my ($chr, $pos, $remainder) = split;
+                            # Only use the first 5 columns
+                            my ($chr, $pos, $id, $ref, $alt) = split;
 
-                            $invalid{"$chr:$pos"} = 1;
+                            $invalid{"$chr:$pos:$ref:$alt"} = 1;
                         }
                         close($in);
 		}
@@ -244,11 +246,12 @@ unless($model)
 				$ln .= " ".($i+1).":$z[$i]";
 			}
 
-			if ($chr =~ /X/)
-			{
-				print SVM "0 $ln\n";
-			}
-			elsif (defined($invalid{"$chr:$pos"}))
+			#if ($chr =~ /X/)
+			#{
+			#	print SVM "0 $ln\n";
+			#}
+			#elsif (defined($invalid{"$chr:$pos"}))
+                        if (defined($invalid{"$chr:$pos:$ref:$alt"}))
 			{
 				print SVM "-1 $ln\n";
 				if (rand()*100 <= $negsample)
@@ -257,14 +260,22 @@ unless($model)
 					$neg_count++;
 				}
 			}
-			elsif (defined($valid{"$chr:$pos"}) && $filter eq "PASS")
+			elsif (defined($valid{"$chr:$pos:$ref:$alt"}))
 			{
+                            my @filts = split(/;/,$filter);
+                            if ( ( $filter eq "PASS" ) || ( $#filts < $numFilter ) )
+                            {
 				print SVM "1 $ln\n";
 				if (rand()*100 <= $possample)
 				{
 					print LBL "1 $ln\n";
 					$pos_count++;
 				}
+                            }
+                            else
+                            {
+                                print SVM "0 $ln\n";
+                            }
 			}
 			elsif ($filter ne "PASS" && $numFilter>0)
 			{
@@ -359,7 +370,14 @@ else
 
 $in = openInFile($invcf);
 
-open(VCF,">$out") || die "Cannot open file $out to write\n";
+if ( $out =~ /\.gz$/ )
+{
+    my $bindir = "$FindBin::Bin";
+    open(VCF,"| $bindir/../bin/bgzip -c > $out") || die "Cannot open file\n";
+}
+else {
+    open(VCF,">$out") || die "Cannot open file $out to write\n";
+}
 open(PRED,"$out.svm.pred") || die "Cannot open $out.svm.pred file to read\n";
 
 while (<$in>)
