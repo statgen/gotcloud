@@ -1,8 +1,8 @@
-VERSION ?= 1.0.7
+VERSION ?= 1.0.9
 
 .PHONY: package
 
-SUBDIRS=general bam fastq glf samtools
+SUBDIRS=general bam fastq glf samtools vcf
 
 include Makefiles/Makefile.base
 
@@ -16,7 +16,7 @@ clean:$(SUBDIRS)
 general: samtools
 
 # other subdirectories depend on general
-bam fastq glf: general
+bam fastq glf vcf: general
 
 RELEASE_FILE?=libStatGen.$(VERSION).tgz
 

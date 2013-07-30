@@ -38,6 +38,8 @@
 #include "StringArray.h"
 #include "Logger.h"
 
+namespace libVcf
+{
 ///////////////////////////////////////////////////////////
 // VcfFileException class 
 // Creates a exception with printf style outputs
@@ -273,4 +275,5 @@ class BedFile : public VcfFile {
   char determineAltBase(char refBase, char a1, char a2);
 };
 
+}
 #endif // __CSG_VCF_FILE_H_

@@ -22,8 +22,9 @@
 #include "Parameters.h"
 #include "InputFile.h"
 #include "Error.h"
-#include "VcfFile.h"
+#include "libVcfVcfFile.h"
 #include "Logger.h"
+using namespace libVcf;
 
 Logger* Logger::gLogger = NULL;
 

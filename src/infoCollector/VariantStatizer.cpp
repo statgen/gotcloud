@@ -6,9 +6,10 @@
 
 #define ZEPS 1e-10
 
-#include "VcfFile.h"
+#include "libVcfVcfFile.h"
 #include "VariantStatizer.h"
 #include "Logger.h"
+using namespace libVcf;
 
 double VariantStatizer::cor22(int a, int b, int c, int d) {
   // a b p

@@ -19,10 +19,11 @@
 #include "MemoryAllocators.h"
 #include "MemoryInfo.h"
 #include "Pedigree.h"
-#include "VcfFile.h"
+#include "libVcfVcfFile.h"
 #include "Error.h"
 #include <math.h>
 #include <limits.h>
+using namespace libVcf;
 
 ShotgunHaplotyper::ShotgunHaplotyper()
    {

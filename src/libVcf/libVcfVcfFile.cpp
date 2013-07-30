@@ -1,7 +1,8 @@
 #include <math.h>
 #include <limits.h>
 
-#include "VcfFile.h"
+#include "libVcfVcfFile.h"
+using namespace libVcf;
 
 std::vector<double> VcfHelper::vPhred2Err;
 StringArray VcfHelper::asChromNames;

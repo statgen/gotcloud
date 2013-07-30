@@ -1,5 +1,5 @@
 EXE=libVcf.a
-TOOLBASE = VcfFile
+TOOLBASE = libVcfVcfFile
 SRCONLY = 
 USER_INCLUDES = -I../include/
 OBJDIR=obj

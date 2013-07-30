@@ -8,6 +8,7 @@
 #include <cmath>
 #include <utility>
 //#include <boost/thread/mutex.hpp>
+#include "libVcfVcfFile.h"
 
 
 // vCounts contains the following information
@@ -53,10 +54,10 @@
 class VariantStatizer {
  private:
   // list of input VCF and output VCFs
-  VcfFile anchorVcf;
-  VcfMarker* pCurrentMarker;
+  libVcf::VcfFile anchorVcf;
+  libVcf::VcfMarker* pCurrentMarker;
   //String sAnchorVcf;
-  std::vector<VcfFile*> pPileVcfs;
+  std::vector<libVcf::VcfFile*> pPileVcfs;
   IFILE outFile;
 
   // For now, assume that the all VCFs are coming from the same VCF
@@ -92,7 +93,7 @@ class VariantStatizer {
 
   void writeCurrentMarker(IFILE oFile);
   bool advancePileVcf(int index);
-  bool readMarker(int index, VcfMarker* pMarker);
+  bool readMarker(int index, libVcf::VcfMarker* pMarker);
 
  public:
  VariantStatizer() : pCurrentMarker(NULL) {

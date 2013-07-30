@@ -29,7 +29,8 @@
 #include "Parameters.h"
 #include "InputFile.h"
 #include "Error.h"
-#include "VcfFile.h"
+#include "libVcfVcfFile.h"
+using namespace libVcf;
 
 float * thetas = NULL;
 int     nthetas = 0;

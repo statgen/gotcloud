@@ -20,8 +20,8 @@
 #include "InputFile.h"
 #include "Error.h"
 #include "Logger.h"
-#include "VcfFile.h"
 #include "VariantStatizer.h"
+#include "StringArray.h"
 
 Logger* Logger::gLogger = NULL;
 

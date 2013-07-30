@@ -79,8 +79,7 @@ public:
     /// Buffering reads disables the tell call for bgzf files.
     /// Any previous values in the buffer will be deleted.
     /// \param bufferSize number of bytes to read/buffer at a time,
-    /// default buffer size is 1048576, and turn off read buffering by setting
-    /// bufferSize = 1;
+    /// turn off read buffering by setting bufferSize = 1;
     inline void bufferReads(unsigned int bufferSize = DEFAULT_BUFFER_SIZE)
     {
         // If the buffer size is the same, do nothing.
@@ -524,7 +523,7 @@ protected:
 #endif
 
     // The size of the buffer used by this class.
-    static const unsigned int DEFAULT_BUFFER_SIZE = 1048576;
+    static const unsigned int DEFAULT_BUFFER_SIZE = 65536;
 
     // Pointer to a class that interfaces with different file types.
     FileType* myFileTypePtr;
@@ -578,7 +577,7 @@ inline IFILE ifopen(const char * filename, const char * mode,
 /// Close the file.
 /// \param file file to be closed - IFILE is a pointer to an InputFile object
 /// \return status of the close (0 is success or if NULL is passed in).
-inline int ifclose(IFILE file)
+inline int ifclose(IFILE &file)
 {
     if(file == NULL)
     {
