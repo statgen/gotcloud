@@ -150,36 +150,6 @@ sub loadConf {
         }
     }
 
-    #   Resolve all variables of the form $(varname)
-    foreach my $section (keys %CONF_HASH) {
-        foreach my $key (keys %{$CONF_HASH{$section}}) {
-            for (1 .. 10) {             # Avoid any chance of forever looops
-                if ($CONF_HASH{$section}{$key} !~ /^(.*)\$\((\w+)\)(.*)$/) { last; }
-                my ($pre, $var, $post) = ($1, $2, $3);
-                if (exists($CONF_HASH{$section}{$var})) {
-                     $CONF_HASH{$section}{$key} = $pre . $CONF_HASH{$section}{$var} . $post;
-                    next;
-                }
-                if (exists($CONF_HASH{global}{$var})) {
-                    $CONF_HASH{$section}{$key} = $pre . $CONF_HASH{global}{$var} . $post;
-                    next;
-                }
-                my $s = "'$section'";
-                if ($section ne 'global') { $s .= " or in 'global'"; }
-                warn "Config variable '$var' is not defined in section $s." .
-                    "   Line=$CONF_HASH{$section}{$key}\n";
-                $errs++;
-                $CONF_HASH{$section}{$key} = $pre . '_NOT_DEFINED_' . $post;
-            }
-        }
-    }
-
-    if ($VERBOSE > 3) {
-        foreach my $sec (sort keys %CONF_HASH) {
-            print STDERR "After substitution:  Section=$sec\n";
-            foreach my $k (sort keys %{$CONF_HASH{$sec}}) { print STDERR "  $k=$CONF_HASH{$sec}{$k}\n"; }
-        }
-    }
     return $errs;
 }
 
@@ -305,7 +275,29 @@ sub getConf {
         if ($VERBOSE > 1) { return ''; }        # Sometimes do not die (for testing)
         exit(7);
     }
-    return $CONF_HASH{$section}{$key};
+
+    #   Resolve sub-variables of the form $(varname)
+    my $val = $CONF_HASH{$section}{$key};
+    for (1 .. 50) {             # Avoid any chance of forever looops
+        if ($val !~ /^(.*)\$\((\w+)\)(.*)$/) { last; }
+        my ($pre, $var, $post) = ($1, $2, $3);
+        if (exists($CONF_HASH{$section}{$var})) {
+            $val = $pre . $CONF_HASH{$section}{$var} . $post;
+            next;
+        }
+        if (exists($CONF_HASH{global}{$var})) {
+            $val = $pre . $CONF_HASH{global}{$var} . $post;
+            next;
+        }
+        my $s = "'$section'";
+        if ($section ne 'global') { $s .= " or in 'global'"; }
+        warn "Config variable '$var' is not defined in section $s." .
+        "   Line=$CONF_HASH{$section}{$key}\n";
+        $errs++;
+        $val = $pre . '_NOT_DEFINED_' . $post;
+    }
+
+    return $val;
 }
 
 #==================================================================
