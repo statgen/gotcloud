@@ -75,8 +75,11 @@ exit(1);
 sub AlignSummary {
     my ($outdir) = @_;
 
+    # Base the starttime on the latest starttime of any of the Makefiles.
+    my $starttime = `find -name "\*.Makefile" | xargs stat -c "%Y" | sort |tail -n 1` || die "FAILED to find any *.Makefile files in $outdir\n";
+
     my $cmd = "find -name " . '\*.done -exec stat -c "%Y {}" {} \;' .
-        " | sort | awk 'BEGIN{prev=0;} {print \$1-prev \" \" \$2; prev=\$1;}'";
+        " | sort | awk 'BEGIN{prev=$starttime;} {print \$1-prev \" \" \$2; prev=\$1;}'";
     open(IN, $cmd . ' | ') ||
         die "Unable to execute command '$cmd': $!\n";
     my @lines = <IN>;
@@ -86,63 +89,43 @@ sub AlignSummary {
             "You need to specify the GotCloud options '--keeptmp --keeplog' for these files to be found.\n";
     }
 
-    #   First entry will be actual clock time in seconds, rather than duration
-    #   Run through all entries and force time for first entry to be ave of others
-    #   Identify the pattern for the first line, then find others like it
-    my $startpat = '';
-    my $tailpat = '';
-    if ($lines[0] =~ /^(\d+) (.+)\/.+(filt\.\w+\.done)/) {
-        my ($n, $s, $s2) = ($1, $2, $3);
-        if ($n > 137200000) { $startpat = $s; $tailpat = $s2; }
-    }
-    my $sum = 0;
-    my $n = 0;
-    for (my $i=1; $i<=$#lines; $i++) {
-        if ($lines[$i] =~ /^(\d+) ${startpat}.+${tailpat}/) { $sum += $1; $n++; }
-    }
-    if (! $n) { warn "Unable to figure out correct time for first line. Using '999'. Line=$lines[0]\n"; }
-    else {
-        if ($lines[0] =~ /^(\d+) (.+)/) {
-            my $j = int($sum/$n);
-            warn "Corrected time for first line from $1 to $j\n\n";
-            $lines[0] = $j . ' ' . $2;
-        }
-        else { die "Unable to parse first line, yet I did it before. Yikes!\n"; }
-     }
-
     #   Collect details for each step in a hash
     my %details = ();
     foreach (@lines) {
-        if (/^(\d+) .+\/alignment\.aln.+filt.bam.done/) {
-            $details{aln} += $1;
-            next;
-        }
-        if (/^(\d+) .+\/alignment\.pol.+filt.bam.done/) {
-            $details{polish} += $1;
+        if (/^(\d+) .+\/alignment\.aln.+.bam.done/) {
+            $details{"2) aln"} += $1;
             next;
         }
         if (/^(\d+) .+\/alignment\.pol.+merged.bam.done/) {
-            $details{merged} += $1;
+            $details{"4) merged"} += $1;
+            next;
+        }
+        if (/^(\d+) .+\/alignment\.pol.+.bam.done/) {
+            $details{"3) polish"} += $1;
             next;
         }
         if (/^(\d+) .+\/alignment\.dedup.+dedup.bam.done/) {
-            $details{dedup} += $1;
+            $details{") dedup"} += $1;
             next;
         }
-        if (/^(\d+) .+\/bwa\.sai\.t.+filt.sai.done/) {
-            $details{sai} += $1;
+        if (/^(\d+) .+\/bwa\.sai\.t.+.sai.done/) {
+            $details{"1) sai"} += $1;
             next;
         }
         if (/^(\d+) .+\/bams\/.+recal.bam.done/) {
-            $details{recal} += $1;
+            $details{"5) recal"} += $1;
+            next;
+        }
+        if (/^(\d+) .+\/bams\/.+recal.bam.bai.done/) {
+            $details{"6) index"} += $1;
             next;
         }
         if (/^(\d+) .+\/QCFiles\/.+genoCheck.done/) {
-            $details{genocheck} = $1;
+            $details{"7) verifyBamID"} = $1;
             next;
         }
         if (/^(\d+) .+\/QCFiles\/.+qplot.done/) {
-            $details{qplot} = $1;
+            $details{"8) qplot"} = $1;
             next;
         }
         warn "Unable to parse line: $_\n";
@@ -150,7 +133,7 @@ sub AlignSummary {
 
     #   Generate summary here
     foreach my $key (sort keys %details) {
-        printf("Step %-10s required %d seconds\n", $key, $details{$key});
+        printf("Step %-15s required %d seconds\n", $key, $details{$key});
     }
 
     #   Generate data as CSV if required
