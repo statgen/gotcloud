@@ -1758,7 +1758,10 @@ sub getFilterArgs
             die "ERROR: FILTER_MIN_NS_FRAC must be between 0 & 1, but it ".
             "was: $confValue.\n";
         }
-        $filterArgs .= " --minNS ".($numSamples*$confValue);
+        my $minNS = $numSamples*$confValue;
+        if($minNS < 1) { $minNS = 1;}
+        else { $minNS = int($minNS); }
+        $filterArgs .= " --minNS $minNS";
     }
 
     # Get the formula min/max sample numbers.
