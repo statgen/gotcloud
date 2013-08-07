@@ -188,7 +188,7 @@ if(!$opts{pipelinedefaults})
 }
 if(!$opts{phonehome})
 {
-    $opts{phonehome} = "$gotcloudRoot/scripts/gcphonehome.pl -verbose -pgmname GotCloud $me";
+    $opts{phonehome} = "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $me";
 }
 if(!$opts{calcstorage})
 {
