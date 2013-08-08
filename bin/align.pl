@@ -912,7 +912,7 @@ sub mapMosaik {
         getConf("MOSAIK_THREADS") .
         " -in \$(basename \$\^) -ia $mosaikRef -j $mosaikJmp -annse " .
         getConf('SE_ANN') . " -annpe " . getConf('PE_ANN') .
-        " -out \$(basename \$(basename \$\@)) -hs 15 > \$(basename \$\@).log";
+        " -out \$(basename \$(basename \$\@)) -hs 15 -act 25 -mhp 150 > \$(basename \$\@).log";
     $allSteps .= logCatchFailure('mosaikAlign', $mosaikAlign, "\$(basename \$\@).log");
     $allSteps .= "\ttouch \$\@\n\n";
 
@@ -923,7 +923,12 @@ sub mapMosaik {
     $allSteps .= "\tmkdir -p \$(\@D)\n";
     my $mosaikBuild = getConf('MOSAIK_BUILD_EXE') . " -q $absFastq1 ";
     if($fastq2 ne '.') { $mosaikBuild .= "-q2 $absFastq2 "; }
-    $mosaikBuild .= "-st illumina -out \$(basename \$\@) $rgCommand > \$(basename \$\@).log";
+    my $mosaikBuildUserOpts = getConf("MOSAIK_BUILD_USER_OPTS");
+    if($mosaikBuildUserOpts)
+    {
+        $mosaikBuild .= "$mosaikBuildUserOpts ";
+    }
+    $mosaikBuild .= "-out \$(basename \$\@) $rgCommand > \$(basename \$\@).log";
     $allSteps .= logCatchFailure('mosaikBuild', $mosaikBuild, "\$(basename \$\@).log");
     #  $allSteps .= "\t$mosaikBuild\n";
     $allSteps .= "\ttouch \$\@\n\n";
