@@ -1,0 +1,13 @@
+*.o
+.*.swp
+*.a
+*.dSYM
+samtools
+maq2sam-long
+maq2sam-short
+md5fa
+md5sum-lite
+wgsim
+bcftools
+ace2sam
+bamcheck

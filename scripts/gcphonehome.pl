@@ -25,7 +25,7 @@ my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 
 my %opts = (
     homeurl => 'http://csg.sph.umich.edu/ga',
-    versionfile => '../release_version.txt',
+    versionfile => "$mepath/../release_version.txt",
     freq => 30,
 );
 
@@ -74,7 +74,7 @@ if ($n > $opts{freq}) { exit; }
 
 my $newestver = '';
 foreach (split("\n", $msg)) {
-    if (/version .+ \[(\S+)\]/) { $newestver = $1; last; }
+    if (/version is .(\S+)./) { $newestver = $1; last; }
 }
 
 #   Now get the version of the local software

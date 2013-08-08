@@ -113,7 +113,7 @@ if(!$opts{gotcloudroot})
     foreach my $file (@configs)
     {
         my $fileContents;
-        open my $openFile, '<', $file or die $!;
+        open my $openFile, '<', $file or die "$!, $file";
         $fileContents = <$openFile>;
         close $openFile;
 
@@ -143,6 +143,8 @@ push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
 #--------------------------------------------------------------
 #   Special case for convenient testing
 if ($opts {test}) {
+    # remove a trailing slash if there is one.
+    $opts{test} =~ s/\/\z//;
     my $outdir=abs_path($opts{test});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
@@ -186,7 +188,7 @@ if(!$opts{pipelinedefaults})
 }
 if(!$opts{phonehome})
 {
-    $opts{phonehome} = "$gotcloudRoot/scripts/gcphonehome.pl -verbose -pgmname GotCloud $me";
+    $opts{phonehome} = "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $me";
 }
 if(!$opts{calcstorage})
 {
@@ -202,11 +204,14 @@ $opts{conf} = abs_path($opts{conf});
 #############################################################################
 #   Set configuration variables from comand line options
 #############################################################################
-my $out_dir = '';
 if ($opts{out_dir}) {
-    $out_dir = abs_path($opts{out_dir});
+    # remove a trailing slash if there is one.
+    $opts{out_dir} =~ s/\/\z//;
+    my $outdir = abs_path($opts{out_dir});
+    system("mkdir -p $outdir") &&
+        die "Unable to create directory '$outdir'\n";
     # Add the output directory to the configuration.
-    push(@confSettings, "OUT_DIR = $out_dir");
+    push(@confSettings, "OUT_DIR = $outdir");
 }
 
 my $ref_dir = '';
@@ -246,7 +251,7 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     setConf($key, getAbsPath($f, $type));
 }
 my $index_file = getConf('INDEX_FILE');
-$out_dir = getConf('OUT_DIR');
+my $out_dir = getConf('OUT_DIR');
 
 #----------------------------------------------------------------------------
 #   Check required settings

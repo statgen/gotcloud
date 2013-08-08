@@ -1,118 +1,169 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
+#################################################################
+#
+# Name: gotcloud
+#
+# Description:
+#   Interface to alignment & variant calling pipelines
+#
+#   Determine the types of analysis to be done
+#   Commands can be
+#       perl gotcloud align [options]    : Alignment pipeline
+#       perl gotcloud snpcall  [options] : Snp Calling pipeline
 
-##################################################################
-## gotcloud.pl : interface to alignment & variant calling pipelines
-##################################################################
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation; See http://www.gnu.org/copyleft/gpl.html
+################################################################
 use strict;
-use Getopt::Long;
+use warnings;
 use Pod::Usage;
+use File::Basename;
 use Cwd;
-use FindBin;
-use lib "$FindBin::Bin/lib";
-my $dir = $FindBin::RealBin;
-my $bindir = "$dir/bin";
+use Cwd 'abs_path';
+#   Find out where this program lives (in a 'bin' directory).
+#   Symlinks are tricky
+$_ = abs_path($0);
+my ($me, $medir, $mesuffix) = fileparse($_, '\.pl');
+$medir = abs_path($medir);
+my $gotcloudRoot = $medir;
+if ($medir =~ /(.*)\/bin/) { $gotcloudRoot = $1; }
+
+#############################################################################
+#   Global Variables
+############################################################################
+my $bindir = "$gotcloudRoot/bin";
+my $scriptdir = "$gotcloudRoot/scripts";
+my $audrialog = "/tmp/gotcloud.audria.log"; # Audria output goes here
+my %opts = (
+    audria => "$scriptdir/audria",          # Pgm to collect performance stats
+    audriaopts => "-a -d 30 -o $audrialog",
+);
+
+if (@ARGV && $ARGV[0] eq '-perf') {         # Special undocumented option for dev
+    if (-f $opts{audria}) { $opts{perf} = 1; }
+    else { warn "WARNING: Performance monitoring will not be used, unable to find '$opts{audria}'\n"; }
+    shift @ARGV;
+}
+
+#--------------------------------------------------------------
+#   Initialization - Sort out the help-like parameters
+#--------------------------------------------------------------
+my $fcn = shift(@ARGV);
+if (! $fcn) {
+    warn "ERROR: Missing command. Please see the usage below.\n";
+    pod2usage(-exitval => 2);
+}
+if ($fcn =~ /^([\-])*man$/) {
+    pod2usage(-verbose => 2,  -exitval => 2);
+}
+if ($fcn =~ /^([\-])*help$/) {
+    pod2usage(-exitval => 2);
+}
+if ($fcn =~ /^([\-])*version$/) {
+    my $v = 'UNKNOWN VERSION';
+    foreach my $f ("$gotcloudRoot/release_version.txt") {
+        if (! -f $f) { next; }
+        if (open (IN, $f)) { $v = <IN>; close(IN); last; }
+    }
+    chomp($v);
+    die "GotCloud version: $v\n";
+}
 
 ##################################################################
-## Determine the types of analysis to be done
-## Commands can be
-## perl gotcloud.pl align [options]    : Alignment pipeline
-## perl gotcloud.pl snpcall  [options] : Snp Calling pipeline
+# Determine the types of analysis to be done and do it
 ##################################################################
-if ( $#ARGV < 0 ) {
-    print STDERR "ERROR: Missing command. Please see the usage below.\n";
-    pod2usage(1);
+my $cmd = '';
+if ( $fcn eq 'align') {
+    foreach my $p ("$bindir/align.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find align.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc;
 }
-elsif ( $ARGV[0] =~ /^([\-])*man$/ ) {
-    pod2usage(-verbose => 2);
-}
-elsif ( $ARGV[0] =~ /^([\-])*help$/ ) {
-    pod2usage(1);
-}
-elsif ( $ARGV[0] =~ /^([\-])*version$/ ) {
-  if( -f "$dir/release_version.txt")
-  {
-    print "gotcloud Version: ".`cat $dir/release_version.txt`;
-  }
-  elsif( -f "$dir/../release_version.txt")
-  {
-    print "gotcloud Version: ".`cat $dir/../release_version.txt`;
-  }
-  else
-  {
-    print "gotcloud Version: Can't find this information.";
-  }
-}
-elsif ( $ARGV[0] eq "align") {
-    shift(@ARGV);
-    if( -f "$bindir/align.pl" )
-    {
-      exec("$bindir/align.pl",@ARGV);
-    }
-    elsif( -f "$dir/align.pl" )
-    {
-      exec("$dir/align.pl",@ARGV);
-    }
-    else
-    {
-      die "ERROR: could not find align.pl"
-    }
-}
-elsif ( $ARGV[0] eq "snpcall") {
-    shift(@ARGV);
-    if( -f "$bindir/umake.pl" )
-    {
-      $bindir = $bindir;
-    }
-    elsif ( -f "$dir/umake.pl" )
-    {
-      $bindir = $dir;
-    }
-    else
-    {
-      die "ERROR: could not find umake.pl for snp-calling"
-    }
-    exec("$bindir/umake.pl", "--snpcall",@ARGV);
-}
-elsif ( $ARGV[0] eq "vc") {
-    shift(@ARGV);
-    if( -f "$bindir/umake.pl" )
-    {
-      $bindir = $bindir;
-    }
-    elsif ( -f "$dir/umake.pl" )
-    {
-      $bindir = $dir;
-    }
-    else
-    {
-      die "ERROR: could not find umake.pl for variant-calling"
-    }
-    exec("$bindir/umake.pl", @ARGV);
-}
-elsif ( $ARGV[0] eq "ldrefine") {
-    shift(@ARGV);
-    if( -f "$bindir/umake.pl" )
-    {
-      $bindir = $bindir;
-    }
-    elsif ( -f "$dir/umake.pl" )
-    {
-      $bindir = $dir;
-    }
-    else
-    {
-      die "ERROR: could not find umake.pl for ldrefine";
-    }
 
-    system("$bindir/umake.pl", "--beagle",@ARGV);
-    my $rc = ${^CHILD_ERROR_NATIVE};
-    die "failed the first step of ld genotype refinement: $?" if ($rc);
-    exec("$bindir/umake.pl", "--thunder",@ARGV);
-  }
-else {
-    print STDERR "ERROR: Unknown command $ARGV[0]. Please see the usage below.\n";
-    pod2usage(1);
+if ($fcn eq 'snpcall') {
+    foreach my $p ("$bindir/umake.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find umake.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, '--snpcall', @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc;
 }
+
+if ($fcn eq 'vc') {
+    foreach my $p ("$bindir/umake.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find umake.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc;
+}
+
+if ($fcn eq 'ldrefine') {
+    foreach my $p ("$bindir/umake.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find umake.pl for ldrefine\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, '--beagle', @ARGV);
+    if ($rc) { warn "Failed the first step of ld genotype refinement: $rc\n"; }
+    else { $rc = system($cmd, '--thunder', @ARGV); }
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc;
+}
+
+warn "ERROR: Unknown command '$fcn' Please see the usage below.\n";
+pod2usage(-exitval => 1);
+
+
+#--------------------------------------------------------------
+#   Perf(fcn)
+#
+#   Start up a background monitor to collect stats on performance.
+#   This is for development use only.
+#   $fcn should be 'stop' or 'start'.  Note this relies on global variables.
+#--------------------------------------------------------------
+sub Perf {
+    #   Start the monitor
+    if ($_[0] eq 'stop') {              # This might not be needed, but JIC
+        if ($opts{perfpid}) {
+            kill 2, $opts{perfpid};     # Stop audria instance
+            delete $opts{perfpid};
+            warn "Create performance data log '$audrialog'\n";
+        }
+        return;
+    }
+    #   Start the monitor in a child process
+    $opts{perfpid} = fork();
+    if ($opts{perfpid} == 0) {          # Child process
+        warn "Creating performance data log '$audrialog'\n";
+        unlink($opts{audriaopts});      # Always create a new log file
+        my $cmd = "$opts{audria} $opts{audriaopts}";
+        exec($cmd);
+        die "Should never get here after exec\n";
+    }
+    return;
+}
+
+#==================================================================
+#   Perldoc Documentation
+#==================================================================
 
 __END__
 
@@ -122,7 +173,7 @@ gotcloud - sequencing and genotyping software pipelines that also work on the cl
 
 =head1 SYNOPSIS
 
-gotcloud [command] [options] 
+gotcloud [command] [options]
 
  Command:
    help            Print out brief help message
@@ -158,6 +209,10 @@ Run the alignment pipeline. Type 'gotcloud align -help' for more detailed inform
 =item B<snpcall>
 
 Run the snp calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
+
+=item B<vc>
+
+Run the variant call steps that are configured on in your configuration file.  Type 'gotcloud vc -help' for more detailed information.
 
 =item B<ldaware>
 
