@@ -25,9 +25,10 @@ my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 #   temp files of umake = 120% of size of BAMs  (glf)
 #   output of umake = 5% of BAMs  (vcf)
 my %opts = (
-    fastq2bam_factor => 1.1,
+    fastq2bam_factor => 1.6,
     bam2glf_factor => 1.2,
     bam2vcf_factor => 0.05,
+    fastq2tmp => 3.6,
 );
 
 Getopt::Long::GetOptions( \%opts,qw(
@@ -80,12 +81,9 @@ sub AsGB {
 sub AlignStorage {
     my ($indexfile, $prefix) = @_;
 
-    if(!defined $prefix) { $prefix=""; }
-    elsif($prefix && $prefix)
-    {
-        # add the trailing / if not on the prefix.
-        if ( ($prefix !~ /\/$/) ) { $prefix .= '/'; }
-    }
+    if (! defined $prefix) { $prefix=""; }
+    #   Add the trailing / if not on the prefix.
+    if ($prefix !~ /\/$/) { $prefix .= '/'; }
 
     my $totsize = 0;
     open(IN, $indexfile) ||
@@ -120,18 +118,10 @@ sub AlignStorage {
     close(IN);
     if (! $k) { die "No FASTQ files were found. This cannot be correct\n"; }
 
-    my $gb = $opts{fastq2bam_factor}*$totsize;
-    my $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . AsGB($gb) . "\n";
-    $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . $gb . "\n";
+    my $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . AsGB($totsize) . "\n";
 
-    #   Add a bit extra for temp files for the aligner. Use the average size of a FASTQ
-    my $bamsize = ($opts{bam2glf_factor}*$totsize);
-    $s .= "Size of BAMs from aligner will be about " . AsGB($bamsize) . "\n";
-
-    $s .= "Intermediate files from snpcaller will be about " . AsGB($bamsize) . "\n";
-
-    my $vcfsize = $opts{bam2vcf_factor}*$bamsize;
-    $s .= "Final VCF output from snpcaller will be about " . AsGB($vcfsize) . "\n";
+    my $tmpsize = $opts{fastq2tmp}*$totsize;
+    $s .= "Total temp space will be about " . AsGB($tmpsize) . "\n";
 
     $s .= "Be sure you have enough space to hold all this data\n";
     return $s;
