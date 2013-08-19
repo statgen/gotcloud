@@ -24,11 +24,18 @@ my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 #   output of align = 110% * size of FASTQ (bams)
 #   temp files of umake = 120% of size of BAMs  (glf)
 #   output of umake = 5% of BAMs  (vcf)
+#
+#   Here are examples of data in/out for align
+#   SAMPLE   FASTQ  BAMs  ratio_bam alignment.aln bwa.sai.t alignment.pol   total_tmp  ratio_tmp
+#   HG01052    17G   29G    1.7        18G         12G        18G+18G        59G       3.47
+#   HG01069    18G   29G    1.6        18G         12G        18G+18G        59G       3.27
+#   HG1098     12G   20G    1.67       13G         6.1G       13G+12G      44.1G       3.675
+#   HG01188    25G   41G    1.64       27G         15G        27G+25G        94G       3.76
 my %opts = (
-    fastq2bam_factor => 1.6,
+    fastq2bam_factor => 1.8,
     bam2glf_factor => 1.2,
     bam2vcf_factor => 0.05,
-    fastq2tmp => 3.6,
+    fastq2tmp => 3.9,
 );
 
 Getopt::Long::GetOptions( \%opts,qw(

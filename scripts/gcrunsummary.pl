@@ -132,9 +132,12 @@ sub AlignSummary {
     }
 
     #   Generate summary here
+    my $total = 0;
     foreach my $key (sort keys %details) {
         printf("Step %-15s required %d seconds\n", $key, $details{$key});
+        $total += $details{$key};
     }
+    printf("\nTotal run time = %4.2f hours (%d seconds)\n", $total/3600, $total);
 
     #   Generate data as CSV if required
     if (! $opts{csv}) { return; }
