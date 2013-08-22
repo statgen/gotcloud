@@ -178,6 +178,13 @@ sub loadConf {
 sub dumpConf
 {
     my ($outputFile) = @_;
+
+    # first check that the file does not already exist.
+    if(-e $outputFile)
+    {
+        warn "$outputFile already exists, so not dumping configuration";
+        exit;
+    }
     open(OUT,"> ".($outputFile || '-')) || die "Cannot open $outputFile for writing.  $!\n";
 
     # first print out the global section.
