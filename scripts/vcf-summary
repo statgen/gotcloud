@@ -227,15 +227,30 @@ my %hcnts = ();
 my %mcnts = ();
 my %hszchrs = ();
 my $prev = "";
+my $numMultiAllele = 0;
+my $numNonAuto = 0;
+my $numMultiPos = 0;
 
 my @acbrs = split(/,/,$acbr) if ( $acbr );
 shift(@acbrs) if ( ( $#acbrs >= 0 ) && ( $acbrs[0] == 1 ) );
 while(<IN>) {
     next if ( /^#/ );
     my ($chrom,$pos,$id,$ref,$alt,$qual,$filter,$info) = split(/[\t\r\n]/);
-    next if ( ( length($ref) > 1 ) || ( length($alt) > 1 ) );
-    next if ( ($auto) && ( ! ( $chrom =~ /^\d+$/ ) ) );
-    next if ( $prev eq $pos );
+    if ( ( length($ref) > 1 ) || ( length($alt) > 1 ) )
+    {
+        ++$numMultiAllele;
+        next;
+    }
+    if ( ($auto) && ( ! ( $chrom =~ /^\d+$/ ) ) )
+    {
+        ++$numNonAuto;
+        next;
+    }
+    if ( $prev eq $pos )
+    {
+        ++$numMultiPos;
+        next;
+    }
     $prev = $pos;
 
     if ( $acbr ) {
@@ -378,6 +393,12 @@ if ( $fails[0] > 0 ) {
     &printSummary("FAIL",\@fails);
 }
 &printSummary("TOTAL",\@totals);
+print "------------------------------------------------------------------------------------------------------------\n";
+print sprintf("%20s","MultiAllele Ref/Alt")."\t$numMultiAllele\n";
+print sprintf("%20s","Non-Autosomes")."\t$numNonAuto\n" if($auto);
+print sprintf("%20s","Repeated Positions")."\t$numMultiPos\n";
+my $numSkipped = $numMultiAllele + $numNonAuto + $numMultiPos;
+print sprintf("%20s","TOTAL SKIPPED")."\t$numSkipped\n";
 print "------------------------------------------------------------------------------------------------------------\n";
 
 sub printSummary {
