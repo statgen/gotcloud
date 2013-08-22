@@ -182,8 +182,8 @@ sub dumpConf
     # first check that the file does not already exist.
     if(-e $outputFile)
     {
-        warn "$outputFile already exists, so not dumping configuration";
-        exit;
+        warn "$outputFile already exists, so not dumping configuration\n";
+        return;
     }
     open(OUT,"> ".($outputFile || '-')) || die "Cannot open $outputFile for writing.  $!\n";
 

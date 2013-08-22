@@ -438,7 +438,6 @@ if($failReqFile eq "1")
     die "Exiting pipeline due to required file(s) missing\n";
 }
 
-
 #----------------------------------------------------------------------------
 #   Check for required executables
 #----------------------------------------------------------------------------
@@ -603,12 +602,19 @@ foreach my $chr (@chrs) {
 }
 print MAK "\n\n";
 
+
 #############################################################################
 ## STEP 4 : Read FASTA INDEX file to determine chromosome size
 ############################################################################
 my %hChrSizes = ();
 my $ref = getConf("REF");
-open(IN,$ref.".fai") || die "Cannot open $ref.fai file for reading";
+my $fai = $ref.".fai";
+if(getConf("REF_FAI"))
+{
+    $fai = getConf("REF_FAI");
+}
+
+open(IN,$fai) || die "Cannot open $fai file for reading";
 while(<IN>) {
     my ($chr,$len) = split;
     $hChrSizes{$chr} = $len;
