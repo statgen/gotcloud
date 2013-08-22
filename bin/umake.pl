@@ -1443,28 +1443,32 @@ foreach my $chr (@chrs) {
 
         my $multiBam = 0;
 
+        # for each sample
         for(my $i=0; $i < @allSMs; ++$i) {
             my @bams = @{$hSM2bams{$allSMs[$i]}};
+            # for each partition of the genome.
             for(my $j=0; $j < @unitStarts; ++$j) {
-                my $smGlfParent = "$remotePrefix$smGlfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-                my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-                my $smGlf = "$smGlfParent/$smGlfFn";
+                my $smGlfPartitionDir = "$remotePrefix$smGlfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+                my $smGlfFilename = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
+                my $smGlf = "$smGlfPartitionDir/$smGlfFilename";
                 my @bamGlfs = ();
+                # for each BAM in this sample.
                 foreach my $bam (@bams) {
                     my @F = split(/\//,$bam);
                     my $bamFn = pop(@F);
-                    #my ($runID) = split(/\./,$bamFn);
                     my $bamGlf = "$remotePrefix$bamGlfDir/$allSMs[$i]/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
-                    #my $bamGlf = "$remotePrefix$bamGlfDir/$runID/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
                     push(@bamGlfs,$bamGlf);
                 }
                 push(@outs,"$smGlf.OK");
                 my $cmd = "$smGlf.OK:";
+                # if more than one BAM for this sample, add the BAM specific GLFs to the dependency.
                 $cmd .= (" ".join(".OK ",@bamGlfs).".OK") if ( $#bamGlfs > 0 );
+                # add dependancy on the index if RUN_INDEX specified.
                 $cmd .= " bai" if ( getConf("RUN_INDEX") eq "TRUE" );
-                $cmd .= "\n\tmkdir --p $smGlfParent\n\t";
-                #my $cmd = "$smGlf.OK:\n\tmkdir --p $smGlfParent\n\t";
+                $cmd .= "\n\tmkdir --p $smGlfPartitionDir\n\t";
+                #my $cmd = "$smGlf.OK:\n\tmkdir --p $smGlfPartitionDir\n\t";
                 if ( $#bamGlfs > 0 ) {
+                    # more than one BAM for this sample.
                     $multiBam = 1;
                     my $qualities = "0";
                     my $minDepths = "1";
@@ -1474,15 +1478,12 @@ foreach my $chr (@chrs) {
                         $minDepths .= ",1";
                         $maxDepths .= ",1000";
                     }
-
-                    #unlink($smGlf);
-                    #unlink("$smGlf.OK");
-
+                    # Merge the multiple GLFs for this sample.
                     $cmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 }
                 else {
-                    #$cmd .= "ln -f -s $bamGlfs[0] $smGlf";
+                    # Only 1 BAM for this sample
                     my $baqFlag = 1;
                     foreach my $s (@nobaqSubstrings) {
                         if ( $bams[0] =~ m/($s)/ ) {
