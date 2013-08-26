@@ -36,11 +36,12 @@ my %opts = (
     bam2glf_factor => 1.2,
     bam2vcf_factor => 0.05,
     fastq2tmp => 3.9,
+    totalsize => 0,
 );
 
 Getopt::Long::GetOptions( \%opts,qw(
     help
-    verbose
+    totalsize=s
 )) || die "Failed to parse options\n";
 
 #   Simple help if requested, sanity check input options
@@ -60,6 +61,10 @@ if ($fcn =~ /(\S+)\./) { $fcn = $1; }
 #   Show calculations for the choice
 #-----------------------------------------------------------------
 if ($fcn eq 'align') {
+    if ($opts{totalsize}) {             # Fix totalsize if provided
+        if ($opts{totalsize} =~ /(.+)g$/i) { $opts{totalsize} = $1*1024*1024*1024 }
+        if ($opts{totalsize} =~ /(.+)t$/i) { $opts{totalsize} = $1*1024*1024*1024*1024 }
+    }
     print AlignStorage($ARGV[0], $ARGV[1]);
     exit;
 }
@@ -93,42 +98,53 @@ sub AlignStorage {
     if ($prefix !~ /\/$/) { $prefix .= '/'; }
 
     my $totsize = 0;
-    open(IN, $indexfile) ||
-        die "Unable to open file '$indexfile': $!\n";
-    $_ = <IN>;                    # Remove header, check it
-    if ($_ =~ /^#FASTQ_PREFIX\s*=\s*(.+)\s*$/) {  # Provides reference path to fastq files
-        $prefix = $1;
-        $_ = <IN>;
-    }
-    if (! /MERGE_NAME/) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
     my $k = 0;
-    while (<IN>) {
-        my @c = split(' ',$_);
-        my $f = "$c[1]";
-        # Check if the path is not absolute and needs the prefix.
-        if ($f !~ /^\//) { $f = "$prefix$c[1]"; }
+    if ($opts{totalsize}) {
+        #   User really does not have a file, but knows the totalsize
+        $totsize = $opts{totalsize};
+        $k = '?';
+    }
+    else {
+        #   Read the index file and get the size of each FASTQ file
+        open(IN, $indexfile) ||
+            die "Unable to open file '$indexfile': $!\n";
+        $_ = <IN>;                    # Remove header, check it
+        if ($_ =~ /^#FASTQ_PREFIX\s*=\s*(.+)\s*$/) {  # Provides reference path to fastq files
+            $prefix = $1;
+            $_ = <IN>;
+        }
+        if (! /MERGE_NAME/) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
+        while (<IN>) {
+            my @c = split(' ',$_);
+            my $f = "$c[1]";
+            # Check if the path is not absolute and needs the prefix.
+            if ($f !~ /^\//) { $f = "$prefix$c[1]"; }
 
-        my @stats = stat($f);
-        if (! @stats) { die "Unable to find details on '$f': $!\n"; }
-        $totsize += $stats[7];
-        $k++;
-        $f = "$c[2]";
-        # Check if the path is not absolute and needs the prefix.
-        if ($f !~ /^\//) { $f = "$prefix$c[2]"; }
-        if ($f ne '.') {
-            @stats = stat($f);
+            my @stats = stat($f);
             if (! @stats) { die "Unable to find details on '$f': $!\n"; }
             $totsize += $stats[7];
             $k++;
+            $f = "$c[2]";
+            # Check if the path is not absolute and needs the prefix.
+            if ($f !~ /^\//) { $f = "$prefix$c[2]"; }
+            if ($f ne '.') {
+                @stats = stat($f);
+                if (! @stats) { die "Unable to find details on '$f': $!\n"; }
+                $totsize += $stats[7];
+                $k++;
+            }
         }
+        close(IN);
     }
-    close(IN);
     if (! $k) { die "No FASTQ files were found. This cannot be correct\n"; }
 
     my $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . AsGB($totsize) . "\n";
 
     my $tmpsize = $opts{fastq2tmp}*$totsize;
     $s .= "Total temp space will be about " . AsGB($tmpsize) . "\n";
+
+    my $bamsize = $opts{fastq2bam_factor}*$totsize;
+    $s .= "Total space for BAM files will be about " . AsGB($bamsize) . "\n";
 
     $s .= "Be sure you have enough space to hold all this data\n";
     return $s;
@@ -182,6 +198,7 @@ gccalcstorage.pl - Estimate of the storage requirements for GotCloud
 =head1 SYNOPSIS
 
   gccalcstorage.pl align  /mnt/1000g ePUR1.index
+  gccalcstorage.pl -total 1365G align  /mnt/1000g ePUR1.index
 
 =head1 DESCRIPTION
 
@@ -196,6 +213,16 @@ This calculates the storage needed and generates messages to that effect.
 =item B<-help>
 
 Generates this output.
+
+=item B<-totalsize SIZE>
+
+If you specify the size of the FASTQs (perhaps because they are not immediately
+available for the program to get their sizes), then this value will be
+used to estimate the space needed.
+SIZE should be a number in bytes or you may append 'G' or 'T' for gigabytes
+or terabytes.
+If this option is used, the indexfile will not be read and you may use
+anything for it.
 
 =back
 
