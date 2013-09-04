@@ -32,11 +32,17 @@ my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 #   HG1098     12G   20G    1.67       13G         6.1G       13G+12G      44.1G       3.675
 #   HG01188    25G   41G    1.64       27G         15G        27G+25G        94G       3.76
 my %opts = (
+    #   These apply to align
     fastq2bam_factor => 1.8,
-    bam2glf_factor => 1.2,
-    bam2vcf_factor => 0.05,
-    fastq2tmp => 3.9,
-    totalsize => 0,
+    fastq2tmp_factor => 3.9,
+
+    totalsize => 0,                     # For both
+
+    #   These apply to snpcall
+    bam2glf_factor => 0.50,             # Very poor choice for exome samples
+    bam2vcf_factor => 0.22,
+    bam2pvcf_factor => 0.011,
+    bam2split_factor => 0.012,
 );
 
 Getopt::Long::GetOptions( \%opts,qw(
@@ -48,7 +54,7 @@ Getopt::Long::GetOptions( \%opts,qw(
 if ($opts{help} || $#ARGV < 1) {
     warn "$me$mesuffix [options] align indexfile prefix\n" .
         "  or\n" .
-        "$me$mesuffix [options] snpcall|umake indexfile\n" .
+        "$me$mesuffix [options] snpcall indexfile\n" .
         "Use this to make an estimate of the storage requirements for GotCloud.\n" .
         "More details available by entering: perldoc $0\n\n";
     if ($opts{help}) { system("perldoc $0"); }
@@ -60,16 +66,17 @@ if ($fcn =~ /(\S+)\./) { $fcn = $1; }
 #-----------------------------------------------------------------
 #   Show calculations for the choice
 #-----------------------------------------------------------------
+if ($opts{totalsize}) {             # Fix totalsize if provided
+    if ($opts{totalsize} =~ /(.+)g$/i) { $opts{totalsize} = $1*1024*1024*1024 }
+    if ($opts{totalsize} =~ /(.+)t$/i) { $opts{totalsize} = $1*1024*1024*1024*1024 }
+}
+
 if ($fcn eq 'align') {
-    if ($opts{totalsize}) {             # Fix totalsize if provided
-        if ($opts{totalsize} =~ /(.+)g$/i) { $opts{totalsize} = $1*1024*1024*1024 }
-        if ($opts{totalsize} =~ /(.+)t$/i) { $opts{totalsize} = $1*1024*1024*1024*1024 }
-    }
     print AlignStorage($ARGV[0], $ARGV[1]);
     exit;
 }
 if ($fcn eq 'snpcall' || $fcn eq 'umake') {
-    warn UmakeStorage($ARGV[0]);
+    print UmakeStorage($ARGV[0], $ARGV[1]);
     exit;
 }
 
@@ -139,13 +146,10 @@ sub AlignStorage {
     if (! $k) { die "No FASTQ files were found. This cannot be correct\n"; }
 
     my $s = "File sizes of $k FASTQ input files referenced in '$indexfile' = " . AsGB($totsize) . "\n";
-
-    my $tmpsize = $opts{fastq2tmp}*$totsize;
+    my $tmpsize = $opts{fastq2tmp_factor}*$totsize;
     $s .= "Total temp space will be about " . AsGB($tmpsize) . "\n";
-
-    my $bamsize = $opts{fastq2bam_factor}*$totsize;
-    $s .= "Total space for BAM files will be about " . AsGB($bamsize) . "\n";
-
+    $tmpsize = $opts{fastq2bam_factor}*$totsize;
+    $s .= "Total space for BAM files will be about " . AsGB($tmpsize) . "\n";
     $s .= "Be sure you have enough space to hold all this data\n";
     return $s;
 }
@@ -157,31 +161,38 @@ sub AlignStorage {
 #--------------------------------------------------------------
 sub UmakeStorage {
     my ($indexfile) = @_;
-    my $bamsize = 0;
-    open(IN, $indexfile) ||
-        die "Unable to open file '$indexfile': $!\n";
+    my $totsize = 0;
     my $k = 0;
-    while (<IN>) {
-        #   Input line ~:  HG01055 ALL     /home/tpg/out/e/bams/HG01055.recal.bam
-        my @c = split(' ',$_);
-        my $f = $c[2];
-        my @stats = stat($f);
-        if (! @stats) { die "Unable to find details on '$f': $!\n"; }
-        $bamsize += $stats[7];
-        $k++;
+    if ($opts{totalsize}) {
+        #   User really does not have a file, but knows the totalsize
+        $totsize = $opts{totalsize};
+        $k = '?';
     }
-    close(IN);
+    else {
+        open(IN, $indexfile) ||
+            die "Unable to open file '$indexfile': $!\n";
+        while (<IN>) {
+            #   Input line ~:  HG01055 ALL     /home/tpg/out/e/bams/HG01055.recal.bam
+            my @c = split(' ',$_);
+            my $f = $c[2];
+            my @stats = stat($f);
+            if (! @stats) { die "Unable to find details on '$f': $!\n"; }
+            $totsize += $stats[7];
+            $k++;
+        }
+        close(IN);
+    }
     if (! $k) { die "No BAM files were found. This cannot be correct\n"; }
 
-    my $s = "File sizes of $k BAM input files referenced in '$indexfile' = " . AsGB($bamsize) . "\n";
-
-    #   Add a bit extra for temp files for the aligner. Use the average size of a BAM file
-    my $tmpsize = ($opts{bam2glf_factor}*$bamsize);
-    $s .= "Intermediate files from snpcaller will be about " . AsGB($tmpsize) . "\n";
-
-    my $vcfsize = $opts{bam2vcf_factor}*$bamsize;
-    $s .= "Final VCF output from snpcaller will be about " . AsGB($vcfsize) . "\n";
-
+    my $s = "File sizes of $k BAM input files referenced in '$indexfile' = " . AsGB($totsize) . "\n";
+    my $tmpsize = ($opts{bam2glf_factor}*$totsize);
+    $s .= "GLF files from snpcaller will be about " . AsGB($tmpsize) . "\n";
+    $tmpsize = ($opts{bam2vcf_factor}*$totsize);
+    $s .= "VCF files from snpcaller will be about " . AsGB($tmpsize) . "\n";
+    $tmpsize = ($opts{bam2pvcf_factor}*$totsize);
+    $s .= "PVCF files from snpcaller will be about " . AsGB($tmpsize) . "\n";
+    $tmpsize = ($opts{bam2split_factor}*$totsize);
+    $s .= "Split files from snpcaller will be about " . AsGB($tmpsize) . "\n";
     $s .= "Be sure you have enough space to hold all this data\n";
     return $s;
 }
