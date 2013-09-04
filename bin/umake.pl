@@ -42,7 +42,7 @@ my $snpcallOpt = "";
 my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
-my $outprefix = "";
+my $makebasename = "";
 #my $override = "";
 #my $localdefaults = "";
 my $callregion = "";
@@ -69,7 +69,7 @@ my $optResult = GetOptions("help",\$help,
                            "extract",\$extractOpt,
                            "beagle",\$beagleOpt,
                            "thunder",\$thunderOpt,
-                           "outprefix=s",\$outprefix,
+                           "makebasename|make_basename|make_base_name=s",\$makebasename,
 #                           "override=s",\$override,
                            "region=s",\$callregion,
                            "batchtype|batch_type=s",\$batchtype,
@@ -174,7 +174,7 @@ if($testdir ne "") {
 if ($bamprefix)  { push(@confSettings, "BAM_PREFIX = $bamprefix"); }
 if ($refprefix)  { push(@confSettings, "REF_PREFIX = $refprefix"); }
 if ($baseprefix) { push(@confSettings, "BASE_PREFIX = $baseprefix"); }
-if ($outprefix)  { push(@confSettings, "OUT_PREFIX = $outprefix"); }
+if ($makebasename)   { push(@confSettings, "MAKE_BASE_NAME = $makebasename"); }
 if ($outdir)     { push(@confSettings, "OUT_DIR = $outdir"); }
 if ($copyglf)    { push(@confSettings, "COPY_GLF = $copyglf"); }
 if ($chroms)     { $chroms =~ s/,/ /g; push(@confSettings, "CHRS = $chroms"); }
@@ -348,6 +348,10 @@ if( getConf("OUTPUT_DIR") )
     $failReqFile = "1";
 }
 
+if( getConf("OUT_PREFIX") )
+{
+    warn "ERROR: OUT_PREFIX is deprecated and has been replaced by MAKE_BASE_NAME, please update your configuration file and rerun\n";
+}
 
 if($failReqFile eq "1")
 {
@@ -489,6 +493,24 @@ if($missingExe)
 #----------------------------------------------------------------------------
 #   Output the configuration settings.
 #----------------------------------------------------------------------------
+my $makeext = "vc";
+if($snpcallOpt)
+{
+    $makeext = "snpcall";
+}
+elsif($extractOpt)
+{
+    $makeext = "extract";
+}
+elsif($beagleOpt)
+{
+    $makeext = "beagle";
+}
+elsif($thunderOpt)
+{
+    $makeext = "thunder";
+}
+
 $outdir = getConf("OUT_DIR");
 unless ( $outdir =~ /^\// ) {
     $outdir = getcwd()."/".$outdir;
@@ -497,7 +519,7 @@ unless ( $outdir =~ /^\// ) {
 
 system("mkdir -p $outdir") &&
 die "Unable to create directory '$outdir'\n";
-dumpConf("$outdir/".getConf("OUT_PREFIX").".conf");
+dumpConf("$outdir/".getConf("MAKE_BASE_NAME").".$makeext.conf");
 
 
 #############################################################################
@@ -588,7 +610,8 @@ my @pops = sort keys %hPops;
 #############################################################################
 ## STEP 3 : Create MAKEFILE
 ############################################################################
-my $makef = getConf("OUT_DIR")."/".getConf("OUT_PREFIX").".Makefile";
+
+my $makef = getConf("OUT_DIR")."/".getConf("MAKE_BASE_NAME").".$makeext.Makefile";
 my @nobaqSubstrings = split(/\s+/,getConf("NOBAQ_SUBSTRINGS"));
 
 open(MAK,">$makef") || die "Cannot open $makef for writing\n";
@@ -2088,9 +2111,9 @@ Run the beagle set of steps (beagle and subset).
 
 Run thunder.
 
-=item B<--outprefix dir>
+=item B<--makebasename dir>
 
-Specifies the makefile name's prefix.
+Specifies the basename for the makefile.
 
 =item B<--region N:N-N>
 
