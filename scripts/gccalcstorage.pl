@@ -102,7 +102,7 @@ sub AlignStorage {
 
     if (! defined $prefix) { $prefix=""; }
     #   Add the trailing / if not on the prefix.
-    if ($prefix !~ /\/$/) { $prefix .= '/'; }
+    if ( ($prefix ne "") && ($prefix !~ /\/$/) ) { $prefix .= '/'; }
 
     my $totsize = 0;
     my $k = 0;
