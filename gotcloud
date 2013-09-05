@@ -87,7 +87,8 @@ if ( $fcn eq 'align') {
     exit $rc;
 }
 
-if ($fcn eq 'snpcall') {
+if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
+{
     foreach my $p ("$bindir/umake.pl") {
         if (! -f $p) { next; }
         $cmd = $p;
@@ -95,7 +96,7 @@ if ($fcn eq 'snpcall') {
     }
     if (! $cmd) { die "ERROR: Unable to find umake.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
-    my $rc = system($cmd, '--snpcall', @ARGV);
+    my $rc = system($cmd, "--$fcn", @ARGV);
     if ($opts{perf}) { Perf('stop'); }
     exit $rc;
 }
@@ -123,7 +124,15 @@ if ($fcn eq 'ldrefine') {
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, '--beagle', @ARGV);
     if ($rc) { warn "Failed the first step of ld genotype refinement: $rc\n"; }
-    else { $rc = system($cmd, '--thunder', @ARGV); }
+    else
+    {
+        $rc = system($cmd, '--thunder', @ARGV);
+        if ($rc)
+        {
+            warn "Failed the 2nd step of ld genotype refinement: $rc\n";
+            warn "Ensure Beagle has successfully run to completion prior to running thunder\n";
+        }
+    }
     if ($opts{perf}) { Perf('stop'); }
     exit $rc;
 }
@@ -216,7 +225,15 @@ Run the variant call steps that are configured on in your configuration file.  T
 
 =item B<ldaware>
 
-Run the LD-aware genotype refinement pipeline pipeline. Type 'gotcloud ldaware -help' for more detailed information
+Run the LD-aware genotype refinement pipeline pipeline. Type 'gotcloud ldrefine -help' for more detailed information
+
+=item B<beagle>
+
+Run the beagle part of the LD-aware genotype refinement pipeline pipeline. Type 'gotcloud beagle -help' for more detailed information
+
+=item B<thunder>
+
+Run the thunder part of the LD-aware genotype refinement pipeline pipeline. Type 'gotcloud thunder -help' for more detailed information
 
 =back
 
