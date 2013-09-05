@@ -1525,110 +1525,24 @@ foreach my $chr (@chrs) {
     #############################################################################
     if ( getConf("RUN_PILEUP") eq "TRUE" ) {
         ## glf[$chr]: all-list-of-sample-glfs
-        my @outs = ();
-        my @cmds = ();
-
-        my $multiBam = 0;
+        my @allSmGlfOKs = ();
+        my @sampleCmds = ();
+        my $bamPileupCmds = "";
+        my $idxDependency = "";
+        if (getConf("RUN_INDEX") eq "TRUE") { $idxDependency = " bai"; }
 
         # for each sample
         for(my $i=0; $i < @allSMs; ++$i) {
             my @bams = @{$hSM2bams{$allSMs[$i]}};
             # for each partition of the genome.
-            for(my $j=0; $j < @unitStarts; ++$j) {
-                my $smGlfPartitionDir = "$remotePrefix$smGlfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-                my $smGlfFilename = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-                my $smGlf = "$smGlfPartitionDir/$smGlfFilename";
-                my @bamGlfs = ();
-                # for each BAM in this sample.
-                foreach my $bam (@bams) {
-                    my @F = split(/\//,$bam);
-                    my $bamFn = pop(@F);
-                    my $bamGlf = "$remotePrefix$bamGlfDir/$allSMs[$i]/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
-                    push(@bamGlfs,$bamGlf);
-                }
-                push(@outs,"$smGlf.OK");
-                my $cmd = "$smGlf.OK:";
-                # if more than one BAM for this sample, add the BAM specific GLFs to the dependency.
-                $cmd .= (" ".join(".OK ",@bamGlfs).".OK") if ( $#bamGlfs > 0 );
-                # add dependancy on the index if RUN_INDEX specified.
-                $cmd .= " bai" if ( getConf("RUN_INDEX") eq "TRUE" );
-                $cmd .= "\n\tmkdir --p $smGlfPartitionDir\n\t";
-                #my $cmd = "$smGlf.OK:\n\tmkdir --p $smGlfPartitionDir\n\t";
-                if ( $#bamGlfs > 0 ) {
-                    # more than one BAM for this sample.
-                    $multiBam = 1;
-                    my $qualities = "0";
-                    my $minDepths = "1";
-                    my $maxDepths = "1000";
-                    for(my $k=1; $k < @bamGlfs; ++$k) {
-                        $qualities .= ",0";
-                        $minDepths .= ",1";
-                        $maxDepths .= ",1000";
-                    }
-                    # Merge the multiple GLFs for this sample.
-                    $cmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
-                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                }
-                else {
-                    # Only 1 BAM for this sample
-                    my $baqFlag = 1;
-                    foreach my $s (@nobaqSubstrings) {
-                        if ( $bams[0] =~ m/($s)/ ) {
-                            $baqFlag = 0;
-                        }
-                    }
-                    my $loci = "";
-                    my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
-                    if ( $#uniqBeds >= 0 ) {
-                        my $idx = $hBedIndices{$allSMs[$i]};
-                        $loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
-                        if ( getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
-                            $region = "";
-                            foreach my $p (@{$targetIntervals[$idx]->{$chr}}) {
-                                my $rmin = ($p->[0] > $unitStarts[$j]) ? $p->[0] : $unitStarts[$j];  # take bigger one
-                                my $rmax = ($p->[1] > $unitEnds[$j]) ? $unitEnds[$j] : $p->[1];  # take smaller one
-                                $region .= " $chr:$rmin-$rmax" if ( $rmin <= $rmax );
-                            }
-                            ## if no target exists then set region as single base
-                            $region = "$chr:0-0" if ( $region eq "" );
-                        }
-                    }
-
-                    if ( $baqFlag == 0 ) {
-                        $cmd .= getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
-                    }
-                    else {
-                        $cmd .= getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bams[0] $region | ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref | ".getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $smGlf) 2> $smGlf.log");
-                    }
-                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                }
-                $cmd .= "\n\ttouch $smGlf.OK\n";
-                push(@cmds,$cmd);
-            }
-        }
-
-        print MAK "glf$chr: ";
-        print MAK join(" ",@outs);
-        print MAK "\n\n";
-
-        for(my $i=0; $i < @allbams; ++$i) {
-            my $bam = $allbams[$i];
-            my $bamSM = $allbamSMs[$i];
-            my @F = split(/\//,$bam);
-            my $bamFn = pop(@F);
-            for(my $j=0; $j < @unitStarts; ++$j) {
-                my $bamGlf = "$remotePrefix$bamGlfDir/$bamSM/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
-                my $cmd;
-                my $baqFlag = 1;
-                foreach my $s (@nobaqSubstrings) {
-                    if ( $bam =~ m/($s)/ ) {
-                        $baqFlag = 0;
-                    }
-                }
-                my $loci = "";
+            for(my $j=0; $j < @unitStarts; ++$j)
+            {
+                # Set this region & loci information (if applicable) for doing the pileup(s).
                 my $region = "$chr:$unitStarts[$j]-$unitEnds[$j]";
+                my $loci = "";
+                # Loci is only set if unique beds are used.
                 if ( $#uniqBeds >= 0 ) {
-                    my $idx = $hBedIndices{$bamSM};
+                    my $idx = $hBedIndices{$allSMs[$i]};
                     $loci = "-l $targetDir/$uniqBedFns[$idx]/chr$chr/$chr.$unitStarts[$j].$unitEnds[$j].loci";
                     if ( getConf("SAMTOOLS_VIEW_TARGET_ONLY") eq "TRUE" ) {
                         $region = "";
@@ -1642,24 +1556,73 @@ foreach my $chr (@chrs) {
                     }
                 }
 
-                if ( $baqFlag == 0 ) {
-                    $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+                my $smGlfPartitionDir = "$remotePrefix$smGlfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+                my $smGlfFilename = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
+                my $smGlf = "$smGlfPartitionDir/$smGlfFilename";
+
+                push(@allSmGlfOKs,"$smGlf.OK");
+
+                # Start the sample glf target
+                my $sampleCmd = "$smGlf.OK:$idxDependency";
+
+                #Check how many BAMs there are.
+                if($#bams == 0)
+                {
+                    # There is just one BAM for this sample.
+                    # Run pileup on this BAM and output as the sample GLF name.
+                    $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n\t";
+                    $sampleCmd .= runPileup($bams[0], $smGlf, $region, $loci);
                 }
-                else {
-                    $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bam $region | ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref  | ".getConf("BAMUTIL")." clipOverlap --in -.bam --out -.ubam | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $bamGlf";
+                else
+                {
+                    # There is more than one BAM for this sample.
+                    # Run pileup on each BAM, then merge together.
+                    my @bamGlfs = ();
+                    foreach my $bam (@bams)
+                    {
+                        # Output into BAM specific glfs.
+                        my @F = split(/\//,$bam);
+                        my $bamFn = pop(@F);
+                        my $bamGlf = "$remotePrefix$bamGlfDir/$allSMs[$i]/chr$chr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
+                        push(@bamGlfs,$bamGlf);
+
+                        # Add the target info for this pileup.
+
+                        $bamPileupCmds .= "$bamGlf.OK:$idxDependency\n";
+                        $bamPileupCmds .= "\tmkdir --p $bamGlfDir/$allSMs[$i]/chr$chr\n\t";
+                        $bamPileupCmds .= runPileup($bam, $bamGlf, $region, $loci);
+                        $bamPileupCmds .= "\n\ttouch $bamGlf.OK\n\n";
+                    }
+                    # Add the BAM specific GLFs to the sample glf dependency.
+                    $sampleCmd .= " ".join(".OK ",@bamGlfs).".OK";
+                    $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n\t";
+
+                    my $qualities = "0";
+                    my $minDepths = "1";
+                    my $maxDepths = "1000";
+                    for(my $k=1; $k < @bamGlfs; ++$k) {
+                        $qualities .= ",0";
+                        $minDepths .= ",1";
+                        $maxDepths .= ",1000";
+                    }
+                    # Merge the multiple GLFs for this sample.
+                    $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
+                    $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 }
-                $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                if ( getConf("RUN_INDEX") eq "TRUE" ) {
-                    push(@cmds,"$bamGlf.OK: bai\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
-                }
-                else {
-                    push(@cmds,"$bamGlf.OK:\n\tmkdir --p $bamGlfDir/$bamSM/chr$chr\n\t".getMosixCmd("(".$cmd.") 2> $bamGlf.log")."\n\ttouch $bamGlf.OK\n");
-                }
+                $sampleCmd .= "\n\ttouch $smGlf.OK\n";
+                push(@sampleCmds,$sampleCmd);
             }
         }
 
-        print MAK join("\n",@cmds);
+        print MAK "glf$chr: ";
+        print MAK join(" ",@allSmGlfOKs);
+        print MAK "\n\n";
+
+        # Add the per sample commands
+        print MAK join("\n",@sampleCmds);
         print MAK "\n";
+        # Add the per BAM pileup commands
+        print MAK "$bamPileupCmds";
     }
 }
 
@@ -1978,6 +1941,35 @@ sub runSVM
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     print MAK "$cmd";
+}
+
+#--------------------------------------------------------------
+#   runPileup()
+#
+#   Run Pileup on the specified file.
+#--------------------------------------------------------------
+sub runPileup
+{
+    my ($bamIn, $glfOut, $region, $loci) = @_;
+
+    # Skip BAQ if the BAM filename contains any of the NOBAQ_SUBSTRINGS.
+    my $baqFlag = 1;
+    foreach my $s (@nobaqSubstrings)
+    {
+        if ( $bamIn =~ m/($s)/ )
+        {
+            $baqFlag = 0;
+        }
+    }
+
+    my $baq = "";
+    if ( $baqFlag != 0 ) {
+        $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref |";
+    }
+
+    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
+    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+    return($cmd);
 }
 
 #--------------------------------------------------------------
