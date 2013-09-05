@@ -360,7 +360,7 @@ sub parseKeyVal {
     my ($line, $section) = @_;
     if(!defined($section)) {$section = 'global';}
 
-    if ($line !~ /^\s*(\w+)\s*=\s*(.*)\s*$/ )
+    if ($line !~ /^\s*(\w+)\s*=\s*(.*?)\s*$/ )
     {
         # failed to parse.
         return 1;
