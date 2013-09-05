@@ -42,6 +42,13 @@ my $snpcallOpt = "";
 my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
+my $indexOpt = "";
+my $pileupOpt = "";
+my $glfMultiplesOpt = "";
+my $vcfPileupOpt = "";
+my $filterOpt = "";
+my $svmOpt = "";
+my $splitOpt = "";
 my $makebasename = "";
 #my $override = "";
 #my $localdefaults = "";
@@ -69,6 +76,13 @@ my $optResult = GetOptions("help",\$help,
                            "extract",\$extractOpt,
                            "beagle",\$beagleOpt,
                            "thunder",\$thunderOpt,
+                           "index",\$indexOpt,
+                           "pileup",\$pileupOpt,
+                           "glfMultiples",\$glfMultiplesOpt,
+                           "vcfPileup",\$vcfPileupOpt,
+                           "filter",\$filterOpt,
+                           "svm",\$svmOpt,
+                           "split",\$splitOpt,
                            "makebasename|make_basename|make_base_name=s",\$makebasename,
 #                           "override=s",\$override,
                            "region=s",\$callregion,
@@ -224,7 +238,9 @@ my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER R
 my @orderFlags = ();
 
 ## if --snpcall --beagle --subset or --thunder
-if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ) {
+if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
+     ($indexOpt) || ($pileupOpt) || ($glfMultiplesOpt) || ($vcfPileupOpt) ||
+     ($filterOpt) || ($svmOpt) || ($splitOpt) ) {
     foreach my $o (@orders) {
         push(@orderFlags, 0);
         setConf($o, "FALSE");
@@ -249,6 +265,48 @@ if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ) {
     }
     if ( $thunderOpt ) {
         foreach my $i (10) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $indexOpt ) {
+        foreach my $i (0) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $pileupOpt ) {
+        foreach my $i (1) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $glfMultiplesOpt ) {
+        foreach my $i (2) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $vcfPileupOpt ) {
+        foreach my $i (3) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $filterOpt ) {
+        foreach my $i (4) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $svmOpt ) {
+        foreach my $i (5) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $splitOpt ) {
+        foreach my $i (7) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
@@ -1670,7 +1728,7 @@ print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
 if($numjobs != 0) {
-    my $cmd = "make -f $makef -j $numjobs > $makef.log";
+    my $cmd = "make -f $makef -j $numjobs ". getConf("MAKE_OPTS") . " > $makef.log";
     if(($batchtype eq 'local') && ($numjobs > $maxlocaljobs))
     {
         die "ERROR: can't run $numjobs jobs with 'BATCH_TYPE = local', " .
@@ -1695,8 +1753,8 @@ if($numjobs != 0) {
     #    die "Makefile, $makef failed d=$cmd\n";
 }
 else {
-    print STDERR "Try 'make -f $makef -n | less' for a sanity check before running\n";
-    print STDERR "Run 'make -f $makef -j [#parallele jobs]'\n";
+    print STDERR "Try 'make -f $makef ". getConf("MAKE_OPTS") . " -n | less' for a sanity check before running\n";
+    print STDERR "Run 'make -f $makef ". getConf("MAKE_OPTS") . " -j [#parallele jobs]'\n";
 }
 print STDERR "--------------------------------------------------------------------\n";
 
@@ -2110,6 +2168,34 @@ Run the beagle set of steps (beagle and subset).
 =item B<--thunder>
 
 Run thunder.
+
+=item B<--index>
+
+Run as if just RUN_INDEX was specified.
+
+=item B<--pileup>
+
+Run as if just RUN_PILEUP was specified.
+
+=item B<--glfMultiples>
+
+Run as if just RUN_GLFMULTIPLES was specified.
+
+=item B<--vcfPileup>
+
+Run as if just RUN_VCFPILEUP was specified.
+
+=item B<--filter>
+
+Run as if just RUN_FILTER was specified.
+
+=item B<--svm>
+
+Run as if just RUN_SVM was specified.
+
+=item B<--split>
+
+Run as if just RUN_SPLIT was specified.
 
 =item B<--makebasename dir>
 
