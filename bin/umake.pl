@@ -1728,7 +1728,7 @@ print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
 if($numjobs != 0) {
-    my $cmd = "make -f $makef -j $numjobs > $makef.log";
+    my $cmd = "make -f $makef -j $numjobs ". getConf("MAKE_OPTS") . " > $makef.log";
     if(($batchtype eq 'local') && ($numjobs > $maxlocaljobs))
     {
         die "ERROR: can't run $numjobs jobs with 'BATCH_TYPE = local', " .
@@ -1753,8 +1753,8 @@ if($numjobs != 0) {
     #    die "Makefile, $makef failed d=$cmd\n";
 }
 else {
-    print STDERR "Try 'make -f $makef -n | less' for a sanity check before running\n";
-    print STDERR "Run 'make -f $makef -j [#parallele jobs]'\n";
+    print STDERR "Try 'make -f $makef ". getConf("MAKE_OPTS") . " -n | less' for a sanity check before running\n";
+    print STDERR "Run 'make -f $makef ". getConf("MAKE_OPTS") . " -j [#parallele jobs]'\n";
 }
 print STDERR "--------------------------------------------------------------------\n";
 

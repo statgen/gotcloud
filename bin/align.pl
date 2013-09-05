@@ -637,7 +637,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     close MAK;
     warn "Created $makef\n";
 
-    my $s = "make -f $makef";
+    my $s = "make -f $makef " . getConf("MAKE_OPTS");
     if ($opts{numjobspersample}) {
         $s .= " -j ".$opts{numjobspersample};
     }
