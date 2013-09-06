@@ -32,8 +32,8 @@ $(FINAL_BAM_DIR)/Sample2.recal.bam.bai.done: $(DEDUP_TMP)/Sample2.recal.bam.done
 
 $(FINAL_BAM_DIR)/Sample2.recal.bam.done: $(DEDUP_TMP)/Sample2.merged.bam.done
 	mkdir -p $(@D)
-	@echo "$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ   2> $(basename $@).log"
-	@$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo "$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  2> $(basename $@).log"
+	@$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
