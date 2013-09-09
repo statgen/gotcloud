@@ -1,6 +1,6 @@
 
 STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID invNorm qplot
-EXES = samtools samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik bwa
+EXES = samtools samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik bwa bgzip
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)
 
@@ -66,6 +66,11 @@ samtools-hybrid samtools:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
+
+bgzip: 
+	$(MAKE) -C samtools $(MAKECMDGOALS) $@
+	mkdir --p bin/
+	cd bin/; ln -fs ../samtools/$@ $@; cd ..
 
 libsvm-3.1:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
