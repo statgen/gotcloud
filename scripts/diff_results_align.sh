@@ -98,7 +98,7 @@ fi
 # which will vary between runs.
 
 # Check the Makefiles
-diff -r -x align.conf $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
+diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefiles/ \
     -x "*.log" \
     -I '.* aln .* .*fastq/Sample_[1-3]/File[1-2]_R[1-2].fastq.gz -f $(basename $@)' \
     -I '(.* sampe -r .* $(basename $^) .*fastq/Sample_[1-3]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-3]/File[1-2]_R2.fastq.gz | .* view -uhS - | .* sort -m .* - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
