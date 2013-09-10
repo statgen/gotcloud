@@ -12,19 +12,29 @@ no strict;
 use Test::More tests => 19;
 use Cwd;
 
-#   Figure out where GotCloud is installed
-#   This assumes the code is run in gotcloud/t/conf or from gotcloud (make test)
+#   We can either run this from the regression directory or t/conf
 my $here = getcwd;
 my $basepath = $here;
-if (! -d 'bin') {
-    chdir('../..') || die "Unable to 'CHDIR ../..' : $!\n";
-    $basepath = getcwd;
-    chdir($here) || die "Unable to 'CHDIR $here' : $!\n";
+my $gcroot;
+for ('..', '../../..') {
+    if (-d "$_/regression") {
+        chdir($_);
+        $gcroot = getcwd();
+        last;
+    }
 }
-if (! -d "$basepath/t") { die "I got lost trying to find top of GotCloud\n"; }
-push @INC,"$basepath/bin";
+
+#   Last check, do we know where we are
+if (! $gcroot) {
+    die "Unable to find GotCloud. Run the regression bucket like this:\n" .
+        "  cd PATH/gotcloud/regression\n" .
+        "  perl Makefile.PL\n" .
+        "  make test\n";
+}
+
+push @INC,"$gcroot/bin";
 require Conf;
-chdir("$basepath/t/conf");          # CD to my directory
+chdir("$gcroot/regression/t/conf");          # CD to my directory
 
 #   Capture all warn output in @Warns so we can analyze it
 my @Warns = ();
@@ -39,7 +49,7 @@ local $SIG{__WARN__} = sub {
 #   Array of 'file' of configuration settings
 my @confSettings = ("GOTCLOUD_ROOT = $basepath", "OUT_DIR = /tmp");
 my @configs = ();
-my $gc_defconf = "$basepath/bin/gotcloudDefaults.conf"; # Default conf for GC
+my $gc_defconf = "$gcroot/bin/gotcloudDefaults.conf"; # Default conf for GC
 #
 #   VERBOSE settings:
 #       0       nothing shown
@@ -89,9 +99,9 @@ ok($r eq 'B.top', "a=B.top, substitution worked");
 $r = getConf('c');
 like ($r, qr/blanks on/, 'Blanks around = OK');
 $r = getConf('ccccccccc');
-like ($r, qr/end $/, 'Blank at end');
+like ($r, qr/end$/, 'Blank at end');
 $r = getConf('d');
-like ($r, qr/end .notice/, 'See imbedded blank');
+like ($r, qr/end.notice/, 'See imbedded blank');
 $r = getConf('enotdefined');
 ok($r eq '', "enotdefined= has no value");
 

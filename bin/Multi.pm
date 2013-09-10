@@ -77,7 +77,7 @@ our $BASHDIR = '.';                     # Create BASHNAME scripts here
 
 =head1 SYNOPSIS
 
- $href = Multi::RunCommand('slurm');
+ $href = Multi::EngineDetails('slurm');
  print "Wait to complete: " . $href->{wait} . "\n";
  print "Submitted by: " . $href->{cmd} . "\n";
  print "Forced options: " . $href->{opts} . "\n";
@@ -359,7 +359,8 @@ sub RunCluster {
     if (! defined($opts))     { $opts = ''; }
     if (! defined($maxconcurrent)) { $maxconcurrent = 1; }
     if (! defined($bashdir))  { $bashdir = $BASHDIR; }
-    if ($BASHDIR eq '.' || $BASHDIR eq '') { $_ = `pwd`; chomp($_); $BASHDIR = $_; }
+    if ($bashdir eq '.' || $bashdir eq '') { $_ = `pwd`; chomp($_); $bashdir = $_; }
+    else { mkdir $bashdir, 0755; }                  # If necessary, create directory for jobs
 
     #   Pick next command to run
     if (! $ClusterTypes{$engine}) {
@@ -391,7 +392,7 @@ sub RunCluster {
         }
         #   User provided a command, wrap it in a BASH script
         #   Bash script name contains : + n or w (wait or nowait)
-        my $f = $BASHDIR . '/' . $BASHNAME . '_' . $index . '_' . $$ . '~' . $ClusterTypes{$engine}[0] . '.sh';
+        my $f = $bashdir . '/' . $BASHNAME . '_' . $index . '_' . $$ . '~' . $ClusterTypes{$engine}[0] . '.sh';
         $index++;
         open(OUT, '>' . $f) || die "Unable to create script: $f:  $!\n";
         print OUT "#!/bin/bash\nset -o pipefail\n$c\nexit \$?\n";

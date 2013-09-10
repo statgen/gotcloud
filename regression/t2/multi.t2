@@ -1,0 +1,47 @@
+#!/usr/bin/perl -I..
+#################################################################
+#
+# Test case for Multi.pm
+#
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation; See http://www.gnu.org/copyleft/gpl.html
+################################################################
+use strict;
+use warnings;
+use File::Basename;
+use Data::Dumper;
+require Multi;
+
+my ($me, $scriptdir, $mesuffix) = fileparse($0, '\.t');
+
+my @cmds = ('sleep 6', 'sleep 4', 'touch /tmp/multi.test', 'ls /tmp/multi.*', 'lxs -la /usr', 'head -2 /etc/rc.local', 'sleep 3');
+$Multi::VERBOSE = 1; $Multi::VERBOSE = 1;   # Avoid Perl warning
+print "#============================ \n\n";
+
+my $href = Multi::EngineDetails('slurm');
+print Dumper($href) . "\n";
+print "Wait to complete: " . $href->{wait} . "\n";
+print "Submitted by: " . $href->{cmd} . "\n";
+print "Forced options: " . $href->{opts} . "\n";
+print "Status command is: " . $href->{status} . "\n";
+print "\n\n";
+
+$href = Multi::EngineDetails('sgei');
+print Dumper($href) . "\n";
+print "Wait to complete: " . $href->{wait} . "\n";
+print "Submitted by: " . $href->{cmd} . "\n";
+print "Forced options: " . $href->{opts} . "\n";
+print "Status command is: " . $href->{status} . "\n";
+print "\n\n";
+
+Multi::EngineDetails('local');
+my $cmd = $cmds[2];
+Multi::RunCommand($cmd);
+print "\n\n";
+
+Multi::QueueCommands(\@cmds, 3);    # Run three at a time
+my $errs = Multi::WaitForCommandsToComplete();
+warn "$errs commands failed\n";
+print "\n\n";
+

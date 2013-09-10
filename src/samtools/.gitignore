@@ -11,3 +11,4 @@ wgsim
 bcftools
 ace2sam
 bamcheck
+bgzip

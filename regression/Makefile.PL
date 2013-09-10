@@ -8,7 +8,7 @@ use ExtUtils::MakeMaker;
 #   Perl people, don't expect too much from this.
 #   This is just a small scaffold so we can possibly create something like a regression bucket
 
-my $v = `cat release_version.txt`;
+my $v = `cat ../release_version.txt`;
 WriteMakefile(
   NAME         => 'GotCloud',
   VERSION      => $v,
@@ -28,3 +28,16 @@ WriteMakefile(
   #EXE_FILES => ['script/hypnotoad', 'script/mojo', 'script/morbo'],
   test => {TESTS => 't/*.t t/*/*.t'}
 );
+
+#	Sanity check - maybe needs to compile source
+if (! -x "../bin/samtools") {
+	die "\n" .
+		"#============================================================\n" .
+		"#  Binary files do not seem to exist. First do (cd src; make)\n" .
+		"#============================================================\n";
+}
+
+print "\n" .
+	"Run the regression tests with the command:  make test\n" .
+	"Clean up with:                              make clean; rm -rf tmp Makefile.old\n";
+

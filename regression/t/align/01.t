@@ -7,33 +7,46 @@ use Test::More tests => 12;
 use strict;
 use Cwd;
 
-#   Figure out where GotCloud is installed
-#   This assumes the code is run in gotcloud/t/conf or from gotcloud (make test)
+#   We can either run this from the regression directory or '.'
 my $here = getcwd;
 my $basepath = $here;
-if (! -d 'bin') {
-    chdir('../..') || die "Unable to 'CHDIR ../..' : $!\n";
-    $basepath = getcwd;
-    chdir($here) || die "Unable to 'CHDIR $here' : $!\n";
+my $gcroot;
+for ('..', '../../..') {
+    if (-d "$_/regression") {
+        chdir($_);
+        $gcroot = getcwd();
+        last;
+    }
 }
-if (! -d "$basepath/t") { die "I got lost trying to find top of GotCloud\n"; }
-chdir("$basepath/t/align");          # CD to my directory
 
+#   Last check, do we know where we are
+if (! $gcroot) {
+    die "Unable to find GotCloud. Run the regression bucket like this:\n" .
+        "  cd PATH/gotcloud/regression\n" .
+        "  perl Makefile.PL\n" .
+        "  make test\n";
+}
+
+my $tmpdir = $gcroot . '/regression/tmp';
+my $align = "$gcroot/bin/align.pl";
+my $alignopts = "-outdir $tmpdir --dry-run --gotcloudroot $gcroot";
+chdir("$gcroot/regression/t/align");         # CD to my directory
 
 ###################################################################
 #   Run aligner, get results, check results. Rinse. Repeat.
 ###################################################################
 my ($aref, $f);
 my $VERBOSE=$ARGV[0];           # If arg=0, no show but show last lines. If 1 show all
+#$VERBOSE=1;
 my $alloutput = '';
 #
-#   Run the aligner (always does --out /tmp --dry-run)
+#   Run the aligner
 #       input - options to pass to program
 #       returns reference to array of STDOUT and STDERR from the execution
 sub run_align {
     my ($conf, $opts) = @_;
     if (! defined($opts)) { $opts = ''; }
-    my $c = "../../bin/align.pl -conf $conf $opts -outdir /tmp --dry-run";
+    my $c = "$align -conf $conf $opts $alignopts";
     my $lines = `$c 2>&1`;
     $alloutput .= "################ $conf output ################\n" . $lines . "\n";
     my @r = split("\n", $lines);
@@ -45,6 +58,9 @@ sub run_align {
 sub show {
     if ($VERBOSE) { warn "  line[$_[0]]=$aref->[$_[0]]"; }
 }
+
+#   Start by cleaning out the temp directory
+system("rm -rf $tmpdir");
 
 $f = '/dev/null';
 $aref = run_align($f);

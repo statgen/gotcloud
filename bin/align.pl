@@ -676,8 +676,7 @@ if(((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq '') ||
         '  ' . join("\n  ",@mkcmds) . "\n";
 }
 
-
-my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples});
+my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples}, "$out_dir/Makefiles/jobfiles");
 if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
 $t = time() - $t;
 print STDERR "Processing finished in $t secs";
