@@ -627,11 +627,14 @@ while(<IN>) {
         }
         push(@allbamSMs,$smID);
 
-        if ( getConf("ASSERT_BAM_EXIST") eq "TRUE" ) {
-            #   $bam =~ s/\s+//g;
-            unless ( -s $bam ) {
-                die "Cannot locate '$bam'\n";
-            }
+        # If a step that requires the BAMs is beign used, check
+        # that the BAMs can be read.
+        if ( (getConf("RUN_INDEX") eq "TRUE") ||
+             (getConf("RUN_PILEUP") eq "TRUE") ||
+             (getConf("RUN_VCFPILEUP") eq "TRUE") )
+        {
+            # die if bam is not readable
+            unless ( -r $bam ) { die "ERROR: Cannot locate '$bam'\n"; }
         }
     }
     push(@allSMs,$smID);
