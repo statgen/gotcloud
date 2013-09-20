@@ -87,9 +87,9 @@ mosaik:
 	cd bin/; ln -fs ../$@/bin/MosaikText .; cd ..
 
 bwa: 
-	$(MAKE) -C bwa-0.6.1 $(MAKECMDGOALS)
+	$(MAKE) -C bwa $(MAKECMDGOALS)
 	mkdir --p bin/
-	cd bin/; ln -fs ../bwa-0.6.1/bwa $@; cd ..
+	cd bin/; ln -fs ../bwa/bwa $@; cd ..
 
 $(LIBS): 
 	@$(MAKE) -C $@ $(MAKECMDGOALS)
