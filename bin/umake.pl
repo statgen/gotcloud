@@ -1790,13 +1790,13 @@ sub getFilterArgs
     my $confValue = getIntConf('FILTER_MAX_SAMPLE_DP');
     if($confValue)
     {
-        $filterArgs .= " --maxDP ".($numSamples*$confValue);
+        $filterArgs .= " --maxDP ".int($numSamples*$confValue);
     }
 
     $confValue = getIntConf('FILTER_MIN_SAMPLE_DP');
     if($confValue)
     {
-        $filterArgs .= " --minDP ".($numSamples*$confValue);
+        $filterArgs .= " --minDP ".int($numSamples*$confValue);
     }
 
     # Filter minNS.  First check if FILTER_MIN_NS is set.
