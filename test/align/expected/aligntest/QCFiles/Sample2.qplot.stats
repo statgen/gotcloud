@@ -17,6 +17,7 @@ EPS_Cycle_Mean	18.11
 GCBiasMSE	0.00
 ISize_mode	79
 ISize_medium	79
+SecondaryRate(%)	0.00
 DupRate(%)	0.01
 QCFailRate(%)	0.00
 BaseComp_A(%)	30.0
@@ -24,3 +25,9 @@ BaseComp_C(%)	20.7
 BaseComp_G(%)	21.7
 BaseComp_T(%)	27.6
 BaseComp_O(%)	0.0
+Depth>=1(%)	0.2
+Depth>=5(%)	0.0
+Depth>=10(%)	0.0
+Depth>=15(%)	0.0
+Depth>=25(%)	0.0
+Depth>=30(%)	0.0

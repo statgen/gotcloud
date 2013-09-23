@@ -15,10 +15,10 @@ void DepthCounter::addBase(const uint64_t& pos) {
 #endif
     if (pos >= vector2->getStart() + vector2->getLen()) {
         static int errorCount = 0;
-        fprintf(stderr, "Ignore %llu, v1[start = %llu, len = %llu], v2[start = %llu, len = %llu \n",
-                pos,
-                vector1->getStart(), vector1->getLen(),
-                vector2->getStart(), vector2->getLen());
+        fprintf(stderr, "Ignore %d, v1[start = %d, len = %d], v2[start = %d, len = %d \n",
+                (int)pos,
+                (int)vector1->getStart(), (int)vector1->getLen(),
+                (int)vector2->getStart(), (int)vector2->getLen());
         if (errorCount ++ > 20) {
             fprintf(stderr, "Provided bam file have unusually long gap.\n");
             exit(1);

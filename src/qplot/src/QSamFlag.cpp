@@ -3,7 +3,7 @@
 
 QSamFlag::QSamFlag()
 {
-  isRead1 = isRead2 = isPaired = isUnPaired = isProperPaired = isUnMapped = isReverse = isDup = isQCFail = false;
+  isRead1 = isRead2 = isPaired = isUnPaired = isProperPaired = isUnMapped = isReverse = isSecondary = isDup = isQCFail = false;
 }
 void QSamFlag::GetFlagFields(int flag)
 {
@@ -17,6 +17,7 @@ void QSamFlag::GetFlagFields(int flag)
 
   if(flag & BAM_FUNMAP) isUnMapped = true;
   if(flag & BAM_FREVERSE) isReverse = true;
+  if(flag & BAM_FSECONDARY) isSecondary = true;
   if(flag & BAM_FDUP) isDup = true;
   if(flag & BAM_FQCFAIL) isQCFail = true;
 }

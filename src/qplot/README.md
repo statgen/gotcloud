@@ -61,8 +61,8 @@ Binary Download
 ---------------
 
 We have prepared a pre-compiled (under Ubuntu) qplot along with source
-code . You can download it from: [qplot.20130619.tar.gz (File Size:
-1.7G)](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20130619.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20130619.tar.gz")
+code . You can download it from: [qplot.20130627.tar.gz (File Size:
+1.7G)](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20130627.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot.20130627.tar.gz")
 
 The executable file is under qplot/bin/qplot.
 
@@ -79,7 +79,7 @@ Source Code Distribution
 ------------------------
 
 We provide a source code only download in
-[qplot-source.20130619.tar.gz](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20130619.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20130619.tar.gz").
+[qplot-source.20130627.tar.gz](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20130627.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-source.20130627.tar.gz").
 Optionally, you can download example file and/or data file:
 
 [example](http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-example.tar.gz "http://www.sph.umich.edu/csg/zhanxw/software/qplot/qplot-example.tar.gz"):
@@ -97,7 +97,7 @@ You can put above file(s) in the same folder and follow these steps:
 
 <!-- -->
 
-    tar zvxf qplot-source.20130619.tar.gz
+    tar zvxf qplot-source.20130627.tar.gz
 
 A new folder *qplot* will be created.
 

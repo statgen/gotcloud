@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
   bool read1 = false;
   bool read2 = false;
   bool paired = false;
+  bool keepSecondary = false;
   bool keepDup = false;
   bool keepQCFail = false;
   double minMapQuality = 0;
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
   bool createGCContentFile = false; // not create GC file on the fly.
   String regions;
   bool invertRegion = false; // by default, not invert regionIndicator
+  double fraction  = -1;
   String gcContentFile_create;
   int windowSize = 100;
 
@@ -87,12 +89,14 @@ int main(int argc, char *argv[])
       LONG_PARAMETER_GROUP("Region list")
       LONG_STRINGPARAMETER("regions", &regions)
       EXCLUSIVE_PARAMETER("invertRegion", &invertRegion)
+      LONG_DOUBLEPARAMETER("fraction", &fraction)
       LONG_PARAMETER_GROUP("Flag filters")
       LONG_PARAMETER("read1_skip", &read1)
       LONG_PARAMETER("read2_skip", &read2)
       LONG_PARAMETER("paired_skip", &paired)
       LONG_PARAMETER("unpaired_skip", &unpaired)
-      LONG_PARAMETER_GROUP("Dup and QCFail")
+      LONG_PARAMETER_GROUP("Secondary, Dup, and QCFail")
+      LONG_PARAMETER("secondary_keep", &keepSecondary)
       LONG_PARAMETER("dup_keep", &keepDup)
       LONG_PARAMETER("qcfail_keep", &keepQCFail)
       LONG_PARAMETER_GROUP("Mapping filters")
@@ -129,7 +133,7 @@ int main(int argc, char *argv[])
 
   pl.Status();
 
-#define QPLOT_VERSION 20130619
+#define QPLOT_VERSION 20130821
   fprintf(stderr, "QPLOT (Ver: %d) started.\n", QPLOT_VERSION);
   fprintf(stderr, "QPLOT Documentation: http://genome.sph.umich.edu/wiki/QPLOT\n");
   fprintf(stderr, "\n");
@@ -237,6 +241,7 @@ int main(int argc, char *argv[])
   filter.SetRead2(read2);
   filter.SetPaired(paired);
   filter.SetUnPaired(unpaired);
+  filter.SetSecondary(!keepSecondary);
   filter.SetDuplicate(!keepDup);
   filter.SetQCFail(!keepQCFail);
 
@@ -256,7 +261,7 @@ int main(int argc, char *argv[])
   qc.SetLabel(label);
   qc.SetBamLabels(bamLabel);
   qc.LoadGenomeSequence(reference);
-  qc.LoadRegions(regions, invertRegion);
+  qc.LoadRegions(regions, invertRegion, fraction);
   qc.LoaddbSNP(dbSNPFile);
   qc.CalculateQCStats(filter, minMapQuality);
   qc.OutputStats(statsFile);

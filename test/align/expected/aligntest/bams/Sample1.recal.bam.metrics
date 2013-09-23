@@ -19,6 +19,7 @@ Total number of missing mates: 0
 Sorting the indices of 72 duplicated records
 # mapped Reads observed: 5565; Q>0: 5357
 # unmapped Reads observed: 0
+# Secondary Reads skipped: 0
 # Duplicate Reads skipped: 0
 # Mapping Quality 0 Reads skipped: 208
 # Mapping Quality 255 Reads skipped: 0
