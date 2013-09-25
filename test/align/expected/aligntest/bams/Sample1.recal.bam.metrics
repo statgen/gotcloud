@@ -9,22 +9,27 @@ SUMMARY STATISTICS OF THE READS
 Total number of reads: 10000
 Total number of paired-end reads: 10000
 Total number of properly paired reads: 4334
-Total number of unmapped reads : 4363
+Total number of unmapped reads: 4363
 Total number of reverse strand mapped reads: 3343
-Total number of QC-failed reads : 0
-Size of singleKeyMap (must be zero) : 0
-Size of pairedKeyMap (must be zero) : 0
+Total number of QC-failed reads: 0
+Total number of secondary reads: 0
+Size of singleKeyMap (must be zero): 0
+Size of pairedKeyMap (must be zero): 0
 Total number of missing mates: 0
+Total number of reads excluded from duplicate checking: 4363
 --------------------------------------------------------------------------
 Sorting the indices of 72 duplicated records
-# mapped Reads observed: 5565; Q>0: 5357
-# unmapped Reads observed: 0
-# Secondary Reads skipped: 0
-# Duplicate Reads skipped: 0
+# mapped Reads observed: 5637
+# unmapped Reads observed: 4363
+# Secondary Reads observed: 0
+# Duplicate Reads observed: 72
+# QC Failure Reads observed: 0
 # Mapping Quality 0 Reads skipped: 208
 # Mapping Quality 255 Reads skipped: 0
+Total # Reads skipped for building recab table: 4643
+Total # Reads used for building recab table: 5357
 # Bases observed: 186326 - #match: 184387; #mismatch: 1939
-# Bases Skipped for DBSNP: 7057, for Map Qual = 0: 208, for MapQual = 255: 0, for BaseQual < 5: 388
+# Bases Skipped for DBSNP: 7057, for BaseQual < 5: 388
 Writing recalibration table aligntest/bams/Sample1.recal.bam.qemp
 
 Writing aligntest/bams/Sample1.recal.bam
