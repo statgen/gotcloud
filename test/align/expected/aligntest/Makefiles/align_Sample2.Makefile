@@ -37,17 +37,24 @@ $(FINAL_BAM_DIR)/Sample2.recal.bam.done: $(DEDUP_TMP)/Sample2.merged.bam.done
 	rm -f $(basename $@).log
 	touch $@
 
-$(MERGE_TMP)/Sample2.merged.bam.done: $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done 
-	mkdir -p $(@D)
-	@echo "gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^))"
-	@gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^)) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
-	rm -f $(basename $@).log
-	touch $@
-
 $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File1_R1.bam.done
 	mkdir -p $(@D)
 	@echo "$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"
 	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	rm -f $(basename $@).log
+	touch $@
+
+$(POL_TMP)/fastq/Sample_2/File2_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File2_R1.bam.done
+	mkdir -p $(@D)
+	@echo "$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"
+	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	rm -f $(basename $@).log
+	touch $@
+
+$(MERGE_TMP)/Sample2.merged.bam.done: $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done 
+	mkdir -p $(@D)
+	@echo "gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^))"
+	@gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^)) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 
@@ -69,13 +76,6 @@ $(SAI_TMP)/fastq/Sample_2/File1_R2.sai.done:
 	mkdir -p $(@D)
 	@echo "$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(REF) test/align/fastq/Sample_2/File1_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log"
 	@$(BWA_EXE) aln $(BWA_QUAL) $(BWA_THREADS) $(REF) test/align/fastq/Sample_2/File1_R2.fastq.gz -f $(basename $@) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed aln step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
-	rm -f $(basename $@).log
-	touch $@
-
-$(POL_TMP)/fastq/Sample_2/File2_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File2_R1.bam.done
-	mkdir -p $(@D)
-	@echo "$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"
-	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 

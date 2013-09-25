@@ -37,17 +37,17 @@ $(FINAL_BAM_DIR)/Sample3.recal.bam.done: $(DEDUP_TMP)/Sample3.merged.bam.done
 	rm -f $(basename $@).log
 	touch $@
 
-$(MERGE_TMP)/Sample3.merged.bam.done: $(POL_TMP)/fastq/Sample_3/File1_R1.bam.done 
-	mkdir -p $(@D)
-	@echo "ln $(basename $^) $(basename $@)"
-	@ln $(basename $^) $(basename $@) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
-	rm -f $(basename $@).log
-	touch $@
-
 $(POL_TMP)/fastq/Sample_1/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_1/File1_R1.bam.done
 	mkdir -p $(@D)
 	@echo "$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"
 	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	rm -f $(basename $@).log
+	touch $@
+
+$(MERGE_TMP)/Sample3.merged.bam.done: $(POL_TMP)/fastq/Sample_3/File1_R1.bam.done 
+	mkdir -p $(@D)
+	@echo "ln $(basename $^) $(basename $@)"
+	@ln $(basename $^) $(basename $@) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	touch $@
 

@@ -283,7 +283,7 @@ my $removeExt = 0;
 # Ensure the map type is in all caps.
 setConf('MAP_TYPE', uc(getConf('MAP_TYPE')));
 
-if (getConf('MAP_TYPE') eq 'BWA') {
+if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') ) {
     @mapExtensions = qw(.amb .ann .bwt .fai .pac .sa);
 }
 elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
@@ -320,7 +320,7 @@ if ($missingReqFile) { die "Exiting alignment pipeline due to required file(s) m
 #   Check for required executables
 #----------------------------------------------------------------------------
 my @reqExes = qw(SAMTOOLS_EXE BAM_EXE);
-if (getConf('MAP_TYPE') eq 'BWA')
+if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') )
 {
     push(@reqExes, 'BWA_EXE');
 }
@@ -576,11 +576,16 @@ foreach my $tmpmerge (keys %mergeToFq1) {
 
         #   If RGID is specified, add the rg line.
         my $rgCommand = '';
+
+        my $alnOutFile = "";
         #   Perform Mapping.
         #   Operate on the fastq pair (or single end if single-ended)
-        if (getConf('MAP_TYPE') eq 'BWA') {
+        if ( (getConf('MAP_TYPE') eq 'BWA') ||
+             (getConf('MAP_TYPE') eq 'BWA_MEM') ) {
             if ($rgid ne ".") {
-                $rgCommand = "-r \"\@RG\tID:$rgid";
+                if (getConf('MAP_TYPE') eq 'BWA') { $rgCommand = "-r"; }
+                else { $rgCommand = "-R"; }
+                $rgCommand .= " \"\@RG\tID:$rgid";
                 #   Only add the rg fields if they are specified
                 if ($sample ne ".")   { $rgCommand .= "\tSM:$sample"; }
                 if ($library ne ".")  { $rgCommand .= "\tLB:$library"; }
@@ -588,10 +593,9 @@ foreach my $tmpmerge (keys %mergeToFq1) {
                 if ($platform ne '.') { $rgCommand .= "\tPL:$platform"; }
                 $rgCommand .= '"';
             }
-            mapBwa($fastq1, $fastq2, $rgCommand);
-            next;
+            $alnOutFile = mapBwa($fastq1, $fastq2, $rgCommand);
         }
-        if (getConf('MAP_TYPE') eq 'MOSAIK') {
+        elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
             if ($rgid ne ".") {
                 $rgCommand = "-id $rgid";
                 # only add the rg fields if they are specified.
@@ -600,10 +604,25 @@ foreach my $tmpmerge (keys %mergeToFq1) {
                 if ($center ne '.')   { $rgCommand .= " -cn $center"; }
                 if ($platform ne '.') { $rgCommand .= " -st $platform"; }
             }
-            mapMosaik($fastq1, $fastq2, $rgCommand);
-            next;
+            $alnOutFile = mapMosaik($fastq1, $fastq2, $rgCommand);
         }
-        die "ERROR: Somehow config file key is unknown MAP_TYPE= " . getConf('MAP_TYPE') . "\n";
+        else
+        {
+            die "ERROR: Somehow config file key is unknown MAP_TYPE= " . getConf('MAP_TYPE') . "\n";
+        }
+
+        my $bam = $fastq1;
+        $bam =~ s/fastq.gz$/bam/;
+        $bam =~ s/fastq$/bam/;
+
+        # Add the polish step for each fastq/pair.
+        print MAK getConf('POL_TMP') . "/$bam.done: $alnOutFile\n";
+        print MAK "\tmkdir -p \$(\@D)\n";
+        print MAK logCatchFailure('polishBam', getConf("polish_CMD"), "\$(basename \$\@).log");
+        print MAK "\ttouch \$\@\n\n";
+
+        $polFiles .= getConf('POL_TMP') . "/$bam ";
+        $allPolish .= getConf('POL_TMP') . "/$bam.done ";
     }
 
     #   Maybe rather than using full fastq path in subdirectories, use the merge name?
@@ -611,7 +630,6 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     #   matter if we cleanup these files???
     #   FOR EXAMPLE, SARDINIA, multiple runs for a sample have the same fastq names,
     #   so easiest to keep the subdirs.
-
 
     # Merge the Polished BAMs
     print MAK getConf('MERGE_TMP') . "/$mergeName.merged.bam.done: $allPolish\n";
@@ -676,6 +694,7 @@ if(((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq '') ||
         '  ' . join("\n  ",@mkcmds) . "\n";
 }
 
+
 my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples}, "$out_dir/Makefiles/jobfiles");
 if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
 $t = time() - $t;
@@ -728,20 +747,22 @@ sub logCatchFailure {
 }
 
 #--------------------------------------------------------------
-#   cmd = align(fastq, sai)
+#   cmd = alignBwa(fastq, sai)
 #
 #   Generate Makefile line for alignment$tmpFastq1
 #--------------------------------------------------------------
-sub align {
+sub alignBwa {
     my ($fastq, $sai) = @_;
+
+    my $alnTarget = getConf('SAI_TMP') . '/' . $sai . ".done:\n";
+    $alnTarget .= "\tmkdir -p \$(\@D)\n";
 
     my $alnCmd = getConf('BWA_EXE') . ' aln ' . getConf('BWA_QUAL') . ' ' .
         getConf('BWA_THREADS') . ' ' . getConf('REF') .
         " $fastq -f \$(basename \$\@) 2> " . "\$(basename \$\@).log";
-    my $cmd = getConf('SAI_TMP') . '/' . $sai . ".done:\n" . "\tmkdir -p \$(\@D)\n" .
-        logCatchFailure("aln", $alnCmd, "\$(basename \$\@).log") .
-        "\ttouch \$\@\n\n";
-  return $cmd;
+    $alnTarget .= logCatchFailure("aln", $alnCmd, "\$(basename \$\@).log");
+    $alnTarget .= "\ttouch \$\@\n\n";
+  return $alnTarget;
 }
 
 #--------------------------------------------------------------
@@ -776,7 +797,7 @@ sub CheckFor_REF_File {
 #--------------------------------------------------------------
 #   cmd = mapBwa(fastq1, fastq2, rgCommand)
 #
-#   Generate Makefile line for a read pair (alignment and polish)
+#   Generate Makefile line for a read pair (alignment)
 #   Does not seem to return anything, so it must be setting
 #   global variables. If so, what? Not obvious what are the ins and outs
 #
@@ -785,70 +806,84 @@ sub CheckFor_REF_File {
 sub mapBwa {
     my ($fastq1, $fastq2, $rgCommand) = @_;
 
-    my $sai1 = $fastq1;
-    $sai1 =~ s/fastq.gz$/sai/;
-    $sai1 =~ s/fastq$/sai/;
-    $saiFiles .=  getConf('SAI_TMP') . "/$sai1 ";
-    my $saiDone = getConf('SAI_TMP') . "/$sai1.done";
+    # There are two types of BWA, mem & non-mem.
+    # BWA_MEM is a 1 step process, while the other is a 2 step process.
 
-    my $sai2 = $fastq2;
-    if ($fastq2 ne ".") {
-        $sai2 =~ s/fastq.gz$/sai/;
-        $sai2 =~ s/fastq$/sai/;
-        $saiFiles .=  getConf('SAI_TMP')."/$sai2 ";
-        $saiDone .= ' ' . getConf('SAI_TMP') . "/$sai2.done";
+    my $bam = $fastq1;
+    $bam =~ s/fastq.gz$/bam/;
+    $bam =~ s/fastq$/bam/;
+    my $absFastq1 = getAbsPath($fastq1, 'FASTQ');
+    my $absFastq2 = '';
+    if($fastq2 ne '.')
+    {
+        $absFastq2 = getAbsPath($fastq2, 'FASTQ');
     }
 
-    my $bam = $sai1;
-    $bam =~ s/sai/bam/;
     $alnFiles .= getConf('ALN_TMP') . "/$bam ";
-    $polFiles .= getConf('POL_TMP') . "/$bam ";
-    $allPolish .= getConf('POL_TMP') . "/$bam.done ";
+    my $finalBwaBam =  getConf('ALN_TMP') . "/$bam.done";
 
-    #   TODO - maybe check if AS or
-    $allSteps .= getConf('POL_TMP') . "/$bam.done: " . getConf('ALN_TMP') . "/$bam.done\n";
-    $allSteps .= "\tmkdir -p \$(\@D)\n";
+    $allSteps .= "$finalBwaBam:";
 
-    my $polishCmd = getConf('BAM_EXE') . " polishBam -f " . getConf('REF') . " --AS " .
-        getConf('AS') . " --UR file:" . getConf('REF') . ' ';
-    $polishCmd .= "--checkSQ -i \$(basename \$^) -o \$(basename \$\@) -l \$(basename \$\@).log";
-    $allSteps .= logCatchFailure('polishBam', $polishCmd, "\$(basename \$\@).log");
+    if(getConf('MAP_TYPE') eq 'BWA_MEM')
+    {
+        # No dependencies.
+        $allSteps .= "\n";
+        $allSteps .= "\tmkdir -p \$(\@D)\n";
+        # BWA_MEM command.
+        my $bwacmd = "(" . getConf('BWA_EXE') . " mem " . getConf("BWA_THREADS") .
+                     " -M $rgCommand " . getConf('REF') . " $absFastq1 $absFastq2 | " .
+                     getConf('SAMTOOLS_EXE') . " view -uhS - | " .
+                     getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
+                     " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
+        $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
+    }
+    else
+    {
+        # Regular BWA with 2 steps and sai files.
+        # Dependent on the SAI files.
+        my $sai1 = $fastq1;
+        $sai1 =~ s/fastq.gz$/sai/;
+        $sai1 =~ s/fastq$/sai/;
 
-    $allSteps .= "\ttouch \$\@\n\n";
+        $saiFiles .=  getConf('SAI_TMP') . "/$sai1 ";
+        $allSteps .= ' ' . getConf('SAI_TMP') . "/$sai1.done";
 
-    $allSteps .= getConf('ALN_TMP') . "/$bam.done: $saiDone\n";
-    $allSteps .= "\tmkdir -p \$(\@D)\n";
+        my $samsesampe = "samse";
 
-    my $absFastq1 = getAbsPath($fastq1, 'FASTQ');
+        my $sai2 = "";
+        if ($fastq2 ne ".") {
+            $sai2 = $fastq2;
+            $sai2 =~ s/fastq.gz$/sai/;
+            $sai2 =~ s/fastq$/sai/;
+            $saiFiles .=  getConf('SAI_TMP')."/$sai2 ";
+            $allSteps .= ' ' . getConf('SAI_TMP') . "/$sai2.done";
+            $samsesampe = "sampe";
+        }
 
-    my $absFastq2 = '';
-    if($fastq2 ne '.') {
-        $absFastq2 = getAbsPath($fastq2, 'FASTQ');
-        my $sampeLog = "\$(basename \$(basename \$\@)).sampe.log";
-        my $sampeCmd = "(" . getConf('BWA_EXE') . " sampe $rgCommand " . getConf('REF') .
+        # Create the directory.
+        $allSteps .= "\n\tmkdir -p \$(\@D)\n";
+
+        # Write the samse/sampe command.
+        my $log = "\$(basename \$(basename \$\@)).$samsesampe.log";
+        my $cmd = "(" . getConf('BWA_EXE') . " $samsesampe $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 $absFastq2 | " . getConf('SAMTOOLS_EXE') . " view -uhS - | " .
             getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
-            " - \$(basename \$(basename " . "\$\@))) 2> $sampeLog";
-        $allSteps .= logCatchFailure('sampe', $sampeCmd, $sampeLog);
-    }
-    else {
-        my $samseLog = "\$(basename \$(basename \$\@)).samse.log";
-        my $samseCmd = "(" . getConf('BWA_EXE') . " samse $rgCommand " . getConf('REF') .
-            " \$(basename \$^) $absFastq1 | " . getConf("SAMTOOLS_EXE") . " view -uhS - | " .
-            getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') . ' - ' .
-            "\$(basename \$(basename \$\@))) 2> $samseLog";
-        $allSteps .= logCatchFailure('samse', $samseCmd, $samseLog);
-    }
-    $allSteps .= "\ttouch \$\@\n\n";
+            " - \$(basename \$(basename " . "\$\@))) 2> $log";
+        $allSteps .= logCatchFailure("$samsesampe", $cmd, $log);
 
-    $allSteps .= align($absFastq1, $sai1);
-    if($fastq2 ne '.') { $allSteps .= align($absFastq2, $sai2); }
+        $allSteps .= "\ttouch \$\@\n\n";
+
+        # Add the aln steps.
+        $allSteps .= alignBwa($absFastq1, $sai1);
+        if($absFastq2 ne '') { $allSteps .= alignBwa($absFastq2, $sai2); }
+    }
+    return($finalBwaBam);
 }
 
 #--------------------------------------------------------------
 #   cmd = mapMosaik(fastq1, fastq2, rgCommand)
 #
-#   Generate Makefile line for a read pair (alignment and polish)
+#   Generate Makefile line for a read pair (alignment)
 #   Does not seem to return anything, so it must be setting
 #   global variables. If so, what? Not obvious what are the ins and outs
 #
@@ -870,23 +905,9 @@ sub mapMosaik {
     my $bam = $mkb;
     $bam =~ s/mkb/bam/;
     $alnFiles .= getConf('ALN_TMP') . "/$bam ";
-    $polFiles .= getConf('POL_TMP') . "/$bam ";
-    $allPolish .= getConf('POL_TMP') . "/$bam.done ";
     my $alignDone = getConf('ALN_TMP') . "/$bam.done";
     my $sortDone = $alignDone;
     $sortDone =~ s/.bam.done/.sort.bam.done/;
-
-    #
-    #   Polish the bam.  Depends on the sorted bam.
-    #
-    $allSteps .= getConf("POL_TMP")."/$bam.done: $sortDone\n";
-    $allSteps .= "\tmkdir -p \$(\@D)\n";
-
-    my $polishCmd = getConf('BAM_EXE') . " polishBam -f " . getConf('REF') . ' --AS ' .
-        getConf('AS') . " --UR file:" . getConf('REF') . ' ';
-    $polishCmd .= "--checkSQ -i \$(basename \$^) -o \$(basename \$\@) -l \$(basename \$\@).log";
-    $allSteps .= logCatchFailure('polishBam', $polishCmd, "\$(basename \$\@).log");
-    $allSteps .= "\ttouch \$\@\n\n";
 
     #
     #   Sort the bam.  Depends on the aligned bam.
@@ -936,6 +957,8 @@ sub mapMosaik {
     $allSteps .= logCatchFailure('mosaikBuild', $mosaikBuild, "\$(basename \$\@).log");
     #  $allSteps .= "\t$mosaikBuild\n";
     $allSteps .= "\ttouch \$\@\n\n";
+
+return($sortDone);
 }
 
 #==================================================================
