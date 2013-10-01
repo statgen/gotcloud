@@ -46,7 +46,7 @@ binary:
 	cp -p release_version.txt debian/tmp/${INSTALLDIR}
 	cp -rp ${DIRLIST} debian/tmp/${INSTALLDIR}
 	cp -p gotcloud debian/tmp/${INSTALLDIR}/bin
-    rm -rf debian/tmp/${INSTALLDIR}/bin/t
+	rm -rf debian/tmp/${INSTALLDIR}/bin/t
 	@echo "Converting symlinks into the actual executables to be distributed"
 	find bin -type l -exec rm -f debian/tmp/${INSTALLDIR}/{} \;
 	find bin -type l -exec cp -p {} debian/tmp/${INSTALLDIR}/bin \;
