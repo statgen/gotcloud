@@ -239,6 +239,8 @@ if (loadConf(\@confSettings, \@configs, $opts{verbose})) {
     die "Failed to read configuration files\n";
 }
 
+my @perMergeStep = split(' ', getConf("PER_MERGE_STEPS"));
+
 #############################################################################
 #   Make sure paths for variables are fully qualified
 #############################################################################
@@ -259,10 +261,15 @@ my $out_dir = getConf('OUT_DIR');
 my $missingReqFile = 0;
 #   These files must exist
 my @reqRefs = qw(REF DBSNP_VCF);
-if(getConf('RUN_VERIFY_BAM_ID'))
+# Loop through the defined steps & check for required exes.
+foreach my $step (@perMergeStep)
 {
-    push(@reqRefs, 'HM3_VCF');
+    if($step eq "verifyBamID")
+    {
+        push(@reqRefs, "HM3_VCF");
+    }
 }
+
 foreach my $f (@reqRefs)
 {
     # Replace the path with the absolute path
@@ -274,7 +281,13 @@ foreach my $f (@reqRefs)
     $missingReqFile++;
 }
 
-if (getConf('RUN_QPLOT')) { $missingReqFile += CheckFor_REF_File('.winsize100.gc', 1); }
+foreach my $step (@perMergeStep)
+{
+    if($step eq "qplot")
+    {
+        $missingReqFile += CheckFor_REF_File('.winsize100.gc', 1);
+    }
+}
 
 #   Check for the required sub REF files.
 my @mapExtensions;
@@ -329,21 +342,28 @@ elsif (getConf('MAP_TYPE') eq 'MOSAIK')
     push(@reqExes, 'MOSAIK_ALIGN_EXE');
     push(@reqExes, 'MOSAIK_BUILD_EXE');
 }
-if (getConf('RUN_VERIFY_BAM_ID'))
-{
-    push(@reqExes, 'VERIFY_BAM_ID_EXE');
-}
-if (getConf('RUN_QPLOT'))
-{
-    push(@reqExes, 'QPLOT_EXE');
-}
-
 my $missingExe = 0;
 foreach my $exe (@reqExes)
 {
     if(-x getConf($exe)) { next; }
     print "$exe, ".getConf($exe)." is not executable\n";
     $missingExe++;
+}
+# Loop through the defined steps & check for required exes.
+foreach my $step (@perMergeStep)
+{
+    my $exes = getConf($step."_REQ_EXES");
+    if(defined $exes)
+    {
+        # split if multiple EXEs.
+        my @exesArray = split(/\s+/, $exes);
+        foreach my $exe (@exesArray)
+        {
+            if(-x $exe) { next; }
+            print $step."_REQ_EXES, ".$exe." is not executable\n";
+            $missingExe++;
+        }
+    }
 }
 
 if($missingExe)
@@ -364,6 +384,8 @@ my %deprecated = (
     MORE_RECAB_PARAMS => "recab_USER_PARAMS",
     ALT_RECAB => "recab_CMD",
     ALT_DEDUP => "dedup_CMD",
+    RUN_QPLOT => "PER_MERGE_STEPS",
+    RUN_VERIFY_BAM_ID => "PER_MERGE_STEPS",
 );
 
 my $deprecatedFiles = 0;
@@ -508,8 +530,6 @@ if(getConf('BAM_INDEX'))
     }
     close(BAM_IDX);
 }
-
-my @perMergeStep = split(' ', getConf("PER_MERGE_STEPS"));
 
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
