@@ -544,8 +544,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     if (! getConf('KEEP_TMP')) {
         print MAK "\trm -f \$(SAI_FILES) \$(ALN_FILES) \$(POL_FILES) \$(DEDUP_FILES) \$(RECAL_FILES)\n";
     }
-    print MAK "\ttouch \$\@\n\n";
-
+    print MAK doneTarget();
 
     # Loop through the defined steps.
     foreach my $step (@perMergeStep)
@@ -561,7 +560,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         print MAK "\tmkdir -p \$(\@D)\n";
         my $cmd = getConf($step."_CMD",1) . " 2> \$(basename \$\@).log";
         print MAK logCatchFailure($step, $cmd, "\$(basename \$\@).log");
-        print MAK "\ttouch \$\@\n\n";
+        print MAK doneTarget();
     }
 
     #   Get the commands for each fastq that goes into this
@@ -619,7 +618,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         print MAK getConf('POL_TMP') . "/$bam.done: $alnOutFile\n";
         print MAK "\tmkdir -p \$(\@D)\n";
         print MAK logCatchFailure('polishBam', getConf("polish_CMD"), "\$(basename \$\@).log");
-        print MAK "\ttouch \$\@\n\n";
+        print MAK doneTarget();
 
         $polFiles .= getConf('POL_TMP') . "/$bam ";
         $allPolish .= getConf('POL_TMP') . "/$bam.done ";
@@ -644,7 +643,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         $mergeBams = "ln \$(basename \$^) \$(basename \$\@)";
     }
     print MAK logCatchFailure('MergingBams', $mergeBams, "\$(basename \$\@).log");
-    print MAK "\ttouch \$\@\n\n";
+    print MAK doneTarget();
 
     print MAK $allSteps;
     print MAK "SAI_FILES = $saiFiles\n\n";
@@ -725,7 +724,7 @@ sub logCatchFailure {
     my ($commandName, $command, $log, $failVal) = @_;
     if (! defined($failVal)) { $failVal = 1; }
 
-    my $makeCmd = "\t\@echo \"$command\"\n" . "\t\@$command ";
+    my $makeCmd = "\t\@echo `date +'%F.%H:%M:%S'`\" $command\"\n" . "\t\@$command ";
     if ($failVal == 1) { $makeCmd .= '||'; }
     else { $makeCmd .= '&&'; }
 
@@ -761,7 +760,7 @@ sub alignBwa {
         getConf('BWA_THREADS') . ' ' . getConf('REF') .
         " $fastq -f \$(basename \$\@) 2> " . "\$(basename \$\@).log";
     $alnTarget .= logCatchFailure("aln", $alnCmd, "\$(basename \$\@).log");
-    $alnTarget .= "\ttouch \$\@\n\n";
+    $alnTarget .= doneTarget();
   return $alnTarget;
 }
 
@@ -871,7 +870,7 @@ sub mapBwa {
             " - \$(basename \$(basename " . "\$\@))) 2> $log";
         $allSteps .= logCatchFailure("$samsesampe", $cmd, $log);
 
-        $allSteps .= "\ttouch \$\@\n\n";
+        $allSteps .= doneTarget();
 
         # Add the aln steps.
         $allSteps .= alignBwa($absFastq1, $sai1);
@@ -920,7 +919,7 @@ sub mapMosaik {
         " \$(basename \$^) $sortPrefix 2> $sortPrefix.log";
     $allSteps .= "\t$sortcmd\n";
     $allSteps .= logCatchFailure('sort', "(grep -q -i -e abort -e error -e failed $sortPrefix.log; [ \$\$? -eq 1 ])", "$sortPrefix.log");
-    $allSteps .= "\ttouch \$\@\n\n";
+    $allSteps .= doneTarget();
 
     #
     #     Run MosaikAlign to create the bam.  Depends on the Mosaik Build step.
@@ -939,7 +938,7 @@ sub mapMosaik {
         getConf('SE_ANN') . " -annpe " . getConf('PE_ANN') .
         " -out \$(basename \$(basename \$\@)) -hs 15 -act 25 -mhp 150 > \$(basename \$\@).log";
     $allSteps .= logCatchFailure('mosaikAlign', $mosaikAlign, "\$(basename \$\@).log");
-    $allSteps .= "\ttouch \$\@\n\n";
+    $allSteps .= doneTarget();
 
     #
     #   Run MosaikBuild to create the intermediate file (no dependencies)
@@ -956,9 +955,19 @@ sub mapMosaik {
     $mosaikBuild .= "-out \$(basename \$\@) $rgCommand > \$(basename \$\@).log";
     $allSteps .= logCatchFailure('mosaikBuild', $mosaikBuild, "\$(basename \$\@).log");
     #  $allSteps .= "\t$mosaikBuild\n";
-    $allSteps .= "\ttouch \$\@\n\n";
+    $allSteps .= doneTarget();
 
 return($sortDone);
+}
+
+
+#--------------------------------------------------------------
+#   cmd = doneTarget()
+#
+#   Done with the target, so write the done marker.
+#--------------------------------------------------------------
+sub doneTarget {
+    return("\t\@echo `date +'%F.%H:%M:%S'` touch \$\@; touch \$\@\n\n");
 }
 
 #==================================================================
