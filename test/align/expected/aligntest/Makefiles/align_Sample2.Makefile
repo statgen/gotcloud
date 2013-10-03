@@ -6,7 +6,6 @@ SHELL := /bin/bash -o pipefail
 all: $(OUT_DIR)/Sample2.OK
 
 $(OUT_DIR)/Sample2.OK: $(FINAL_BAM_DIR)/Sample2.recal.bam.done $(QC_DIR)/Sample2.genoCheck.done $(QC_DIR)/Sample2.qplot.done
-	rm -f $(SAI_FILES) $(ALN_FILES) $(POL_FILES) $(DEDUP_FILES) $(RECAL_FILES)
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 
 $(QC_DIR)/Sample2.genoCheck.done: $(FINAL_BAM_DIR)/Sample2.recal.bam.done $(FINAL_BAM_DIR)/Sample2.recal.bam.bai.done
@@ -36,6 +35,7 @@ $(FINAL_BAM_DIR)/Sample2.recal.bam.done: $(DEDUP_TMP)/Sample2.merged.bam.done
 	@$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
+	rm -f $(basename $^)
 
 $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File1_R1.bam.done
 	mkdir -p $(@D)
@@ -43,6 +43,7 @@ $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File1_R1.
 	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
+	rm -f $(basename $^)
 
 $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File2_R1.bam.done
 	mkdir -p $(@D)
@@ -50,6 +51,7 @@ $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done: $(ALN_TMP)/fastq/Sample_2/File2_R1.
 	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
+	rm -f $(basename $^)
 
 $(MERGE_TMP)/Sample2.merged.bam.done: $(POL_TMP)/fastq/Sample_2/File1_R1.bam.done $(POL_TMP)/fastq/Sample_2/File2_R1.bam.done 
 	mkdir -p $(@D)
@@ -57,6 +59,7 @@ $(MERGE_TMP)/Sample2.merged.bam.done: $(POL_TMP)/fastq/Sample_2/File1_R1.bam.don
 	@gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^)) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
+	rm -f $(basename $^)
 
 $(ALN_TMP)/fastq/Sample_2/File1_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File1_R1.sai.done $(SAI_TMP)/fastq/Sample_2/File1_R2.sai.done
 	mkdir -p $(@D)
@@ -64,6 +67,7 @@ $(ALN_TMP)/fastq/Sample_2/File1_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File1_R1.
 	@($(BWA_EXE) sampe -r "@RG	ID:RGID2	SM:SampleID2	LB:Lib2	CN:UM	PL:ILLUMINA" $(REF) $(basename $^) test/align/fastq/Sample_2/File1_R1.fastq.gz test/align/fastq/Sample_2/File1_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log || (echo "`grep -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log`" >&2; echo "Failed sampe step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $(basename $@)).sampe.log $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log) for more details" >&2; exit 1;)
 	rm -f $(basename $(basename $@)).sampe.log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
+	rm -f $(basename $^)
 
 $(SAI_TMP)/fastq/Sample_2/File1_R1.sai.done:
 	mkdir -p $(@D)
@@ -85,6 +89,7 @@ $(ALN_TMP)/fastq/Sample_2/File2_R1.bam.done: $(SAI_TMP)/fastq/Sample_2/File2_R1.
 	@($(BWA_EXE) sampe -r "@RG	ID:RGID2	SM:SampleID2	LB:Lib2	CN:UM	PL:ILLUMINA" $(REF) $(basename $^) test/align/fastq/Sample_2/File2_R1.fastq.gz test/align/fastq/Sample_2/File2_R2.fastq.gz | $(SAMTOOLS_EXE) view -uhS - | $(SAMTOOLS_EXE) sort -m $(BWA_MAX_MEM) - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log || (echo "`grep -i -e abort -e error -e failed $(basename $(basename $@)).sampe.log`" >&2; echo "Failed sampe step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $(basename $@)).sampe.log $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $(basename $@)).sampe.log) for more details" >&2; exit 1;)
 	rm -f $(basename $(basename $@)).sampe.log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
+	rm -f $(basename $^)
 
 $(SAI_TMP)/fastq/Sample_2/File2_R1.sai.done:
 	mkdir -p $(@D)
@@ -100,12 +105,3 @@ $(SAI_TMP)/fastq/Sample_2/File2_R2.sai.done:
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 
-SAI_FILES = $(SAI_TMP)/fastq/Sample_2/File1_R1.sai $(SAI_TMP)/fastq/Sample_2/File1_R2.sai $(SAI_TMP)/fastq/Sample_2/File2_R1.sai $(SAI_TMP)/fastq/Sample_2/File2_R2.sai 
-
-ALN_FILES = $(ALN_TMP)/fastq/Sample_2/File1_R1.bam $(ALN_TMP)/fastq/Sample_2/File2_R1.bam 
-
-POL_FILES = $(POL_TMP)/fastq/Sample_2/File1_R1.bam $(POL_TMP)/fastq/Sample_2/File2_R1.bam 
-
-DEDUP_FILES = $(DEDUP_TMP)/Sample2.dedup.bam 
-
-RECAL_FILES = $(RECAL_TMP)/Sample2.recal.bam 

@@ -541,9 +541,6 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     print MAK "all: \$(OUT_DIR)/$mergeName.OK\n\n";
     print MAK "\$(OUT_DIR)/$mergeName.OK: " . getConf('FINAL_BAM_DIR') . "/$mergeName.recal.bam.done " .
         getConf('QC_DIR') . "/$mergeName.genoCheck.done " . getConf('QC_DIR') . "/$mergeName.qplot.done\n";
-    if (! getConf('KEEP_TMP')) {
-        print MAK "\trm -f \$(SAI_FILES) \$(ALN_FILES) \$(POL_FILES) \$(DEDUP_FILES) \$(RECAL_FILES)\n";
-    }
     print MAK doneTarget();
 
     # Loop through the defined steps.
@@ -560,7 +557,14 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         print MAK "\tmkdir -p \$(\@D)\n";
         my $cmd = getConf($step."_CMD",1) . " 2> \$(basename \$\@).log";
         print MAK logCatchFailure($step, $cmd, "\$(basename \$\@).log");
-        print MAK doneTarget();
+        if(getConf($step."_RMDEP"))
+        {
+            print MAK doneTarget(1);
+        }
+        else
+        {
+           print MAK doneTarget();
+        }
     }
 
     #   Get the commands for each fastq that goes into this
@@ -618,7 +622,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         print MAK getConf('POL_TMP') . "/$bam.done: $alnOutFile\n";
         print MAK "\tmkdir -p \$(\@D)\n";
         print MAK logCatchFailure('polishBam', getConf("polish_CMD"), "\$(basename \$\@).log");
-        print MAK doneTarget();
+        print MAK doneTarget(1);
 
         $polFiles .= getConf('POL_TMP') . "/$bam ";
         $allPolish .= getConf('POL_TMP') . "/$bam.done ";
@@ -643,14 +647,9 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         $mergeBams = "ln \$(basename \$^) \$(basename \$\@)";
     }
     print MAK logCatchFailure('MergingBams', $mergeBams, "\$(basename \$\@).log");
-    print MAK doneTarget();
+    print MAK doneTarget(1);
 
     print MAK $allSteps;
-    print MAK "SAI_FILES = $saiFiles\n\n";
-    print MAK "ALN_FILES = $alnFiles\n\n";
-    print MAK "POL_FILES = $polFiles\n\n";
-    print MAK "DEDUP_FILES = " . getConf('DEDUP_TMP') . "/$mergeName.dedup.bam\n\n";
-    print MAK "RECAL_FILES = " . getConf('RECAL_TMP') . "/$mergeName.recal.bam\n";
     close MAK;
     warn "Created $makef\n";
 
@@ -870,7 +869,7 @@ sub mapBwa {
             " - \$(basename \$(basename " . "\$\@))) 2> $log";
         $allSteps .= logCatchFailure("$samsesampe", $cmd, $log);
 
-        $allSteps .= doneTarget();
+        $allSteps .= doneTarget(1);
 
         # Add the aln steps.
         $allSteps .= alignBwa($absFastq1, $sai1);
@@ -962,12 +961,21 @@ return($sortDone);
 
 
 #--------------------------------------------------------------
-#   cmd = doneTarget()
+#   cmd = doneTarget(rmDep)
+#
 #
 #   Done with the target, so write the done marker.
 #--------------------------------------------------------------
 sub doneTarget {
-    return("\t\@echo `date +'%F.%H:%M:%S'` touch \$\@; touch \$\@\n\n");
+    my ($rmDep) = @_;
+    my $rmTmp = "";
+    if((defined($rmDep) && $rmDep) && (!getConf('KEEP_TMP')))
+    {
+        $rmTmp = "\n\trm -f \$(basename \$^)";
+#        print $rmTmp;
+    }
+#    return("\t\@echo `date +'%F.%H:%M:%S'` touch \$\@; touch \$\@\n\n");
+    return("\t\@echo `date +'%F.%H:%M:%S'` touch \$\@; touch \$\@$rmTmp\n\n");
 }
 
 #==================================================================

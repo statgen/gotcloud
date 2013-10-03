@@ -35,12 +35,10 @@ RECAL_BAMS=( "${SAMPLES[@]/%/.recal.bam}" )
 BAIS=( "${RECAL_BAMS[@]/%/.bai}" )
 # qemp files may be in varying order based on the system
 QEMPS=( "${RECAL_BAMS[@]/%/.qemp}" )
-MERGE_BAMS=( "${SAMPLES[@]/%/.merged.bam}" )
 
 SKIP_FILES=${RECAL_BAMS[@]/#/"-x "}
 SKIP_FILES+=" "${BAIS[@]/#/"-x "}
 SKIP_FILES+=" "${QEMPS[@]/#/"-x "}
-SKIP_FILES+=" "${MERGE_BAMS[@]/#/"-x "}
 
 QEMP_SUBDIR=bams
 
@@ -153,11 +151,9 @@ done
 
 # Add the directories to the arrays.
 RECAL_BAMS_D=( "${RECAL_BAMS[@]/#/bams/}" )
-MERGE_BAMS_D=( "${MERGE_BAMS[@]/#/tmp/alignment.pol/}" )
-
 
 set -e                          # Fail on errors
-for file in $RECAL_BAMS_D $MERGE_BAMS_D
+for file in $RECAL_BAMS_D
 do
   $BAM_UTIL diff --all --in1 $RESULTS_DIR/$file --in2 $EXPECTED_DIR/$file >> $DIFFRESULTS
   if [ `wc -l $DIFFRESULTS|cut -f 1 -d ' '` != "0" ]; then
