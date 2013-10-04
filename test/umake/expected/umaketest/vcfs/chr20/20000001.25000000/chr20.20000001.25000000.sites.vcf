@@ -18,8 +18,7 @@
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Most Likely Genotype">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Call Quality">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
-##FORMAT=<ID=PL,Number=3,Type=Integer,Description="Genotype Likelihoods for Genotypes 0/0,0/1,1/1">
-##FORMAT=<ID=PL3,Number=6,Type=Integer,Description="Genotype Likelihoods for Genotypes 0/0,0/1,1/1,0/2,1/2,2/2">
+##FORMAT=<ID=PL,Number=.,Type=Integer,Description="Genotype Likelihoods for Genotypes in Phred Scale, for 0/0, 0/1, 1/1, 0/2, 1/2, 2/2, ...">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 20	20000121	.	A	G	100	PASS	DP=323;MQ=56;NS=60;AN=120;AC=3;AF=0.028785;AB=0.5555;AZ=0.6976;FIC=-0.0347;SLRT=-0.1027;HWEAF=0.0288;HWDAF=0.0579,0.0000
 20	20000786	.	T	A	100	PASS	DP=282;MQ=56;NS=59;AN=118;AC=63;AF=0.518592;AB=0.5379;AZ=0.8692;FIC=0.0793;SLRT=0.2581;HWEAF=0.5186;HWDAF=0.4597,0.2899
