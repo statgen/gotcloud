@@ -12,6 +12,7 @@ Additional Options
     Chromosome Labels : --xChr [X], --yChr [Y], --mito [MT],
                         --xStart [2699520], --xStop [154931044]
     Filtering Options : --hardFilter, --smartFilter [ON], --softFilter
+     Region(optional) : --region []
                Output : --verbose
          Sample Names : --glfAliases []
 

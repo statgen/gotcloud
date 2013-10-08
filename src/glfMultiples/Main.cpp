@@ -480,15 +480,86 @@ double SinkLikelihood
    return lk;
    }
 
+
+void getRegionInfo(const String& region, String& regionChr, 
+                   int& regionStart, int& regionEnd)
+{
+    regionChr.Clear();
+    regionStart = 0;
+    regionEnd = -1;
+    if(!region.IsEmpty())
+    {
+        // Only process a specific region.
+        int chrStrEnd = region.FastFindChar(':',1);
+        if(chrStrEnd < 1)
+        {
+            regionChr = region;
+            printf("Processing only Chromosome %s\n", regionChr.c_str());
+        }
+        else
+        {
+            regionChr = region.Left(chrStrEnd);
+            // get the start region position.
+            int startStrEnd = region.FastFindChar('-',chrStrEnd);
+
+            String startStr;
+            if(startStrEnd < chrStrEnd)
+            {
+                startStr = region.SubStr(chrStrEnd+1);
+            }
+            else
+            {
+                startStr = region.Mid(chrStrEnd+1, startStrEnd-1);
+            }
+            // Convert the start string to an integer
+            if(!startStr.AsInteger(regionStart))
+            {
+                String errorStr = "Error: Invalid --region string, '";
+                errorStr += region;
+                errorStr += "', the start position, '";
+                errorStr += startStr;
+                errorStr += "', is not an integer.";
+                error(errorStr.c_str());
+            }
+            
+            if(startStrEnd < chrStrEnd)
+            {
+                // No end position.
+                printf("Processing only Chromosome %s, starting from %d\n",
+                       regionChr.c_str(), regionStart);
+            }
+            else
+            {
+                String endStr = region.SubStr(startStrEnd+1);
+                // Convert to integer.
+                if(!endStr.AsInteger(regionEnd))
+                {
+                    String errorStr = "Error: Invalid --region string, '";
+                    errorStr += region;
+                    errorStr += "', the end position, '";
+                    errorStr += endStr;
+                    errorStr += "', is not an integer.";
+                    error(errorStr.c_str());
+                }
+
+                printf("Processing only Chromosome %s, positions %d - %d\n", 
+                       regionChr.c_str(), regionStart, regionEnd);
+            }
+        }
+   }
+}
+
+
 int main(int argc, char ** argv)
    {
    printf("glfMultiples -- SNP calls based on .glf or .glz files\n");
-   printf("(c) 2008-2011 Goncalo Abecasis, Sebastian Zoellner, Yun Li\n\n");
+   printf("(c) 2008-2013 Goncalo Abecasis, Sebastian Zoellner, Yun Li\n\n");
 
    String pedfile;
    String positionfile;
    String callfile;
    String glfAliases;
+   String region;
    ParameterList pl;
 
    bool   uniformTsTv = false;
@@ -531,6 +602,8 @@ int main(int argc, char ** argv)
          EXCLUSIVE_PARAMETER("hardFilter", &hardFilter)
          EXCLUSIVE_PARAMETER("smartFilter", &smartFilter)
          EXCLUSIVE_PARAMETER("softFilter", &softFilter)
+      LONG_PARAMETER_GROUP("Region(optional)")
+         LONG_STRINGPARAMETER("region", &region)
       LONG_PARAMETER_GROUP("Output")
          LONG_PARAMETER("verbose", &verbose)
       LONG_PARAMETER_GROUP("Sample Names")
@@ -566,6 +639,13 @@ int main(int argc, char ** argv)
    else
       if (n == 0)
          error("No pedigree file present and no glf files listed at the end of command line\n");
+
+   // Determine if only a subset of the regions are being processed.
+   String regionChr;
+   int regionStart = 0;
+   int regionEnd = -1;
+
+   getRegionInfo(region, regionChr, regionStart, regionEnd);
 
    // Prior for finding difference from the reference at a particular site
    double prior = 0.0;
@@ -730,6 +810,17 @@ int main(int argc, char ** argv)
             }
          }
 
+      // If the region is specified, continue if this is not the correct chromosome.
+      if(!region.IsEmpty())
+      {
+          if(glf[firstGlf].label != regionChr)
+          {
+              continue;
+          }
+      }
+      
+
+
       chromosomeType = CT_AUTOSOME;
 
       if (ped.count)
@@ -738,9 +829,15 @@ int main(int argc, char ** argv)
          if (glf[firstGlf].label == yLabel) chromosomeType = CT_CHRY;
          if (glf[firstGlf].label == mitoLabel) chromosomeType = CT_MITO;
          }
-
+      
+      int endPos = glf[firstGlf].maxPosition;
+      if((regionEnd != -1) && (regionEnd < endPos))
+      {
+          endPos = regionEnd;
+      }
+      int numEntries = endPos - regionStart;
       printf("Processing section %s with %d entries\n",
-              (const char *) glf[firstGlf].label, glf[firstGlf].maxPosition);
+             (const char *) glf[firstGlf].label, numEntries);
 
       int refBase = 0;
       int position = 0;
@@ -769,10 +866,26 @@ int main(int argc, char ** argv)
                }
 
          // Advance to the next position where needed
+         int newPosition = glf[firstGlf].maxPosition + 1;
          for (int i = 0; i < n; i++)
+         {
             if (glf[i].position == position)
+            {
                glf[i].NextBaseEntry();
+            }
+            if(newPosition > glf[i].position)
+            {
+                newPosition = glf[i].position;
+                refBase = glf[i].data.refBase;
+            }
+         }
 
+         position = newPosition;
+         if(position < regionStart)
+         {
+             // Not yet to the region start, so keep incrementing.
+             continue;
+         }
          // Figure out the current analysis position
          refBase = glf[0].data.refBase;
          position = glf[0].position;
@@ -784,7 +897,7 @@ int main(int argc, char ** argv)
                }
 
          // Avoid alignments that extend past the end of the chromosome
-         if (position >= glf[firstGlf].maxPosition)
+         if (position >= endPos)
             break;
 
          baseCounts[refBase]++;
@@ -964,12 +1077,12 @@ int main(int argc, char ** argv)
             sinkFilter++;
          }
 
-      int actualBases = glf[firstGlf].maxPosition - baseCounts[0];
+      int actualBases = numEntries - baseCounts[0];
 
       printf("          Missing bases = %9d (%.3f%%)\n",
-            baseCounts[0], baseCounts[0] * 100. / glf[firstGlf].maxPosition);
+            baseCounts[0], baseCounts[0] * 100. / numEntries);
       printf("        Reference bases = %9d (%.3f%%)\n",
-            glf[firstGlf].maxPosition - baseCounts[0], (glf[firstGlf].maxPosition - baseCounts[0]) * 100. / glf[firstGlf].maxPosition);
+            numEntries - baseCounts[0], (numEntries - baseCounts[0]) * 100. / numEntries);
 
       printf("              A/T bases = %9d (%.3f%%, %d A, %d T)\n",
              baseCounts[1] + baseCounts[4],
