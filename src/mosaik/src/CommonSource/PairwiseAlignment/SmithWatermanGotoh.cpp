@@ -233,7 +233,7 @@ void CSmithWatermanGotoh::Align(Alignment& alignment, const char* s1, const unsi
 
 	// traceback flag
 	bool keepProcessing = true;
-	bool hasGap = false;
+	//bool hasGap = false;
 
 	bool matchRegion = false;
 	unsigned short longestMatch       = 0;
@@ -285,7 +285,7 @@ void CSmithWatermanGotoh::Align(Alignment& alignment, const char* s1, const unsi
 					ck -= queryLen;
 					if (!notCountGapAsMismatch_) ++numMismatches;
 				}
-				hasGap = true;
+				//hasGap = true;
 				break;
 
 			case Directions_LEFT:
@@ -300,7 +300,7 @@ void CSmithWatermanGotoh::Align(Alignment& alignment, const char* s1, const unsi
 					mReversedQuery[gappedQueryLen++]   = s2[--cj];
 					if (!notCountGapAsMismatch_) ++numMismatches;
 				}
-				hasGap = true;
+				//hasGap = true;
 				break;
 		}
 	}

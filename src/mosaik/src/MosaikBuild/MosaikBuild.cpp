@@ -1005,7 +1005,7 @@ void CMosaikBuild::ParseFasta(const string& readFastaFilename, const string& out
 			const char* bases = r.Mate1.Bases.CData();
 			memcpy((char*)&r.Mate1.SolidPrefixTransition, bases, 1);
 			r.Mate1.Bases.TrimBegin(1);
-			r.Mate1.Qualities.TrimBegin(1);
+			//r.Mate1.Qualities.TrimBegin(1);
 			csu.ConvertReadColorspaceToPseudoColorspace(r.Mate1.Bases);
 		}
 
@@ -1476,12 +1476,12 @@ void CMosaikBuild::ParseGerald(const string& directory, const string& lanes, con
 	ActivateIlluminaLanes(lanes);
 
 	// create our Illumina base quality LUT
-	char baseQualityLUT[256];
+	//char baseQualityLUT[256];
 	int bq;
 	for(int i = -128; i < 128; i++) {
 		bq = (int)(-10.0 * log10(1.0 / (1.0 + pow(10.0, ((double)i / 10.0)))) + 0.5);
 		if(bq < 1) bq = 1;
-		baseQualityLUT[i + 128] = bq;
+	//	baseQualityLUT[i + 128] = bq;
 	}
 
 	// find the sequence files
