@@ -1,0 +1,4 @@
+build/
+include/
+src/CMakeFiles/
+premo_version.h
