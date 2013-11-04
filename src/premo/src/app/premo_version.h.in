@@ -1,0 +1,20 @@
+// ***************************************************************************
+// premo_version.h.in (c) 2012 Derek Barnett
+// Marth Lab, Department of Biology, Boston College
+// ---------------------------------------------------------------------------
+// Last modified: 6 June 2012 (DB)
+// ---------------------------------------------------------------------------
+// Provides version information for the Premo app.
+// ***************************************************************************
+
+#ifndef PREMO_VERSION_H
+#define PREMO_VERSION_H
+
+// CMake uses this file as a template to generate "premo_version.h".
+// These constants are defined to match the variables set in the build system. 
+#define PREMO_VERSION_MAJOR @Premo_VERSION_MAJOR@
+#define PREMO_VERSION_MINOR @Premo_VERSION_MINOR@
+#define PREMO_VERSION_BUILD @Premo_VERSION_BUILD@
+
+#endif // PREMO_VERSION_H
+
