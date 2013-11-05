@@ -1,11 +1,3 @@
 
-The following parameters are available.  Ones with "[]" are in effect:
-
-Input Parameters
- --in [testFilesLibBam/testSam.sam], --out [-.bam], --refFile [], --lshift,
-                        --noeof, --recover, --params [ON]
-   SequenceConversion : --useBases, --useEquals, --useOrigSeq [ON]
-
-
 Number of records read = 10
 Number of records written = 10

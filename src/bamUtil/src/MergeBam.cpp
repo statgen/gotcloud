@@ -27,6 +27,7 @@
 #include "SamFile.h"
 #include "MergeBam.h"
 #include "Logger.h"
+#include "PhoneHome.h"
 
 ////////////////////////////////////////////////////////////////////////
 // MergeBam : Merge multiple BAM files appending ReadGroup IDs if necessary
@@ -109,6 +110,8 @@ int MergeBam::execute(int argc, char ** argv)
       { "out", required_argument, NULL, 'o'},
       { "verbose", no_argument, NULL, 'v'},
       { "log", required_argument, NULL, 'L'},
+      { "noPhoneHome", no_argument, NULL, 'p'},
+      { "nophonehome", no_argument, NULL, 'P'},
       { NULL, 0, NULL, 0 },
     };
 
@@ -141,10 +144,19 @@ int MergeBam::execute(int argc, char ** argv)
     case 'L':
       s_logger = optarg;
       break;
+    case 'p':
+    case 'P':
+      mynoph = true;
+      break;
     default:
-      fprintf(stderr,"Unrecognized option %s",getopt_long_options[n_option_index].name);
-      abort();
+      fprintf(stderr,"Unrecognized option %s\n",getopt_long_options[n_option_index].name);
+      return(-1);
     }
+  }
+
+  if(BamExecutable::phoneHome())
+  {
+      PhoneHome::checkVersion(getProgramName(), VERSION);
   }
 
   if ( s_logger.empty() ) {

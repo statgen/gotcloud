@@ -37,6 +37,7 @@ public:
     void description();
     void usage();
     int execute(int argc, char **argv);
+    virtual const char* getProgramName() {return("bam:bam2FastQ");}
 
 private:
     static const char* DEFAULT_FIRST_EXT;
@@ -49,6 +50,9 @@ private:
     void writeFastQ(SamRecord& samRec, IFILE filePtr,
                     const char* readNameExt = "");
     void cleanUpMateMap(uint64_t readPos, bool flushAll = false);
+
+    void closeFiles();
+    void getFileName(String& fn, const String& outBase, const char* ext);
 
     SamRecordPool myPool;
     MateMapByCoord myMateMap;
