@@ -23,6 +23,7 @@
 
 std::string PhoneHome::ourBaseURL = "http://csg.sph.umich.edu/ph/";
 std::string PhoneHome::ourURL = ourBaseURL;
+String PhoneHome::ourReturnString = "";
 char PhoneHome::ourPrefixChar = '?';
 
 void PhoneHome::addParams(const char* params)
@@ -37,12 +38,13 @@ bool PhoneHome::checkVersion(const char* programName, const char* version,
     add("pgm", programName);
     add("vsn", version);
 
-    // TODO - until we actually check version, skip this connection.
     connect();
+
+    if(ourReturnString.SlowCompareToStem("true") != 0)
+    {
+        std::cerr << "A new version of " << programName << " is available\n";
+    }
     
-#ifndef _NO_PHONEHOME
-    // TODO - one day, check version.
-#endif
     return(true);
 }
 
@@ -104,19 +106,20 @@ void PhoneHome::add(const char* name, const char* val)
 void PhoneHome::connect()
 {
     //    std::cerr << "url = " << ourURL << std::endl;
-
+    ourReturnString.Clear();
 #ifndef _NO_PHONEHOME
     knet_silent(1);
     knetFile *file = knet_open(ourURL.c_str(), "r");
     if (file == 0) return;
 
     const int BUF_SIZE = 100;
-    uint8_t buf[BUF_SIZE];
+    char buf[BUF_SIZE];
 
     knet_read(file, buf, BUF_SIZE);
 
     //    std::cerr << buf << std::endl;
     knet_close(file);
     knet_silent(0);
+    ourReturnString = buf;
 #endif
 }
