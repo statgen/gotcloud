@@ -634,7 +634,8 @@ while(<IN>) {
              (getConf("RUN_VCFPILEUP") eq "TRUE") )
         {
             # die if bam is not readable
-            unless ( -r $bam ) { die "ERROR: Cannot locate '$bam'\n"; }
+            unless ( -r $bam ) { die "ERROR: Cannot read '$bam'\n"; }
+            unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
         }
     }
     push(@allSMs,$smID);
