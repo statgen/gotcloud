@@ -65,6 +65,7 @@ my %opts = (
     runcluster => '',
     pipelinedefaults => '',
     phonehome => '',
+    noPhoneHome => '',
     calcstorage => '',
     keeptmp => 0,
     keeplog => 0,
@@ -87,6 +88,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     base_prefix|baseprefix=s
     keeptmp
     keeplog
+    noPhoneHome
     verbose=i
     numjobspersample|numjobs=i
     numconcurrentsamples|numcs=i
@@ -417,7 +419,10 @@ if( !$fastqpref )
 
 if (! $opts{'dry-run'}) {
     #   All set now, phone home to check for a new version. We don't care about failures.
-    system($opts{phonehome});
+    if(!$opts{noPhoneHome})
+    {
+        system($opts{phonehome});
+    }
     #   Last warning to user about storage requirements
     system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
 }
@@ -575,7 +580,14 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         }
         print MAK "\n";
         print MAK "\tmkdir -p \$(\@D)\n";
+
         my $cmd = getConf($step."_CMD",1) . " 2> \$(basename \$\@).log";
+        # Turn off phonehome on the step if applicable.
+        if($opts{noPhoneHome})
+        {
+            $cmd .= " ".getConf($step."_NOPHONEHOME");
+        }
+
         print MAK logCatchFailure($step, $cmd, "\$(basename \$\@).log");
         if(getConf($step."_RMDEP"))
         {
@@ -641,7 +653,13 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         # Add the polish step for each fastq/pair.
         print MAK getConf('POL_TMP') . "/$bam.done: $alnOutFile\n";
         print MAK "\tmkdir -p \$(\@D)\n";
-        print MAK logCatchFailure('polishBam', getConf("polish_CMD"), "\$(basename \$\@).log");
+        my $polCmd = getConf("polish_CMD");
+        if($opts{noPhoneHome})
+        {
+            $polCmd .= " ".getConf("polish_NOPHONEHOME");
+        }
+
+        print MAK logCatchFailure('polishBam', $polCmd, "\$(basename \$\@).log");
         print MAK doneTarget(1);
 
         $polFiles .= getConf('POL_TMP') . "/$bam ";
@@ -659,6 +677,10 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     print MAK "\tmkdir -p \$(\@D)\n";
     my $mergeBams = getConf('BAM_EXE') . " mergeBam --out \$(basename \$\@) \$(subst " .
         getConf('POL_TMP') . ",--in " . getConf('POL_TMP') . ",\$(basename \$^))";
+    if($opts{noPhoneHome})
+    {
+        $mergeBams .= " ".getConf("merge_NOPHONEHOME");
+    }
 
     # If there is only 1 bam, just link instead of merging.
     if((scalar @{$mergeToFq1{$mergeName}}) <= 1)

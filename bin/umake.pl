@@ -65,6 +65,7 @@ my $refprefix = '';
 my $batchtype = '';
 my $batchopts = '';
 my $gcroot = '';
+my $noPhoneHome = '';
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -96,7 +97,8 @@ my $optResult = GetOptions("help",\$help,
                            "verbose", \$verbose,
                            "copyglf=s", \$copyglf,
                            "chrs|chroms=s", \$chroms,
-                           "gotcloudroot|gcroot=s", \$gcroot
+                           "gotcloudroot|gcroot=s", \$gcroot,
+                           "noPhoneHome", \$noPhoneHome
     );
 
 my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
@@ -227,7 +229,10 @@ if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
 $runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 
 #   All set now, phone home to check for a new version. We don't care about failures.
-system($opts{phonehome});
+if(!$noPhoneHome)
+{
+    system($opts{phonehome});
+}
 
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
@@ -1970,7 +1975,14 @@ sub runPileup
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref |";
     }
 
-    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
+    my $clipCmd = getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam";
+    if($noPhoneHome)
+    {
+        $clipCmd .= " ".getConf("BAMUTIL_NOPHONEHOME");
+    }
+
+
+    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq $clipCmd | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);
 }
