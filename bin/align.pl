@@ -854,6 +854,7 @@ sub mapBwa {
                      getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
                      " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
         $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
+        $allSteps .= doneTarget();
     }
     else
     {
