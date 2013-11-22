@@ -19,6 +19,7 @@
 #define __PHONEHOME_H__
 
 #include <string>
+#include "StringBasics.h"
 
 class PhoneHome
 {
@@ -45,6 +46,8 @@ private:
     static std::string ourBaseURL;
     static std::string ourURL;
     static char ourPrefixChar;
+
+    static String ourReturnString;
 };
 
 #endif
