@@ -24,7 +24,7 @@ my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 (my $version = '$Revision: 1.5 $ ') =~ tr/[0-9].//cd;
 
 my %opts = (
-    homeurl => 'http://csg.sph.umich.edu/ph/',
+    homeurl => 'http://csgph.sph.umich.edu/ph/',
     versionfile => "$mepath/../release_version.txt",
     freq => 30,
 );
@@ -73,7 +73,7 @@ else {
 #   check each invocation.
 #-----------------------------------------------------------------
 my $ua = LWP::UserAgent->new();
-my $url = $opts{homeurl} . '?pgm=gotcloud:' . $name . '.php&vsn=' . $ver;
+my $url = $opts{homeurl} . '?pgm=gotcloud:' . $name . '&vsn=' . $ver;
 my $response = $ua->get($url);
 if (! $response->is_success) {
     if ($opts{verbose}) { die "Unable to contact '$url' Err=" . $response->status_line . "\n"; }
