@@ -27,7 +27,7 @@ $_ = abs_path($0);
 my ($me, $medir, $mesuffix) = fileparse($_, '\.pl');
 $medir = abs_path($medir);
 my $gotcloudRoot = $medir;
-if ($medir =~ /(.*)\/bin/) { $gotcloudRoot = $1; }
+if ($medir =~ /(.*)\/bin$/) { $gotcloudRoot = $1; }
 
 #############################################################################
 #   Global Variables

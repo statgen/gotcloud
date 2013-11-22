@@ -199,8 +199,8 @@ bam_index_t *bam_index_core(bamFile fp)
 				recalculated_bin = bam_reg2bin(c->pos, c->pos + 1);
 			}
 			if (c->bin != recalculated_bin) {
-				fprintf(stderr, "[bam_index_core] read '%s' mapped to '%s' at POS %d to %d has BIN %d but should be %d\n",
-					bam1_qname(b), h->target_name[c->tid], c->pos + 1, bam_calend(c, bam1_cigar(b)), c->bin, recalculated_bin);
+				fprintf(stderr, "[bam_index_core] read '%s' mapped to '%s' at POS %d to %d, flag %d,%dhas BIN %d but should be %d\n",
+					bam1_qname(b), h->target_name[c->tid], c->pos + 1, bam_calend(c, bam1_cigar(b)), (b)->core.flag, c->n_cigar, c->bin, recalculated_bin);
 				fprintf(stderr, "[bam_index_core] Fix it by using BAM->SAM->BAM to force a recalculation of the BIN field\n");
 				return NULL;
 			}
@@ -529,9 +529,10 @@ int bam_index(int argc, char *argv[])
 		fprintf(stderr, "Usage: samtools index <in.bam> [out.index]\n");
 		return 1;
 	}
-	if (argc >= 3) bam_index_build2(argv[1], argv[2]);
-	else bam_index_build(argv[1]);
-	return 0;
+        int retval = 0;
+	if (argc >= 3) retval = bam_index_build2(argv[1], argv[2]);
+	else retval = bam_index_build(argv[1]);
+	return retval;
 }
 
 int bam_idxstats(int argc, char *argv[])

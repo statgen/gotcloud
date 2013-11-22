@@ -675,7 +675,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     # Merge the Polished BAMs
     print MAK getConf('MERGE_TMP') . "/$mergeName.merged.bam.done: $allPolish\n";
     print MAK "\tmkdir -p \$(\@D)\n";
-    my $mergeBams = getConf('BAM_EXE') . " mergeBam --out \$(basename \$\@) \$(subst " .
+    my $mergeBams = getConf('BAM_EXE') . " mergeBam --ignorePI --out \$(basename \$\@) \$(subst " .
         getConf('POL_TMP') . ",--in " . getConf('POL_TMP') . ",\$(basename \$^))";
     if($opts{noPhoneHome})
     {
@@ -876,6 +876,7 @@ sub mapBwa {
                      getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
                      " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
         $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
+        $allSteps .= doneTarget();
     }
     else
     {
@@ -942,6 +943,10 @@ sub mapMosaik {
     my $mkbFiles .= getConf('MKB_TMP') . "/$mkb ";
     my $mosaikBuildDone = getConf('MKB_TMP') . "/$mkb.done";
 
+    my $premoFile = $mkb;
+    $premoFile =~ s/mkb/premo.txt/;
+    my $preMosaikDone = getConf('MKB_TMP') . "/$premoFile.done";
+
     my $bam = $mkb;
     $bam =~ s/mkb/bam/;
     $alnFiles .= getConf('ALN_TMP') . "/$bam ";
@@ -977,29 +982,60 @@ sub mapMosaik {
         getConf("MOSAIK_THREADS") .
         " -in \$(basename \$\^) -ia $mosaikRef -j $mosaikJmp -annse " .
         getConf('SE_ANN') . " -annpe " . getConf('PE_ANN') .
-        " -out \$(basename \$(basename \$\@)) -hs 15 -act 25 -mhp 150 > \$(basename \$\@).log";
+        " -out \$(basename \$(basename \$\@)) ".getConf("MOSAIK_HS")." ".getConf("MOSAIK_MHP")." -act 25 > \$(basename \$\@).log";
     $allSteps .= logCatchFailure('mosaikAlign', $mosaikAlign, "\$(basename \$\@).log");
     $allSteps .= doneTarget();
 
     #
     #   Run MosaikBuild to create the intermediate file (no dependencies)
     #
-    $allSteps .= "$mosaikBuildDone:\n";
-    $allSteps .= "\tmkdir -p \$(\@D)\n";
+    $allSteps .= "$mosaikBuildDone:";
     my $mosaikBuild = getConf('MOSAIK_BUILD_EXE') . " -q $absFastq1 ";
-    if($fastq2 ne '.') { $mosaikBuild .= "-q2 $absFastq2 "; }
-    my $mosaikBuildUserOpts = getConf("MOSAIK_BUILD_USER_OPTS");
-    if($mosaikBuildUserOpts)
+
+    my $mfl = "";
+    if($fastq2 ne '.')
     {
-        $mosaikBuild .= "$mosaikBuildUserOpts ";
+        # paired end, add 2nd fastq and dependency on pre-mosaik step.
+        $mosaikBuild .= "-q2 $absFastq2 ";
+        $allSteps .= " $preMosaikDone";
+
+        $mfl = "-mfl `grep -oP '(?<=\-mfl\" : ).*(?=,)' \$(basename \$\^)`";
     }
+
+    if($mfl)
+    {
+        $mosaikBuild .= "$mfl ";
+    }
+
+    $allSteps .= "\n\tmkdir -p \$(\@D)\n";
+
     $mosaikBuild .= "-out \$(basename \$\@) $rgCommand > \$(basename \$\@).log";
     $allSteps .= logCatchFailure('mosaikBuild', $mosaikBuild, "\$(basename \$\@).log");
     #  $allSteps .= "\t$mosaikBuild\n";
     $allSteps .= doneTarget();
 
-return($sortDone);
+    #
+    #   Run pre-Mosaik step to get values only if paired end.
+    #
+    if($fastq2 ne '.')
+    {
+        # Paired end, so run pre-mosaik step.
+        $allSteps .= "$preMosaikDone:\n";
+        $allSteps .= "\tmkdir -p \$(\@D)\n";
+
+        my ($alignexe, $mosaikBinDir) =  fileparse(getConf('MOSAIK_ALIGN_EXE'));
+
+        my $premo = getConf('PREMO_EXE') . " -ref $mosaikRef -jmp $mosaikJmp -annse ".
+            getConf("SE_ANN")." -annpe ".getConf("PE_ANN").
+            " -mosaik $mosaikBinDir -fq1 $absFastq1 -fq2 $absFastq2".
+            " -out \$(basename \$\@) ".getConf("MOSAIK_HS")." ".getConf("MOSAIK_MHP").
+            " -st $fq1toPl{$fastq1} -tmp ".getConf('MKB_TMP')." > \$(basename \$\@).log";
+        $allSteps .= logCatchFailure('preMosaik', $premo, "\$(basename \$\@).log");
+        $allSteps .= doneTarget();
+    }
+    return($sortDone);
 }
+
 
 
 #--------------------------------------------------------------

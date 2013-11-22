@@ -1,8 +1,10 @@
 
 STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID invNorm qplot
-EXES = samtools samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik bwa bgzip tabix
+EXES = samtools samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik bwa bgzip tabix premo
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)
+
+CMAKE = cmake
 
 # Build in all subdirectories.
 #
@@ -85,6 +87,12 @@ mosaik:
 	cd bin/; ln -fs ../$@/bin/MosaikBuild .; cd ..
 	cd bin/; ln -fs ../$@/bin/MosaikJump .; cd ..
 	cd bin/; ln -fs ../$@/bin/MosaikText .; cd ..
+
+premo:
+	mkdir -p $@/build; cd $@/build; $(CMAKE) ..
+	$(MAKE) -C $@/build $(MAKECMDGOALS)
+	mkdir --p bin/
+	cd bin/; ln -fs ../$@/bin/premo .; cd ..
 
 bwa: 
 	$(MAKE) -C bwa $(MAKECMDGOALS)

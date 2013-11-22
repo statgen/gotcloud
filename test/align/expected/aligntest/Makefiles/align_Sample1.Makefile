@@ -55,8 +55,8 @@ $(POL_TMP)/fastq/Sample_1/File2_R1.bam.done: $(ALN_TMP)/fastq/Sample_1/File2_R1.
 
 $(MERGE_TMP)/Sample1.merged.bam.done: $(POL_TMP)/fastq/Sample_1/File1_R1.bam.done $(POL_TMP)/fastq/Sample_1/File2_R1.bam.done 
 	mkdir -p $(@D)
-	@echo `date +'%F.%H:%M:%S'`" gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^))"
-	@gotcloud/bin/bam mergeBam --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^)) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo `date +'%F.%H:%M:%S'`" gotcloud/bin/bam mergeBam --ignorePI --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^))"
+	@gotcloud/bin/bam mergeBam --ignorePI --out $(basename $@) $(subst outdir/aligntest/tmp/alignment.pol,--in outdir/aligntest/tmp/alignment.pol,$(basename $^)) || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed MergingBams step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 	rm -f $(basename $^)

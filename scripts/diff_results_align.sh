@@ -113,7 +113,7 @@ diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefile
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R[1-2].bam.done: .*/fastq/Sample_[1-3]/File[1-2]_R1.sai.done.*/fastq/Sample_[1-3]/File[1-2]_R2.sai.done$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R[1-2].sai.done:$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R1.bam.done: .*/fastq/Sample_[1-3]/File[1-2]_R1.bam.done$' \
-    -I '.* mergeBam --out $(basename $@) $(subst .*,--in .*,$(basename $^))' \
+    -I '.* mergeBam --ignorePI --out $(basename $@) $(subst .*,--in .*,$(basename $^))' \
     -I '^.*/Sample[1-2].merged.bam.done: .*/fastq/Sample_[1-2]/File1_R1.bam.done .*/fastq/Sample_[1-2]/File2_R1.bam.done $' \
     -I '^.*/Sample3.merged.bam.done: .*/fastq/Sample_3/File1_R1.bam.done $' \
     -I '@echo .*".* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics  2> $(basename $@).log"$' \

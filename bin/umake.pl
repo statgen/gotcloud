@@ -639,7 +639,8 @@ while(<IN>) {
              (getConf("RUN_VCFPILEUP") eq "TRUE") )
         {
             # die if bam is not readable
-            unless ( -r $bam ) { die "ERROR: Cannot locate '$bam'\n"; }
+            unless ( -r $bam ) { die "ERROR: Cannot read '$bam'\n"; }
+            unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
         }
     }
     push(@allSMs,$smID);
@@ -1972,15 +1973,14 @@ sub runPileup
 
     my $baq = "";
     if ( $baqFlag != 0 ) {
-        $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -AEbr - $ref |";
+        $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
     }
 
-    my $clipCmd = getConf("BAMUTIL",1)." clipOverlap --in -.bam --out -.ubam";
+    my $clipCmd = getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam";
     if($noPhoneHome)
     {
         $clipCmd .= " ".getConf("BAMUTIL_NOPHONEHOME");
     }
-
 
     my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq $clipCmd | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
