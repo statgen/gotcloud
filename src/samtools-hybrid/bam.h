@@ -254,6 +254,9 @@ typedef struct {
 #define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
 #endif
 
+
+extern int failEof;
+
 /*!
   @abstract Whether the machine is big-endian; modified only in
   bam_header_init().

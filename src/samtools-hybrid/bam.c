@@ -7,6 +7,7 @@
 #include "kstring.h"
 #include "sam_header.h"
 
+int failEof = 1;
 int bam_is_be = 0;
 char *bam_flag2char_table = "pPuUrR12sfd\0\0\0\0\0";
 
@@ -78,7 +79,16 @@ bam_header_t *bam_header_read(bamFile fp)
 		// with ESPIPE.  Suppress the error message in this case.
 		if (errno != ESPIPE) perror("[bam_header_read] bgzf_check_EOF");
 	}
-	else if (i == 0) fprintf(stderr, "[bam_header_read] EOF marker is absent.\n");
+	else if (i == 0)
+        {
+            if(failEof != 0)
+            {
+                // Fail on missing EOF
+                fprintf(stderr, "ERROR: Exiting due to [bam_header_read] EOF marker is absent. The input is probably truncated.\n");
+                exit(1);
+            }
+            fprintf(stderr, "Warning: [bam_header_read] EOF marker is absent. The input is probably truncated.\n");
+        }
 	// read "BAM1"
 	if (bam_read(fp, buf, 4) != 4) return 0;
 	if (strncmp(buf, "BAM\001", 4)) {

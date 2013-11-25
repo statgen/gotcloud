@@ -180,17 +180,19 @@ int bam_rmdup(int argc, char *argv[])
 {
 	int c, is_se = 0, force_se = 0;
 	samfile_t *in, *out;
-	while ((c = getopt(argc, argv, "sS")) >= 0) {
+	while ((c = getopt(argc, argv, "sSe")) >= 0) {
 		switch (c) {
 		case 's': is_se = 1; break;
 		case 'S': force_se = is_se = 1; break;
+                case 'e': failEof = 0; break;
 		}
 	}
 	if (optind + 2 > argc) {
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Usage:  samtools rmdup [-sS] <input.srt.bam> <output.bam>\n\n");
+		fprintf(stderr, "Usage:  samtools rmdup [-sSe] <input.srt.bam> <output.bam>\n\n");
 		fprintf(stderr, "Option: -s    rmdup for SE reads\n");
-		fprintf(stderr, "        -S    treat PE reads as SE in rmdup (force -s)\n\n");
+		fprintf(stderr, "        -S    treat PE reads as SE in rmdup (force -s)\n");
+                fprintf(stderr, "        -e    do NOT exit on missing BAM EOF marker (default is to exit)\n\n");
 		return 1;
 	}
 	in = samopen(argv[optind], "rb", 0);

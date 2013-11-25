@@ -198,19 +198,21 @@ int bam_merge(int argc, char *argv[])
 	int c, is_by_qname = 0, add_RG = 0;
 	char *fn_headers = NULL;
 
-	while ((c = getopt(argc, argv, "h:nr")) >= 0) {
+	while ((c = getopt(argc, argv, "h:nre")) >= 0) {
 		switch (c) {
 		case 'r': add_RG = 1; break;
 		case 'h': fn_headers = strdup(optarg); break;
 		case 'n': is_by_qname = 1; break;
+                case 'e': failEof = 0; break;
 		}
 	}
 	if (optind + 2 >= argc) {
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Usage:   samtools merge [-nr] [-h inh.sam] <out.bam> <in1.bam> <in2.bam> [...]\n\n");
+		fprintf(stderr, "Usage:   samtools merge [-nre] [-h inh.sam] <out.bam> <in1.bam> <in2.bam> [...]\n\n");
 		fprintf(stderr, "Options: -n       sort by read names\n");
 		fprintf(stderr, "         -r       attach RG tag (inferred from file names)\n");
-		fprintf(stderr, "         -h FILE  copy the header in FILE to <out.bam> [in1.bam]\n\n");
+		fprintf(stderr, "         -h FILE  copy the header in FILE to <out.bam> [in1.bam]\n");
+                fprintf(stderr, "         -e       do NOT exit on missing BAM EOF marker (default is to exit)\n\n");
 		fprintf(stderr, "Note: Samtools' merge does not reconstruct the @RG dictionary in the header. Users\n");
 		fprintf(stderr, "      must provide the correct header with -h, or uses Picard which properly maintains\n");
 		fprintf(stderr, "      the header dictionary in merging.\n\n");
@@ -341,15 +343,16 @@ int bam_sort(int argc, char *argv[])
 {
 	size_t max_mem = 500000000;
 	int c, is_by_qname = 0, is_stdout = 0;
-	while ((c = getopt(argc, argv, "nom:")) >= 0) {
+	while ((c = getopt(argc, argv, "noem:")) >= 0) {
 		switch (c) {
 		case 'o': is_stdout = 1; break;
 		case 'n': is_by_qname = 1; break;
 		case 'm': max_mem = atol(optarg); break;
+                case 'e': failEof = 0; break;
 		}
 	}
 	if (optind + 2 > argc) {
-		fprintf(stderr, "Usage: samtools sort [-on] [-m <maxMem>] <in.bam> <out.prefix>\n");
+		fprintf(stderr, "Usage: samtools sort [-oen] [-m <maxMem>] <in.bam> <out.prefix>\n");
 		return 1;
 	}
 	bam_sort_core_ext(is_by_qname, argv[optind], argv[optind+1], max_mem, is_stdout);
