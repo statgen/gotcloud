@@ -62,7 +62,7 @@ int main_samview(int argc, char *argv[])
 
 	/* parse command-line options */
 	strcpy(in_mode, "r"); strcpy(out_mode, "w");
-	while ((c = getopt(argc, argv, "Sbt:hHo:q:f:F:ul:r:xX?T:C")) >= 0) {
+	while ((c = getopt(argc, argv, "Sbt:hHo:q:f:F:ul:r:xXe?T:C")) >= 0) {
 		switch (c) {
 		case 'C': slx2sngr = 1; break;
 		case 'S': is_bamin = 0; break;
@@ -79,6 +79,7 @@ int main_samview(int argc, char *argv[])
 		case 'r': g_rg = strdup(optarg); break;
 		case 'x': of_type = BAM_OFHEX; break;
 		case 'X': of_type = BAM_OFSTR; break;
+                case 'e': failEof = 0; break;
 		case '?': is_long_help = 1; break;
 		case 'T': fn_ref = strdup(optarg); is_bamin = 0; break;
 		default: return usage(is_long_help);
@@ -172,6 +173,7 @@ static int usage(int is_long_help)
 	fprintf(stderr, "         -q INT   minimum mapping quality [0]\n");
 	fprintf(stderr, "         -l STR   only output reads in library STR [null]\n");
 	fprintf(stderr, "         -r STR   only output reads in read group STR [null]\n");
+        fprintf(stderr, "         -e       do NOT exit on missing BAM EOF marker (default is to exit)\n");
 	fprintf(stderr, "         -?       longer help\n");
 	fprintf(stderr, "\n");
 	if (is_long_help)
