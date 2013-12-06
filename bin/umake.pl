@@ -99,7 +99,10 @@ my $optResult = GetOptions("help",\$help,
                            "gotcloudroot|gcroot=s", \$gcroot
     );
 
-my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
+my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
+"\tgotcloud ldrefine --conf [conf.file]\n".
+"\tgotcloud vc --conf [conf.file]\n".
+"Specify --help to get more usage infromation";
 die "Error in parsing options\n$usage\n" unless ( ($optResult) && (($conf) || ($help) || ($testdir)) );
 
 # check if help.
