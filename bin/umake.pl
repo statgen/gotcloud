@@ -409,6 +409,7 @@ if( getConf("OUTPUT_DIR") )
 if( getConf("OUT_PREFIX") )
 {
     warn "ERROR: OUT_PREFIX is deprecated and has been replaced by MAKE_BASE_NAME, please update your configuration file and rerun\n";
+    $failReqFile = "1";
 }
 
 if($failReqFile eq "1")
