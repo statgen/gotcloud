@@ -151,7 +151,7 @@ my %opts = (
     phonehome => "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $scriptName",
     pipelinedefaults => $scriptPath . '/gotcloudDefaults.conf',
 );
-my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
+my $runcluster = "\$(GOTCLOUD_ROOT)/scripts/runcluster.pl";
 
 #   Special case for convenient testing
 if($testdir ne "") {
@@ -227,7 +227,6 @@ if ($batchtype eq "")
 }
 
 if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
-$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 
 #   All set now, phone home to check for a new version. We don't care about failures.
 system($opts{phonehome});
