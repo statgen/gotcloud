@@ -1576,6 +1576,7 @@ foreach my $chr (@chrs) {
                 if($#bams == 0)
                 {
                     # There is just one BAM for this sample.
+                    if (getConf("BAM_DEPEND") eq "TRUE") { $sampleCmd .= " $bams[0]"; }
                     # Run pileup on this BAM and output as the sample GLF name.
                     $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n";
                     $sampleCmd .= logCatchFailure("pileup",
@@ -1597,8 +1598,9 @@ foreach my $chr (@chrs) {
 
                         # Add the target info for this pileup.
 
-                        $bamPileupCmds .= "$bamGlf.OK:$idxDependency\n";
-                        $bamPileupCmds .= "\tmkdir --p $bamGlfDir/$allSMs[$i]/chr$chr\n";
+                        $bamPileupCmds .= "$bamGlf.OK:$idxDependency";
+                        if (getConf("BAM_DEPEND") eq "TRUE") { $bamPileupCmds .= " $bam"; }
+                        $bamPileupCmds .= "\n\tmkdir --p $bamGlfDir/$allSMs[$i]/chr$chr\n";
                         $bamPileupCmds .= logCatchFailure("pileup",
                                                           runPileup($bam, $bamGlf, $region, $loci),
                                                           "$bamGlf.log");
@@ -1685,8 +1687,9 @@ if ( getConf("RUN_INDEX") eq "TRUE" ) {
     foreach my $bam (@bamsToIndex) {
         my $cmd = getConf("SAMTOOLS_FOR_OTHERS")." index $bam";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-        print MAK "$cmd";
-        print MAK "$bam.bai.OK:\n\t".getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n";
+        print MAK "$bam.bai.OK:";
+        if (getConf("BAM_DEPEND") eq "TRUE") { print MAK " $bam"; }
+        print MAK "\n\t".getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n\n";
     }
 }
 
