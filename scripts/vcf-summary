@@ -406,7 +406,8 @@ sub printSummary {
     my ($a,$b,$c,$d,$e,$f,$g,$h) = @{$r->[2]};
     my $s = $a+$b+$c+$d+$e+$f+$g+$h;
     print STDERR "$key\t$r->[0]\t$s\t".join("\t",@{$r->[2]})."\n" if ( $key eq "TOTAL" );
-    print sprintf("%20s",$key)."\t".($r->[0])."\t".($r->[1])."\t".sprintf("%.1lf",$r->[1]*100/$r->[0]);
+    print sprintf("%20s",$key)."\t".($r->[0])."\t".($r->[1])."\t";
+    print ( ($r->[0] > 0) ? sprintf("%.1lf",$r->[1]*100/$r->[0]) : "NA");
     print ( ($a+$b+$c+$d > 0) ? sprintf("\t%.1lf",($c+$d)/($a+$b+$c+$d)*100) : "\tNA");
     print ( ($e+$f+$g+$h > 0) ? sprintf("\t%.1lf",($g+$h)/($e+$f+$g+$h)*100) : "\tNA");
     print ( ($b+$d == 0) ? "\tNA" : sprintf("\t%.2lf",($a+$c)/($b+$d)) );

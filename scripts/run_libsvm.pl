@@ -314,7 +314,7 @@ unless($model)
 	print STDOUT "Positive samples: $pos_count, Negative samples: $neg_count\n";
 
 	print STDOUT join("\t",@names)."\n";
-	my $gamma = 1/(scalar @names);
+#	my $gamma = 1/(scalar @names);
 
 	$cmd = "$svmlearn -s 0 -t 2 $out.labeled.svm $out.svm.model";
 	print "$cmd\n";

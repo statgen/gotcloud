@@ -101,7 +101,10 @@ my $optResult = GetOptions("help",\$help,
                            "noPhoneHome", \$noPhoneHome
     );
 
-my $usage = "Usage: umake.pl --conf [conf.file]\nOptional Flags:\n\t--snpcall\tcall SNPs (PILEUP to SPLIT)\n\t--beagle\tGenotype refinement using beagle\n\t--thunder\tGenotype refinement using thunder (after running beagle)";
+my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
+"\tgotcloud ldrefine --conf [conf.file]\n".
+"\tgotcloud vc --conf [conf.file]\n".
+"Specify --help to get more usage infromation";
 die "Error in parsing options\n$usage\n" unless ( ($optResult) && (($conf) || ($help) || ($testdir)) );
 
 # check if help.
@@ -150,7 +153,7 @@ my %opts = (
     phonehome => "$gotcloudRoot/scripts/gcphonehome.pl -pgmname GotCloud $scriptName",
     pipelinedefaults => $scriptPath . '/gotcloudDefaults.conf',
 );
-my $runcluster = "$gotcloudRoot/scripts/runcluster.pl";
+my $runcluster = "\$(GOTCLOUD_ROOT)/scripts/runcluster.pl";
 
 #   Special case for convenient testing
 if($testdir ne "") {
@@ -226,7 +229,6 @@ if ($batchtype eq "")
 }
 
 if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
-$runcluster = abs_path($runcluster);    # Make sure this is fully qualified
 
 #   All set now, phone home to check for a new version. We don't care about failures.
 if(!$noPhoneHome)
@@ -414,6 +416,7 @@ if( getConf("OUTPUT_DIR") )
 if( getConf("OUT_PREFIX") )
 {
     warn "ERROR: OUT_PREFIX is deprecated and has been replaced by MAKE_BASE_NAME, please update your configuration file and rerun\n";
+    $failReqFile = "1";
 }
 
 if($failReqFile eq "1")
@@ -1145,7 +1148,7 @@ foreach my $chr (@chrs) {
         print MAK "$vcf.OK: ";
         print MAK join(".OK ",@vcfs);
         print MAK ".OK\n";
-        my $cmd = "(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) | ".getConf("BGZIP")." -c > $vcf.gz";
+        my $cmd = getConf("VCFCAT")." @vcfs  | ".getConf("BGZIP")." -c > $vcf.gz";
         writeLocalCmd($cmd);
         print MAK "\ttouch $vcf.OK\n\n";
 
@@ -1437,7 +1440,7 @@ foreach my $chr (@chrs) {
                 print MAK "$cmd";
             }
             else {
-                my $cmd = "(cat $gvcfs[0] | head -100 | grep ^#; cat @gvcfs | grep -v ^#;) > $mvcfPrefix.merged.stats.vcf";
+                my $cmd = getConf("VCFCAT")." @gvcfs > $mvcfPrefix.merged.stats.vcf";
                 writeLocalCmd($cmd);
             }
             my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
@@ -1520,7 +1523,7 @@ foreach my $chr (@chrs) {
             print MAK "$cmd";
         }
         else {  ## targeted regions - rely on the loci info
-            my $cmd = "(cat $vcfs[0] | head -100 | grep ^#; cat @vcfs | grep -v ^#;) > $out.vcf";
+            my $cmd = getConf("VCFCAT")." @vcfs > $out.vcf";
             writeLocalCmd($cmd);
         }
         print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";
@@ -1578,9 +1581,12 @@ foreach my $chr (@chrs) {
                 if($#bams == 0)
                 {
                     # There is just one BAM for this sample.
+                    if (getConf("BAM_DEPEND") eq "TRUE") { $sampleCmd .= " $bams[0]"; }
                     # Run pileup on this BAM and output as the sample GLF name.
-                    $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n\t";
-                    $sampleCmd .= runPileup($bams[0], $smGlf, $region, $loci);
+                    $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n";
+                    $sampleCmd .= logCatchFailure("pileup",
+                                                  runPileup($bams[0], $smGlf, $region, $loci),
+                                                  "$smGlf.log");
                 }
                 else
                 {
@@ -1597,10 +1603,13 @@ foreach my $chr (@chrs) {
 
                         # Add the target info for this pileup.
 
-                        $bamPileupCmds .= "$bamGlf.OK:$idxDependency\n";
-                        $bamPileupCmds .= "\tmkdir --p $bamGlfDir/$allSMs[$i]/chr$chr\n\t";
-                        $bamPileupCmds .= runPileup($bam, $bamGlf, $region, $loci);
-                        $bamPileupCmds .= "\n\ttouch $bamGlf.OK\n\n";
+                        $bamPileupCmds .= "$bamGlf.OK:$idxDependency";
+                        if (getConf("BAM_DEPEND") eq "TRUE") { $bamPileupCmds .= " $bam"; }
+                        $bamPileupCmds .= "\n\tmkdir --p $bamGlfDir/$allSMs[$i]/chr$chr\n";
+                        $bamPileupCmds .= logCatchFailure("pileup",
+                                                          runPileup($bam, $bamGlf, $region, $loci),
+                                                          "$bamGlf.log");
+                        $bamPileupCmds .= "\ttouch $bamGlf.OK\n\n";
                     }
                     # Add the BAM specific GLFs to the sample glf dependency.
                     $sampleCmd .= " ".join(".OK ",@bamGlfs).".OK";
@@ -1617,8 +1626,9 @@ foreach my $chr (@chrs) {
                     # Merge the multiple GLFs for this sample.
                     $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
                     $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+                    $sampleCmd .= "\n";
                 }
-                $sampleCmd .= "\n\ttouch $smGlf.OK\n";
+                $sampleCmd .= "\ttouch $smGlf.OK\n";
                 push(@sampleCmds,$sampleCmd);
             }
         }
@@ -1648,13 +1658,7 @@ if ( getConf("WGS_SVM") eq "TRUE")
         my $outMergedVcf = "$remotePrefix$vcfDir/filtered.sites.vcf";
 
         # Add the vcf header.
-        print MAK "\tcat $wgsFilterDepSites[0] | head -100 | grep ^# > $mergedSites\n";
-        # Merge the per chr files.
-        foreach my $chrFile (@wgsFilterDepSites)
-        {
-            # Cat all the chr files together
-            print MAK "\tcat $chrFile  | grep -v ^# >> $mergedSites\n";
-        }
+        print MAK "\t".getConf("VCFCAT")." @wgsFilterDepSites > $mergedSites\n";
 
         # Run SVM on the merged file.
         runSVM($mergedSites, $outMergedVcf);
@@ -1688,8 +1692,9 @@ if ( getConf("RUN_INDEX") eq "TRUE" ) {
     foreach my $bam (@bamsToIndex) {
         my $cmd = getConf("SAMTOOLS_FOR_OTHERS")." index $bam";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-        print MAK "$cmd";
-        print MAK "$bam.bai.OK:\n\t".getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n";
+        print MAK "$bam.bai.OK:";
+        if (getConf("BAM_DEPEND") eq "TRUE") { print MAK " $bam"; }
+        print MAK "\n\t".getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n\n";
     }
 }
 
@@ -1700,7 +1705,7 @@ print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
 if($numjobs != 0) {
-    my $cmd = "make -f $makef -j $numjobs ". getConf("MAKE_OPTS") . " > $makef.log";
+    my $cmd = "make -k -f $makef -j $numjobs ". getConf("MAKE_OPTS") . " > $makef.log";
     if(($batchtype eq 'local') && ($numjobs > $maxlocaljobs))
     {
         die "ERROR: can't run $numjobs jobs with 'BATCH_TYPE = local', " .
@@ -1711,7 +1716,8 @@ if($numjobs != 0) {
             "  $cmd\n";
     }
 
-    print STDERR "Running $makef\n\n";
+    print STDERR "Running: $makef\n";
+    print STDERR "Logging to: $makef.log\n\n";
     my $t = time();
     #           my $rc = 0xffff & system($cmd);
     #           exit($rc);
@@ -1726,7 +1732,7 @@ if($numjobs != 0) {
 }
 else {
     print STDERR "Try 'make -f $makef ". getConf("MAKE_OPTS") . " -n | less' for a sanity check before running\n";
-    print STDERR "Run 'make -f $makef ". getConf("MAKE_OPTS") . " -j [#parallele jobs]'\n";
+    print STDERR "Run 'make -k -f $makef ". getConf("MAKE_OPTS") . " -j [#parallele jobs]'\n";
 }
 print STDERR "--------------------------------------------------------------------\n";
 
@@ -1983,6 +1989,7 @@ sub runPileup
     }
 
     my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq $clipCmd | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
+
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);
 }
@@ -2063,13 +2070,44 @@ sub writeLocalCmd {
     if( $cmd =~ /\|/)
     {
         $cmd =~ s/'/"/g;   # Avoid issues with single quotes in command
-        my $newcmd = 'bash -c "set -o pipefail; '.$cmd.'"';
+        my $newcmd = 'bash -c "set -e -o pipefail; '.$cmd.'"';
         print MAK "\t$newcmd\n";
     }
     else
     {
         print MAK "\t$cmd\n";
     }
+}
+
+
+#--------------------------------------------------------------
+#   cmd = logCatchFailure(commandName, command, log, failVal)
+#
+#   Generate a line for a Makefile to generate an error message
+#--------------------------------------------------------------
+sub logCatchFailure {
+    my ($commandName, $command, $log, $failVal) = @_;
+    if (! defined($failVal)) { $failVal = 1; }
+
+    my $makeCmd = "\t\@echo `date +'%F.%H:%M:%S'`\" $command\"\n" . "\t\@$command ";
+    if ($failVal == 1) { $makeCmd .= '||'; }
+    else { $makeCmd .= '&&'; }
+
+    #   What caused the failure.
+    $makeCmd .= " (echo \"`grep -i -e abort -e error -e failed $log`\" >&2; ";
+    #   Show failed step.
+    $makeCmd .= "echo \"Failed $commandName step\" >&2; ";
+    #   Copy the log to the failed logs directory.
+    $makeCmd .= "mkdir -p \$(OUT_DIR)/failLogs; cp $log \$(OUT_DIR)/failLogs/\$(notdir $log); ";
+    #   Show log name to look at.
+    $makeCmd .= "echo \"See \$(OUT_DIR)/failLogs/\$\(notdir $log\) for more details\" >&2; ";
+    #   Exit on failure.
+    $makeCmd .= "exit 1;)\n";
+    if (getConf('KEEP_LOG')) { return $makeCmd; }
+
+    #   On success, remove the log
+#    $makeCmd .= "\trm -f $log\n";
+    return $makeCmd;
 }
 
 #==================================================================

@@ -199,7 +199,14 @@ if(!$opts{calcstorage})
 
 
 if ((! $opts{conf}) || (! -r $opts{conf})) {
-    die "Conf file '$opts{conf}' does not exist or was not specified\n";
+    my $usage;
+    if($opts{conf})
+    {
+        $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
+    }
+    $usage .= "Usage:\tgotcloud align --conf [conf.file]\n".
+    "Specify --help to get more usage infromation\n";
+    die "$usage";
 }
 $opts{conf} = abs_path($opts{conf});
 

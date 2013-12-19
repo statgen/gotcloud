@@ -52,8 +52,6 @@ echo "Results from DIFF will be in $DIFFRESULTS"
 
 diff -r $RESULTS_DIR $EXPECTED_DIR \
     $SKIP_GZS -x $TBI1 -x $TBI2 -x $DIFF_FILE -x umake_test.snpcall.conf -x umake_test.snpcall.Makefile.log\
-    -I "runcluster.pl" \
-    -I "bin/samtools-hybrid view -q 20 -F 0x0704 -uh" \
     -I "^Analysis completed on " \
     -I "^Analysis finished on " \
     -I "^Analysis started on " \
