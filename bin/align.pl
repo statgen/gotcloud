@@ -665,7 +665,7 @@ foreach my $tmpmerge (keys %mergeToFq1) {
     print MAK getConf('MERGE_TMP') . "/$mergeName.merged.bam.done: $allPolish\n";
     print MAK "\tmkdir -p \$(\@D)\n";
     my $mergeBams = getConf('BAM_EXE') . " mergeBam --ignorePI --out \$(basename \$\@) \$(subst " .
-        getConf('POL_TMP') . ",--in " . getConf('POL_TMP') . ",\$(basename \$^))";
+        getConf('POL_TMP') . ",--in " . getConf('POL_TMP') . ",\$(basename \$^)) ".getConf("BAMUTIL_THINNING");
 
     # If there is only 1 bam, just link instead of merging.
     if((scalar @{$mergeToFq1{$mergeName}}) <= 1)

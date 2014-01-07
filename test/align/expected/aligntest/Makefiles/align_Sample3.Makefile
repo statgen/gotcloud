@@ -31,16 +31,16 @@ $(FINAL_BAM_DIR)/Sample3.recal.bam.bai.done: $(DEDUP_TMP)/Sample3.recal.bam.done
 
 $(FINAL_BAM_DIR)/Sample3.recal.bam.done: $(DEDUP_TMP)/Sample3.merged.bam.done
 	mkdir -p $(@D)
-	@echo `date +'%F.%H:%M:%S'`" $(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  2> $(basename $@).log"
-	@$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo `date +'%F.%H:%M:%S'`" $(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  --phoneHomeThinning 0 2> $(basename $@).log"
+	@$(BAM_EXE) dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile $(REF) --dbsnp $(DBSNP_VCF) --storeQualTag OQ  --phoneHomeThinning 0 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 	rm -f $(basename $^)
 
 $(POL_TMP)/fastq/Sample_1/File1_R1.bam.done: $(ALN_TMP)/fastq/Sample_1/File1_R1.bam.done
 	mkdir -p $(@D)
-	@echo `date +'%F.%H:%M:%S'`" $(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log"
-	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo `date +'%F.%H:%M:%S'`" $(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning 0"
+	@$(BAM_EXE) polishBam -f $(REF) --AS $(AS) --UR file:$(REF) --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning 0 || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 	rm -f $(basename $^)
