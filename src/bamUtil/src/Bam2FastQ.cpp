@@ -22,7 +22,6 @@
 #include "SamFile.h"
 #include "SamHelper.h"
 
-
 const char* Bam2FastQ::DEFAULT_FIRST_EXT = "/1";
 const char* Bam2FastQ::DEFAULT_SECOND_EXT = "/2";
 
@@ -67,7 +66,7 @@ void Bam2FastQ::description()
 void Bam2FastQ::usage()
 {
     BamExecutable::usage();
-    std::cerr << "\t./bam bam2FastQ --in <inputFile> [--readName] [--refFile <referenceFile>] [--outBase <outputFileBase>] [--firstOut <1stReadInPairOutFile>] [--secondOut <2ndReadInPairOutFile>] [--unpairedOut <unpairedOutFile>] [--firstRNExt <firstInPairReadNameExt>] [--secondRNExt <secondInPairReadNameExt>] [--rnPlus] [--noReverseComp] [--noeof] [--params]" << std::endl;
+    std::cerr << "\t./bam bam2FastQ --in <inputFile> [--readName] [--refFile <referenceFile>] [--outBase <outputFileBase>] [--firstOut <1stReadInPairOutFile>] [--merge|--secondOut <2ndReadInPairOutFile>] [--unpairedOut <unpairedOutFile>] [--firstRNExt <firstInPairReadNameExt>] [--secondRNExt <secondInPairReadNameExt>] [--rnPlus] [--noReverseComp] [--noeof] [--params]" << std::endl;
     std::cerr << "\tRequired Parameters:" << std::endl;
     std::cerr << "\t\t--in       : the SAM/BAM file to convert to FastQ" << std::endl;
     std::cerr << "\tOptional Parameters:" << std::endl;
@@ -139,12 +138,14 @@ int Bam2FastQ::execute(int argc, char **argv)
         LONG_STRINGPARAMETER("firstOut", &firstOut)
         LONG_STRINGPARAMETER("secondOut", &secondOut)
         LONG_STRINGPARAMETER("unpairedOut", &unpairedOut)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
 
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.

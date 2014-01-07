@@ -25,6 +25,7 @@
 #include "SamFlag.h"
 #include "BgzfFileType.h"
 #include "TrimBam.h"
+#include "PhoneHome.h"
 
 void TrimBam::trimBamDescription()
 {
@@ -59,12 +60,14 @@ int TrimBam::execute(int argc, char ** argv)
   int numTrimBaseR = 0;
   bool noeof = false;
   bool ignoreStrand = false;
+  bool noPhoneHome = false;
   std::string inName = "";
   std::string outName = "";
 
   if ( argc < 5 ) {
     usage();
-    abort();
+    std::cerr << "ERROR: Incorrect number of parameters specified\n";
+    return(-1);
   }
   inName = argv[2];
   outName = argv[3];
@@ -75,6 +78,10 @@ int TrimBam::execute(int argc, char ** argv)
       { "right", required_argument, NULL, 'R'},
       { "ignoreStrand", no_argument, NULL, 'i'},
       { "noeof", no_argument, NULL, 'n'},
+      { "noPhoneHome", no_argument, NULL, 'p'},
+      { "nophonehome", no_argument, NULL, 'P'},
+      { "phoneHomeThinning", required_argument, NULL, 't'},
+      { "phonehomethinning", required_argument, NULL, 'T'},
       { NULL, 0, NULL, 0 },
   };
   
@@ -89,7 +96,7 @@ int TrimBam::execute(int argc, char ** argv)
   }
 
   int c = 0;
- int n_option_index = 0;
+  int n_option_index = 0;
   // Process any additional parameters
   while ( ( c = getopt_long(argc, argv,
                             "L:R:in", getopt_long_options, &n_option_index) )
@@ -109,13 +116,26 @@ int TrimBam::execute(int argc, char ** argv)
           case 'n':
               noeof = true;
               break;
+          case 'p':
+          case 'P':
+              noPhoneHome = true;
+              break;
+          case 't':
+          case 'T':
+              PhoneHome::allThinning = atoi(optarg);
+              break;
           default:
-              fprintf(stderr,"Unrecognized option %s",
+              fprintf(stderr,"ERROR: Unrecognized option %s\n",
                       getopt_long_options[n_option_index].name);
-              abort();
+              return(-1);
       }
   }
 
+  if(!noPhoneHome)
+  {
+      PhoneHome::checkVersion(getProgramName(), VERSION);
+  }
+  
   if(noeof)
   {
       // Set that the eof block is not required.
@@ -124,7 +144,7 @@ int TrimBam::execute(int argc, char ** argv)
 
   if ( ! samIn.OpenForRead(inName.c_str()) ) {
       fprintf(stderr, "***Problem opening %s\n",inName.c_str());
-    abort();
+    return(-1);
   }
 
   if(!samOut.OpenForWrite(outName.c_str())) {
@@ -215,7 +235,7 @@ int TrimBam::execute(int argc, char ** argv)
        int qualLen = strlen(qual);
        if ( (qualLen != len) && qualValue ) {
          fprintf(stderr,"ERROR: Sequence and Quality have different length\n");
-         abort();
+         return(-1);
        }
        if ( len < (trimLeft + trimRight) ) {
          // Read Length is less than the total number of bases to trim,
@@ -256,7 +276,7 @@ int TrimBam::execute(int argc, char ** argv)
      if(!samOut.WriteRecord(samHeader, samRecord)) {
          // Failed to write a record.
        fprintf(stderr, "Failure in writing record %s\n", samOut.GetStatusMessage());
-       abort();
+       return(-1);
      }
    }
    

@@ -26,7 +26,6 @@
 #include "BgzfFileType.h"
 #include "SamTags.h"
 
-
 Revert::Revert()
     : myKeepTags(false)
 {
@@ -87,13 +86,14 @@ int Revert::execute(int argc, char **argv)
         LONG_STRINGPARAMETER("rmTags", &rmTags)
         LONG_PARAMETER("noeof", &noeof)
         LONG_PARAMETER("params", &params)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
     
-    inputParameters.Read(argc-1, &(argv[1]));
-    
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.

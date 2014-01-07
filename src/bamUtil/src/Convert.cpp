@@ -26,7 +26,6 @@
 #include "BgzfFileType.h"
 #include "SamValidation.h"
 
-
 void Convert::convertDescription()
 {
     std::cerr << " convert - Convert SAM/BAM to SAM/BAM" << std::endl;
@@ -97,7 +96,7 @@ int Convert::execute(int argc, char **argv)
     bool useOrigSeq = false;
 
     bool recover = false;
-    
+
     ParameterList inputParameters;
     BEGIN_LONG_PARAMETERS(longParameterList)
         LONG_STRINGPARAMETER("in", &inFile)
@@ -111,13 +110,14 @@ int Convert::execute(int argc, char **argv)
             EXCLUSIVE_PARAMETER("useBases", &useBases)
             EXCLUSIVE_PARAMETER("useEquals", &useEquals)
             EXCLUSIVE_PARAMETER("useOrigSeq", &useOrigSeq)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
     
-    inputParameters.Read(argc-1, &(argv[1]));
-    
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.

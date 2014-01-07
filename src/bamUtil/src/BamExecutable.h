@@ -34,6 +34,9 @@ public:
     virtual void description();
     virtual void usage();
     virtual int execute(int argc, char**argv) = 0;
+    
+    virtual const char* getProgramName() {return("bam");}
+
 
 protected:
 

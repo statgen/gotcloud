@@ -28,6 +28,7 @@
 #include "SamFile.h"
 #include "Logger.h"
 #include "BgzfFileType.h"
+#include "PhoneHome.h"
 
 ////////////////////////////////////////////////////////////////////////
 // SplitBam : 
@@ -86,7 +87,7 @@ void SplitBam::usage()
   std::cerr << "Optional arguments:" << std::endl;
   std::cerr << "-L/--log [logFile]  : log file name. default is listFile.log" << std::endl;
   std::cerr << "-v/--verbose : turn on verbose mode" << std::endl;
-  std::cerr << "-n/--noeof : turn off the check fo an EOF block at the end of a bam file" << std::endl;
+  std::cerr << "-n/--noeof : turn off the check for an EOF block at the end of a bam file" << std::endl;
 }
 
 // main function
@@ -100,6 +101,10 @@ int SplitBam::execute(int argc, char ** argv)
       { "verbose", no_argument, NULL, 'v'},
       { "noeof", no_argument, NULL, 'n'},
       { "log", required_argument, NULL, 'L'},
+      { "noPhoneHome", no_argument, NULL, 'p'},
+      { "nophonehome", no_argument, NULL, 'P'},
+      { "phoneHomeThinning", required_argument, NULL, 't'},
+      { "phonehomethinning", required_argument, NULL, 'T'},
       { NULL, 0, NULL, 0 },
     };
 
@@ -107,6 +112,7 @@ int SplitBam::execute(int argc, char ** argv)
   char c;
   bool b_verbose = false;
   bool noeof = false;
+  bool noPhoneHome = false;
 
   std::string s_in, s_out, s_logger;
 
@@ -127,22 +133,42 @@ int SplitBam::execute(int argc, char ** argv)
     case 'L':
       s_logger = optarg;
       break;
+    case 'p':
+    case 'P':
+      noPhoneHome = true;
+      break;
+    case 't':
+    case 'T':
+      PhoneHome::allThinning = atoi(optarg);
+      break;
     default:
-      fprintf(stderr,"Unrecognized option %s",getopt_long_options[n_option_index].name);
-      abort();
+      fprintf(stderr,"ERROR: Unrecognized option %s\n",getopt_long_options[n_option_index].name);
+      return(-1);
     }
   }
 
-  if ( s_logger.empty() ) {
-    s_logger = s_out + ".log";
+  if ( s_logger.empty() )
+  {
+      if(s_out.empty())
+      {
+          s_logger = "-";
+      }
+      else
+      {
+          s_logger = s_out + ".log";
+      }
   }
-
+  
+  if(!noPhoneHome)
+  {
+      PhoneHome::checkVersion(getProgramName(), VERSION);
+  }
+  
   if(noeof)
   {
       // Set that the eof block is not required.
       BgzfFileType::setRequireEofBlock(false);
   }
-
 
   // create a logger object, now possible to write logs/warnings/errors
   Logger::gLogger = new Logger(s_logger.c_str(), b_verbose);

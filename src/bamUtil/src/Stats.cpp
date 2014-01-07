@@ -58,7 +58,7 @@ void Stats::usage()
     std::cerr << "\t\t--unmapped      : Only process unmapped reads (requires a bamIndex file)" << std::endl;
     std::cerr << "\t\t--bamIndex      : The path/name of the bam index file" << std::endl;
     std::cerr << "\t\t                  (if required and not specified, uses the --in value + \".bai\")" << std::endl;
-    std::cerr << "\t\t--regionList    : File containing the regions to be processed chr<tab>start_pos<tab>end<pos>." << std::endl;
+    std::cerr << "\t\t--regionList    : File containing the regions to be processed chr<tab>start_pos<tab>end_pos." << std::endl;
     std::cerr << "\t\t                  Positions are 0 based and the end_pos is not included in the region." << std::endl;
     std::cerr << "\t\t                  Uses bamIndex." << std::endl;
     std::cerr << "\t\t--excludeFlags  : Skip any records with any of the specified flags set\n";
@@ -130,12 +130,14 @@ int Stats::execute(int argc, char **argv)
         LONG_INTPARAMETER("bufferSize", &bufferSize)
         LONG_INTPARAMETER("minMapQual", &minMapQual)
         LONG_STRINGPARAMETER("dbsnp", &dbsnp)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
 
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.

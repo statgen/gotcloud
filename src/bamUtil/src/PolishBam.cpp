@@ -25,6 +25,7 @@
 #include "SamFile.h"
 #include "PolishBam.h"
 #include "Logger.h"
+#include "PhoneHome.h"
 
 ///////////////////////////////////////////////////////////////////////
 //
@@ -242,6 +243,10 @@ int PolishBam::execute(int argc, char ** argv)
       { "RG", required_argument, NULL, 0},
       { "PG", required_argument, NULL, 0},
       { "checkSQ", no_argument, NULL, 0},
+      { "noPhoneHome", no_argument, NULL, 'p'},
+      { "nophonehome", no_argument, NULL, 'P'},
+      { "phoneHomeThinning", required_argument, NULL, 't'},
+      { "phonehomethinning", required_argument, NULL, 'T'},
       { NULL, 0, NULL, 0 },
     };
 
@@ -254,6 +259,7 @@ int PolishBam::execute(int argc, char ** argv)
   std::string sAS, sUR, sSP, sFasta, sInFile, sOutFile, sLogFile;
   bool bClear, bCheckSQ, bVerbose;
   std::vector<std::string> vsHDHeaders, vsRGHeaders, vsPGHeaders;
+  bool noPhoneHome = false;
 
   bCheckSQ = bVerbose = false;
   bClear = true;
@@ -274,6 +280,12 @@ int PolishBam::execute(int argc, char ** argv)
     }
     else if ( c == 'l' ) {
 	sLogFile = optarg;
+    }
+    else if (( c == 'p' )||( c == 'P' )) {
+        noPhoneHome = true;
+    }
+    else if (( c == 't' )||( c == 'T' )) {
+        PhoneHome::allThinning = atoi(optarg);
     }
     else if ( strcmp(getopt_long_options[n_option_index].name,"AS") == 0 ) {
       sAS = optarg;
@@ -298,12 +310,25 @@ int PolishBam::execute(int argc, char ** argv)
     }
     else {
       std::cerr << "Error: Unrecognized option " << getopt_long_options[n_option_index].name << std::endl;
-      abort();
+      return(-1);
     }
   }
 
-  if ( sLogFile.compare("__NONE__") == 0 ) {
-    sLogFile = (sOutFile + ".log");
+  if(!noPhoneHome)
+  {
+      PhoneHome::checkVersion(getProgramName(), VERSION);
+  }
+
+  if ((sLogFile.compare("__NONE__") == 0) ||  sLogFile.empty())
+  {
+      if(sOutFile.empty())
+      {
+          sLogFile = "-";
+      }
+      else
+      {
+          sLogFile = (sOutFile + ".log");
+      }
   }
 
   Logger::gLogger = new Logger(sLogFile.c_str(), bVerbose);

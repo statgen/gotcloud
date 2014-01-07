@@ -27,7 +27,6 @@
 #include "SamHelper.h"
 #include "OverlapClipLowerBaseQual.h"
 
-
 ClipOverlap::ClipOverlap()
     : BamExecutable(),
       myOverlapHandler(NULL),
@@ -59,7 +58,7 @@ void ClipOverlap::description()
 void ClipOverlap::usage()
 {
     BamExecutable::usage();
-    std::cerr << "\t./bam clipOverlap --in <inputFile> --out <outputFile> [--storeOrig <tag>] [--readName] [--stats] [--overlapsOnly] [--poolSize <numRecords allowed to allocate>] [--poolSkipOverlap] [--noeof] [--params]" << std::endl;
+    std::cerr << "\t./bam clipOverlap --in <inputFile> --out <outputFile> [--storeOrig <tag>] [--readName] [--stats] [--overlapsOnly] [--excludeFlags <flag>] [--poolSize <numRecords allowed to allocate>] [--poolSkipOverlap] [--noeof] [--params]" << std::endl;
     std::cerr << "\tRequired Parameters:" << std::endl;
     std::cerr << "\t\t--in           : the SAM/BAM file to clip overlaping read pairs for" << std::endl;
     std::cerr << "\t\t--out          : the SAM/BAM file to be written" << std::endl;
@@ -67,7 +66,8 @@ void ClipOverlap::usage()
     std::cerr << "\t\t--storeOrig    : Store the original cigar in the specified tag." << std::endl;
     std::cerr << "\t\t--readName     : Original file is sorted by Read Name instead of coordinate." << std::endl;
     std::cerr << "\t\t--stats        : Print some statistics on the overlaps." << std::endl;
-    std::cerr << "\t\t--overlapsOnly : Only output the clipped reads" << std::endl;
+    std::cerr << "\t\t--overlapsOnly : Only output overlapping read pairs" << std::endl;
+    std::cerr << "\t\t--excludeFlags : Skip records with any of the specified flags set, default 0x70C" << std::endl;
     std::cerr << "\t\t--noeof        : Do not expect an EOF block on a bam file." << std::endl;
     std::cerr << "\t\t--params       : Print the parameter settings to stderr" << std::endl;
     std::cerr << "\tClipping By Coordinate Optional Parameters:" << std::endl;
@@ -94,7 +94,6 @@ int ClipOverlap::execute(int argc, char **argv)
     String excludeFlags = "0x70C";
 
     // TODO, cleanup legacy parameters
-
     ParameterList inputParameters;
     BEGIN_LONG_PARAMETERS(longParameterList)
         LONG_PARAMETER_GROUP("Required Parameters")
@@ -111,6 +110,7 @@ int ClipOverlap::execute(int argc, char **argv)
         LONG_PARAMETER_GROUP("Coordinate Processing Optional Parameters")
         LONG_INTPARAMETER("poolSize", &poolSize)
         LONG_PARAMETER("poolSkipOverlap", &myPoolSkipOverlap)
+        LONG_PHONEHOME(VERSION)
         BEGIN_LEGACY_PARAMETERS()
         LONG_PARAMETER ("clipsOnly", &myOverlapsOnly)
         LONG_PARAMETER("poolSkipClip", &myPoolSkipOverlap)
@@ -119,7 +119,8 @@ int ClipOverlap::execute(int argc, char **argv)
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
 
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.
@@ -199,11 +200,13 @@ int ClipOverlap::execute(int argc, char **argv)
 
         if(readName)
         {
+            samIn.setSortedValidation(SamFile::QUERY_NAME);
             runStatus = handleSortedByReadName(samIn, samOutPtr);
         }
         else
         {
             // Coordinate sorted, so work with the pools.
+            samIn.setSortedValidation(SamFile::COORDINATE);
             myPool.setMaxAllocatedRecs(poolSize);
 
             // Reset the number of failures
@@ -345,6 +348,7 @@ SamStatus::Status ClipOverlap::handleSortedByReadName(SamFile& samIn,
                         }
                     }
                     // Clear the previous record info.
+                    tmpRecord = prevSamRecord;
                     prevSamRecord = NULL;
                 } 
                 // If it has the same read name, leave it in case there is another read with that name

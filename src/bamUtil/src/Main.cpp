@@ -44,6 +44,7 @@
 #include "Dedup.h"
 #include "Recab.h"
 #include "Bam2FastQ.h"
+#include "PhoneHome.h"
 
 void Usage()
 {
@@ -84,7 +85,7 @@ void Usage()
     Bam2FastQ::bam2FastQDescription();
 
     std::cerr << "\nDummy/Example Tools\n";
-    ReadReference::readReferenceDescription();
+    ReadIndexedBam::readIndexedBamDescription();
 
 
     std::cerr << std::endl;
@@ -250,8 +251,25 @@ int main(int argc, char ** argv)
             args[6] = arg6;
             ++numArgs;
         }
-        bamExe = new Convert();
-        int returnVal = bamExe->execute(numArgs, args);
+        int returnVal = 0;
+        String compStatus;
+        try
+        {
+            bamExe = new Convert();
+            returnVal = bamExe->execute(numArgs, args);
+        }
+        catch (std::runtime_error e)
+        {
+            compStatus = "Exception";
+            PhoneHome::completionStatus(compStatus.c_str());
+            
+            std::string errorMsg = "Exiting due to ERROR:\n\t";
+            errorMsg += e.what();
+            std::cerr << errorMsg << std::endl;
+            return(-1);
+        }
+        compStatus = returnVal;
+        PhoneHome::completionStatus(compStatus.c_str());
         delete bamExe;
         bamExe = NULL;
         return(returnVal);
@@ -259,7 +277,23 @@ int main(int argc, char ** argv)
     
     if(bamExe != NULL)
     {
-        int returnVal = bamExe->execute(argc, argv);
+        int returnVal = 0;
+        String compStatus;
+        try
+        {
+            returnVal = bamExe->execute(argc, argv);
+        }
+        catch (std::runtime_error e)
+        {
+            compStatus = "Exception";
+            PhoneHome::completionStatus(compStatus.c_str());
+            std::string errorMsg = "Exiting due to ERROR:\n\t";
+            errorMsg += e.what();
+            std::cerr << errorMsg << std::endl;
+            return(-1);
+        }
+        compStatus = returnVal;
+        PhoneHome::completionStatus(compStatus.c_str());
         delete bamExe;
         bamExe = NULL;
         return(returnVal);

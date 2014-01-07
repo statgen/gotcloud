@@ -24,7 +24,6 @@
 #include "SamFile.h"
 #include "SamFilter.h"
 
-
 void Filter::filterDescription()
 {
     std::cerr << " filter - Filter reads by clipping ends with too high of a mismatch percentage and by marking reads unmapped if the quality of mismatches is too high" << std::endl;
@@ -50,7 +49,7 @@ void Filter::usage()
               << "\t\t                      a read unmapped. (Defaults to 60)" << std::endl;
     std::cerr << "\t\t--defaultQualityInt : quality value to use for mismatches that do not have a quality\n" 
               << "\t\t                      (Defaults to 20)" << std::endl;
-    std::cerr << "\t\t--mismatchThreshold : decimal value indicating the maximum ration of mismatches to\n"
+    std::cerr << "\t\t--mismatchThreshold : decimal value indicating the maximum ratio of mismatches to\n"
               << "\t\t                      matches and mismatches allowed before clipping from the ends\n"
               << "\t\t                      (Defaults to .10)" << std::endl;
     std::cerr << "\t\t--params            : print the parameter settings" << std::endl;
@@ -65,7 +64,7 @@ int Filter::execute(int argc, char **argv)
     String outFile = "-";
     bool noeof = false;
     bool params = false;
-   
+
     uint32_t qualityThreshold = 60;
     uint32_t defaultQualityInt = 20;
     double mismatchThreshold = .10;
@@ -81,12 +80,14 @@ int Filter::execute(int argc, char **argv)
         LONG_INTPARAMETER("defaultQualityInt", &defaultQualityInt)
         LONG_DOUBLEPARAMETER("mismatchThreshold", &mismatchThreshold)
         LONG_PARAMETER("params", &params)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
     
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
     
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.

@@ -4,6 +4,7 @@ Input Parameters
                         --refFile [], --lshift, --noeof, --recover,
                         --params [ON]
    SequenceConversion : --useBases, --useEquals, --useOrigSeq [ON]
+            PhoneHome : --noPhoneHome [ON], --phoneHomeThinning [50]
 
 
 Number of records read = 10

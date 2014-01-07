@@ -179,12 +179,13 @@ int Recab::execute(int argc, char *argv[])
     parameters.addBool("verbose", &verboseFlag);
     parameters.addBool("noeof", &noeof);
     parameters.addBool("params", &params);
+    parameters.addPhoneHome(VERSION);
     addRecabSpecificParameters(parameters);
-
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             parameters.getLongParameterList()));
     
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
     
     // If no eof block is required for a bgzf file, set the bgzf file type to 
     // not look for it.

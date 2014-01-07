@@ -27,6 +27,7 @@
 #include "SamFile.h"
 #include "MergeBam.h"
 #include "Logger.h"
+#include "PhoneHome.h"
 
 ////////////////////////////////////////////////////////////////////////
 // MergeBam : Merge multiple BAM files appending ReadGroup IDs if necessary
@@ -76,7 +77,7 @@ void MergeBam::description()
 void MergeBam::usage()
 {
     BamExecutable::usage();
-     std::cerr << "Usage: mergeBam [-v] [--log logFile] --list <listFile> --out <outFile>\n" << std::endl;
+     std::cerr << "Usage: mergeBam [-v] [--log logFile] [--ignorePI] --list <listFile> --out <outFile>\n" << std::endl;
      std::cerr << "Required parameters :" << std::endl;
      std::cerr << "--out/-o : Output BAM file (sorted)" << std::endl;
      std::cerr << "--in/-i  : BAM file to be input, must be more than one of these options." << std::endl;
@@ -111,6 +112,10 @@ int MergeBam::execute(int argc, char ** argv)
       { "verbose", no_argument, NULL, 'v'},
       { "log", required_argument, NULL, 'L'},
       { "ignorePI", no_argument, NULL, 'I'},
+      { "noPhoneHome", no_argument, NULL, 'p'},
+      { "nophonehome", no_argument, NULL, 'P'},
+      { "phoneHomeThinning", required_argument, NULL, 't'},
+      { "phonehomethinning", required_argument, NULL, 'T'},
       { NULL, 0, NULL, 0 },
     };
 
@@ -123,6 +128,7 @@ int MergeBam::execute(int argc, char ** argv)
   char c;
   bool b_verbose = false;
   bool ignorePI = false;
+  bool noPhoneHome = false;
   vector<std::string> vs_in_bam_files; // input BAM files
 
   std::string s_list, s_out, s_logger;
@@ -147,12 +153,25 @@ int MergeBam::execute(int argc, char ** argv)
     case 'I':
       ignorePI = true;
       break;
+    case 'p':
+    case 'P':
+      noPhoneHome = true;
+      break;
+    case 't':
+    case 'T':
+        PhoneHome::allThinning = atoi(optarg);
+      break;
     default:
-      fprintf(stderr,"Unrecognized option %s",getopt_long_options[n_option_index].name);
-      abort();
+      fprintf(stderr,"Unrecognized option %s\n",getopt_long_options[n_option_index].name);
+      return(-1);
     }
   }
 
+  if(!noPhoneHome)
+  {
+      PhoneHome::checkVersion(getProgramName(), VERSION);
+  }
+  
   if ( s_logger.empty() ) {
       if(s_out.empty())
       {
@@ -513,8 +532,11 @@ void parseOutRG(SamFileHeader& header, std::string& noRgPgString, SamFileHeader*
                         {
                             Logger::gLogger->error("Failed to add readgroup to "
                                                    "header, duplicate, but "
-                                                   "non-identical RG ID, %s",
-                                                   rec->getTagValue("ID"));
+                                                   "non-identical RG ID, %s\n"
+                                                   "prev:\t(%s)\nnew:\t(%s)",
+                                                   rec->getTagValue("ID"),
+                                                   prevString.c_str(),
+                                                   newString.c_str());
                         }
                         else
                         {
@@ -531,8 +553,11 @@ void parseOutRG(SamFileHeader& header, std::string& noRgPgString, SamFileHeader*
                                 Logger::gLogger->error("Failed to add readgroup"
                                                        " to header, duplicate,"
                                                        " but non-identical RG"
-                                                       " ID, %s",
-                                                       rec->getTagValue("ID"));
+                                                       " ID, %s\n"
+                                                       "prev:\t(%s)\nnew:\t(%s)",
+                                                       rec->getTagValue("ID"),
+                                                       prevString.c_str(),
+                                                       newString.c_str());
                             }
                             else
                             {
@@ -566,8 +591,12 @@ void parseOutRG(SamFileHeader& header, std::string& noRgPgString, SamFileHeader*
                                 {
                                     // They are not identical, so report an error.
                                     Logger::gLogger->error("Failed to add readgroup to header, "
-                                                           "duplicate, but non-identical RG ID, %s",
-                                                           rec->getTagValue("ID"));
+                                                           "duplicate, but non-identical RG ID, %s, "
+                                                           "even when ignoring PI\n"
+                                                           "prev:\t(%s)\nnew:\t(%s)",
+                                                           rec->getTagValue("ID"),
+                                                           prevString.c_str(),
+                                                           newString.c_str());
                                 }
                                 else
                                 {

@@ -25,7 +25,6 @@
 #include "BgzfFileType.h"
 #include "SamValidation.h"
 
-
 void Validate::validateDescription()
 {
     std::cerr << " validate - Validate a SAM/BAM File" << std::endl;
@@ -93,12 +92,14 @@ int Validate::execute(int argc, char **argv)
         EXCLUSIVE_PARAMETER("so_flag", &so_flag)
         EXCLUSIVE_PARAMETER("so_coord", &so_coord)
         EXCLUSIVE_PARAMETER("so_query", &so_query)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
 
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     // Determine the sort type for validation based on the parameters.
     SamFile::SortedType sortType = SamFile::UNSORTED;

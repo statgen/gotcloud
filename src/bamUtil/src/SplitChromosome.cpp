@@ -73,12 +73,14 @@ int SplitChromosome::execute(int argc, char **argv)
         LONG_PARAMETER_GROUP("Output Type")
            EXCLUSIVE_PARAMETER("bamout", &bamOut)
            EXCLUSIVE_PARAMETER("samout", &samOut)
+        LONG_PHONEHOME(VERSION)
         END_LONG_PARAMETERS();
    
     inputParameters.Add(new LongParameters ("Input Parameters", 
                                             longParameterList));
 
-    inputParameters.Read(argc-1, &(argv[1]));
+    // parameters start at index 2 rather than 1.
+    inputParameters.Read(argc, argv, 2);
 
     if(!samOut && !bamOut)
     {
