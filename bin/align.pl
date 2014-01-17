@@ -65,6 +65,7 @@ my %opts = (
     runcluster => '',
     pipelinedefaults => '',
     phonehome => '',
+    noPhoneHome => '',
     calcstorage => '',
     keeptmp => 0,
     keeplog => 0,
@@ -87,6 +88,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     base_prefix|baseprefix=s
     keeptmp
     keeplog
+    noPhoneHome
     verbose=i
     numjobspersample|numjobs=i
     numconcurrentsamples|numcs=i
@@ -424,7 +426,14 @@ if( !$fastqpref )
 
 if (! $opts{'dry-run'}) {
     #   All set now, phone home to check for a new version. We don't care about failures.
-    system($opts{phonehome});
+    if(!$opts{noPhoneHome})
+    {
+        system($opts{phonehome});
+    }
+    else
+    {
+        setConf("BAMUTIL_THINNING", "--phoneHomeThinning 0");
+    }
     #   Last warning to user about storage requirements
     system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
 }

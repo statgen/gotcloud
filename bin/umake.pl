@@ -65,6 +65,7 @@ my $refprefix = '';
 my $batchtype = '';
 my $batchopts = '';
 my $gcroot = '';
+my $noPhoneHome = '';
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -96,7 +97,8 @@ my $optResult = GetOptions("help",\$help,
                            "verbose", \$verbose,
                            "copyglf=s", \$copyglf,
                            "chrs|chroms=s", \$chroms,
-                           "gotcloudroot|gcroot=s", \$gcroot
+                           "gotcloudroot|gcroot=s", \$gcroot,
+                           "noPhoneHome", \$noPhoneHome
     );
 
 my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
@@ -229,7 +231,14 @@ if ($batchtype eq "")
 if ($batchtype eq 'flux') { $batchtype = 'pbs'; }
 
 #   All set now, phone home to check for a new version. We don't care about failures.
-system($opts{phonehome});
+if(!$noPhoneHome)
+{
+    system($opts{phonehome});
+}
+else
+{
+    setConf("BAMUTIL_THINNING", "--phoneHomeThinning 0");
+}
 
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7

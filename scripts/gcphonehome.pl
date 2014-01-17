@@ -24,7 +24,7 @@ my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 (my $version = '$Revision: 1.5 $ ') =~ tr/[0-9].//cd;
 
 my %opts = (
-    homeurl => 'http://csg.sph.umich.edu/ga',
+    homeurl => 'http://csgph.sph.umich.edu/ph/',
     versionfile => "$mepath/../release_version.txt",
     freq => 30,
 );
@@ -53,11 +53,27 @@ if ($name =~ /(\S+)\./) { $name = $1; }
 if (! $opts{pgmname}) { $opts{pgmname} = $name; }
 
 #-----------------------------------------------------------------
+#   Get the current version.
+#-----------------------------------------------------------------
+#   Now get the version of the local software
+my $ver = '';
+if ($opts{version}) { $ver = $opts{version}; }
+else {
+    if (! open(IN, $opts{versionfile})) {
+        if ($opts{verbose}) { die "Unable to read file '$opts{versionfile}': $!\n"; }
+        exit(1);
+    }
+    $ver = <IN>;
+    close(IN);
+    chomp($ver);
+}
+
+#-----------------------------------------------------------------
 #   Check version for name. This has a side effect that we
-#   check each invocation via Google Analytics.
+#   check each invocation.
 #-----------------------------------------------------------------
 my $ua = LWP::UserAgent->new();
-my $url = $opts{homeurl} . '/' . $name . '.php';
+my $url = $opts{homeurl} . '?pgm=gotcloud:' . $name . '&vsn=' . $ver;
 my $response = $ua->get($url);
 if (! $response->is_success) {
     if ($opts{verbose}) { die "Unable to contact '$url' Err=" . $response->status_line . "\n"; }
@@ -72,27 +88,19 @@ my $n = int(rand(100));
 if ($opts{verbose}) { warn "Random chance is $n  (compared to $opts{freq})\n"; }
 if ($n > $opts{freq}) { exit; }
 
-my $newestver = '';
-foreach (split("\n", $msg)) {
-    if (/version is .(\S+)./) { $newestver = $1; last; }
-}
+#print "\n\nmessage = $msg\n\n";
 
-#   Now get the version of the local software
-my $ver = '';
-if ($opts{version}) { $ver = $opts{version}; }
-else {
-    if (! open(IN, $opts{versionfile})) {
-        if ($opts{verbose}) { die "Unable to read file '$opts{versionfile}': $!\n"; }
-        exit(1);
-    }
-    $ver = <IN>;
-    close(IN);
-    chomp($ver);
+my $verboseVersion = "Current version=$ver";
+if($msg =~ /gotcloud\s+([\w\.]+)/)
+{
+    my $newestver = $1;
+    $verboseVersion .= ", lastest version=$newestver";
+
+    if($ver lt $newestver) { die "A new version of '$opts{pgmname}' is available  [$newestver]\n"; }
 }
 
 #   Compare versions and warn that a new version exists
-if ($opts{verbose}) { warn "Current version=$ver, lastest version=$newestver\n"; }
-if ($ver lt $newestver) { die "A new version of '$opts{pgmname}' is available  [$newestver]\n"; }
+if ($opts{verbose}) { warn "$verboseVersion\n";}
 
 exit;
 
