@@ -165,6 +165,8 @@ while(<IN>) {
 
 	print OUT "\t$format:BD";
 
+        my $missingPL = "255";
+
 	for(my $i=0; $i < @iIDs; ++$i) {
 	    if ( $g[$iIDs[$i]] eq "./." ) {
 		print OUT "\t";
@@ -173,13 +175,16 @@ while(<IN>) {
 			print OUT $phases[$i];
 		    }
 		    elsif ( ( $formats[$j] eq "PL" ) || ( $formats[$j] eq "GL" ) ) {
-			print OUT "0,0,0";
+			print OUT "$missingPL,$missingPL,$missingPL";
 		    }
 		    elsif ( ( $formats[$j] eq "DP" ) || ( $formats[$j] eq "GD" ) ) {
 			print OUT "0";
 		    }
 		    elsif ( $formats[$j] eq "AD" ) {
 			print OUT "0,0";
+		    }
+		    elsif ( $formats[$j] eq "PL3" ) {
+			print OUT "$missingPL,$missingPL,$missingPL,$missingPL,$missingPL,$missingPL";
 		    }
 		    else {
 			print OUT ".";
