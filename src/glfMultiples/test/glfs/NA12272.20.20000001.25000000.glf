@@ -1,0 +1,1 @@
+../../../../test/umake/expected/umaketest/glfs/samples/chr20/20000001.25000000/NA12272.20.20000001.25000000.glf

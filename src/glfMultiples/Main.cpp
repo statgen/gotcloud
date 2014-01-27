@@ -660,6 +660,8 @@ int main(int argc, char ** argv)
       {
       bool warn = false;
 
+      bool anyOpened = false;
+
       for (int i = n - 1; i >= 0; i--)
          if (!glf[i].Open(ped[i].strings[0]))
             {
@@ -671,12 +673,27 @@ int main(int argc, char ** argv)
             glf[i].OpenStub();
             }
          else
-            firstGlf = i;
+         {
+             anyOpened = true;
+             if(ifeof(glf[i].handle) != 0)
+             {
+                 // Empty GLF (just header).
+                 // Close it and open a stub.
+                 warning("GLF file '%s' appears empty ...\n",
+                         ped.count ? (const char *) ped[i].strings[0] : argv[i]);
+                 glf[i].Close();
+                 glf[i].OpenStub();
+             }
+             else
+             {
+                 firstGlf = i;
+             }
+         }
 
       if (warn)
          printf("\n");
 
-      if (firstGlf == n)
+      if ((firstGlf == n) && (!anyOpened))
          error("No genotype likelihood files could be opened");
       }
    else

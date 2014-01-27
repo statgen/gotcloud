@@ -1,0 +1,30 @@
+glfMultiples -- SNP calls based on .glf or .glz files
+(c) 2008-2013 Goncalo Abecasis, Sebastian Zoellner, Yun Li
+
+Analysis started on Mon Jan 27 16:54:45 2014
+
+
+WARNING - 
+GLF file 'glfs/EMPTY1.20.20000001.25000000.glf' appears empty ...
+
+Calling genotypes for files ...
+glfs/NA12004.20.20000001.25000000.glf
+glfs/NA12272.20.20000001.25000000.glf
+glfs/EMPTY1.20.20000001.25000000.glf
+
+Processing section 20 with 63025520 entries
+          Missing bases =         0 (0.000%)
+        Reference bases =  63025520 (100.000%)
+              A/T bases =    176542 (0.280%, 85819 A, 90723 T)
+              G/C bases =    121544 (0.193%, 60364 G, 61180 C)
+           Depth Filter =         0 bases (0.000%)
+     Map Quality Filter =        39 bases (0.000%)
+        Non-Polymorphic =         0 bases (0.000%)
+            Transitions =       302 bases (0.000%)
+          Transversions =       104 bases (0.000%)
+    Other Polymorphisms =         0 bases (0.000%)
+           Smart Filter =    297660 bases (0.472%)
+                No call =  63025114 bases (99.999%)
+
+Analysis completed on Mon Jan 27 16:54:47 2014
+

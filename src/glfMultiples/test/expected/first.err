@@ -1,0 +1,16 @@
+                Base Call File : results/first.vcf (-bname)
+           Posterior Threshold :            0.50 (-p99.999)
+
+Additional Options
+        Pedigree File : --ped [glfs/glfIndexEmptyFirst.ped]
+                Model : --uniformTsTv [ON], --heterozygosity [1.0e-03]
+   Map Quality Filter : --minMapQuality, --strict
+   Total Depth Filter : --minDepth [1], --maxDepth [10000000]
+      Position Filter : --positionFile []
+    Chromosome Labels : --xChr [X], --yChr [Y], --mito [MT],
+                        --xStart [2699520], --xStop [154931044]
+    Filtering Options : --hardFilter, --smartFilter [ON], --softFilter
+     Region(optional) : --region []
+               Output : --verbose
+         Sample Names : --glfAliases []
+
