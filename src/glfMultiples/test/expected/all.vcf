@@ -1,0 +1,22 @@
+##fileformat=VCFv4.1
+##filedate=20140128
+##source=glfMultiples
+##minDepth=1
+##maxDepth=10000000
+##minMapQuality=0
+##minPosterior=0.5000
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth at Site">
+##INFO=<ID=MQ,Number=1,Type=Integer,Description="Root Mean Squared Mapping Quality">
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Coverage">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Number of Alleles in Samples with Coverage">
+##INFO=<ID=AC,Number=.,Type=Integer,Description="Alternate Allele Counts in Samples with Coverage">
+##INFO=<ID=AF,Number=.,Type=Float,Description="Alternate Allele Frequencies">
+##INFO=<ID=AB,Number=1,Type=Float,Description="Allele Balance in Heterozygotes">
+##FILTER=<ID=mq0,Description="Mapping Quality Below 0">
+##FILTER=<ID=dp1,Description="Total Read Depth Below 1">
+##FILTER=<ID=DP10000000,Description="Total Read Depth Above 10000000">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Most Likely Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Call Quality">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+##FORMAT=<ID=PL,Number=.,Type=Integer,Description="Genotype Likelihoods for Genotypes in Phred Scale, for 0/0, 0/1, 1/1, 0/2, 1/2, 2/2, ...">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	EMPTY1	EMPTY2	EMPTY3
