@@ -796,7 +796,7 @@ int main(int argc, char ** argv)
    int chromosomeType = 0;
 
    // Main loop, which iterates through chromosomes and then positions
-   while (glf[firstGlf].NextSection())
+   while((firstGlf != n) && (glf[firstGlf].NextSection()))
       {
       for (int i = firstGlf + 1; i < n; i++)
          {
