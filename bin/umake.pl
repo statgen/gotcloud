@@ -968,9 +968,7 @@ foreach my $chr (@chrs) {
                 my $cmd = getConf("THUNDER")." --shotgun $splitVcfs[$i] -o $remotePrefix$thunderOut > $remotePrefix$thunderOut.out 2> $remotePrefix$thunderOut.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 print MAK "\t".getMosixCmd($cmd)."\n";
-                $cmd = "touch $thunderOut.vcf.gz.OK";
-                print MAK "\t$cmd\n";
-                print MAK "\n";
+                writeTouch("$thunderOut.vcf.gz");
             }
         }
     }
@@ -1013,7 +1011,7 @@ foreach my $chr (@chrs) {
             print MAK "\tln -f -s $remotePrefix$beaglePrefix.vcf.gz $remotePrefix$beaglePrefix.$pops[0].vcf.gz\n";
             print MAK "\tln -f -s $remotePrefix$beaglePrefix.vcf.gz.tbi $remotePrefix$beaglePrefix.$pops[0].vcf.gz.tbi\n";
         }
-        print MAK "\ttouch $beagleDir/chr$chr/subset.OK\n\n";
+        writeTouch("$beagleDir/chr$chr/subset", "$remotePrefix$beaglePrefix.$pops[0].vcf.gz");
 
         foreach my $pop (@pops) {
             my $splitPrefix = "$thunderDir/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
@@ -1119,7 +1117,7 @@ foreach my $chr (@chrs) {
         print MAK "\tmkdir --p $splitDir/chr$chr\n";
         my $cmd = "zcat $mvcf | grep -E \\\"\\sPASS\\s|^#\\\" | ".getConf("BGZIP")." -c > $subsetPrefix.PASS.vcf.gz";
         writeLocalCmd($cmd);
-        print MAK "\ttouch $splitDir/chr$chr/subset.OK\n\n";
+        writeTouch("$splitDir/chr$chr/subset", "$subsetPrefix.PASS.vcf.gz");
 
         print MAK "$splitPrefix.vcflist: $splitDir/chr$chr/subset.OK\n";
         print MAK "\tmkdir --p $splitDir/chr$chr\n";
@@ -1154,7 +1152,7 @@ foreach my $chr (@chrs) {
         print MAK ".OK\n";
         my $cmd = getConf("VCFCAT")." @vcfs  | ".getConf("BGZIP")." -c > $vcf.gz";
         writeLocalCmd($cmd);
-        print MAK "\ttouch $vcf.OK\n\n";
+        writeTouch("$vcf");
 
         for(my $j=0; $j < @unitStarts; ++$j) {
             $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
@@ -1162,7 +1160,7 @@ foreach my $chr (@chrs) {
             print MAK "\tmkdir --p $vcfParent\n";
             $cmd = getConf("TABIX")." $invcf $chr:$unitStarts[$j]-$unitEnds[$j] | cut -f 1-8 > $svcfs[$j]";
             writeLocalCmd($cmd);
-            print MAK "\ttouch $svcfs[$j].OK\n\n";
+            writeTouch("$svcfs[$j]");
 
             my @glfs = ();
             my $smGlfBase = "chr$chr/$unitStarts[$j].$unitEnds[$j]";
@@ -1198,7 +1196,7 @@ foreach my $chr (@chrs) {
                 print MAK "\tsleep $sleepSecs\n";
             }
             print MAK "\t".getMosixCmd($cmd)."\n";
-            print MAK "\ttouch $vcfs[$j].OK\n\n";
+            writeTouch("$vcfs[$j]");
         }
     }
 
@@ -1249,7 +1247,7 @@ foreach my $chr (@chrs) {
         $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
-        print MAK "\ttouch $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+        writeTouch("$mvcfPrefix.filtered.vcf.gz");
         print MAK join("\n",@cmds);
         print MAK "\n";
     }
@@ -1284,7 +1282,7 @@ foreach my $chr (@chrs) {
                 #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                 my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
+                push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\t".getTouch("$pvcf")."\n");
             }
 
             print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
@@ -1340,7 +1338,7 @@ foreach my $chr (@chrs) {
             $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-            print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+            writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
             print MAK join("\n",@cmds);
             print MAK "\n";
         }
@@ -1365,7 +1363,7 @@ foreach my $chr (@chrs) {
                 my $gvcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
                 my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
 
-                push(@cmds,"$svcf.OK: ".( ($expandFlag == 1) ? "$vcf.OK" : "")."\n\tcut -f 1-8 $vcf > $svcf\n\ttouch $svcf.OK\n");
+                push(@cmds,"$svcf.OK: ".( ($expandFlag == 1) ? "$vcf.OK" : "")."\n\tcut -f 1-8 $vcf > $svcf\n\t".getTouch("$svcf")."\n");
 
                 for(my $i=0; $i < @allbams; ++$i) {
                     my $bam = $allbams[$i];
@@ -1378,7 +1376,7 @@ foreach my $chr (@chrs) {
                     #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                     my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\ttouch $pvcf.OK\n");
+                    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\t".getTouch("$pvcf")."\n");
                 }
             }
             print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
@@ -1424,12 +1422,12 @@ foreach my $chr (@chrs) {
 
                     my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
+                    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd)."\n\t".getTouch("$gvcf")."\n\n");
                 }
                 else {
                     my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd)."\n\ttouch $gvcf.OK\n\n");
+                    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd)."\n\t".getTouch("$gvcf")."\n\n");
                 }
                 push(@gvcfs,$gvcf);
                 push(@vcfs,$vcf);
@@ -1458,7 +1456,7 @@ foreach my $chr (@chrs) {
             $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-            print MAK "\ttouch $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+            writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
             print MAK join("\n",@cmds);
             print MAK "\n";
         }
@@ -1502,7 +1500,7 @@ foreach my $chr (@chrs) {
                 {
                     $newcmd .= "\tsleep $sleepSecs\n";
                 }
-                $newcmd .= "\t".getMosixCmd($cmd)."\n\ttouch $vcf.OK\n";
+                $newcmd .= "\t".getMosixCmd($cmd)."\n\t".getTouch("$vcf")."\n";
                 $newcmd =~ s/$outdir/\$(OUT_DIR)/g;
                 push(@cmds,"$newcmd");
             }
@@ -1512,7 +1510,7 @@ foreach my $chr (@chrs) {
                 {
                     $newcmd .= "\tsleep $sleepSecs\n";
                 }
-                $newcmd .= "\t".getMosixCmd($cmd)."\n\ttouch $vcf.OK\n";
+                $newcmd .= "\t".getMosixCmd($cmd)."\n\t".getTouch("$vcf")."\n";
                 push(@cmds,"$newcmd");
             }
         }
@@ -1531,7 +1529,7 @@ foreach my $chr (@chrs) {
             writeLocalCmd($cmd);
         }
         print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";
-        print MAK "\ttouch $out.vcf.OK\n\n";
+        writeTouch("$out.vcf");
         print MAK join("\n",@cmds);
         print MAK "\n";
     }
@@ -1613,7 +1611,7 @@ foreach my $chr (@chrs) {
                         $bamPileupCmds .= logCatchFailure("pileup",
                                                           runPileup($bam, $bamGlf, $region, $loci),
                                                           "$bamGlf.log");
-                        $bamPileupCmds .= "\ttouch $bamGlf.OK\n\n";
+                        $bamPileupCmds .= "\t".getTouch("$bamGlf")."\n\n";
                     }
                     # Add the BAM specific GLFs to the sample glf dependency.
                     $sampleCmd .= " ".join(".OK ",@bamGlfs).".OK";
@@ -1632,7 +1630,7 @@ foreach my $chr (@chrs) {
                     $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     $sampleCmd .= "\n";
                 }
-                $sampleCmd .= "\ttouch $smGlf.OK\n";
+                $sampleCmd .= "\t".getTouch("$smGlf")."\n";
                 push(@sampleCmds,$sampleCmd);
             }
         }
@@ -1698,7 +1696,7 @@ if ( getConf("RUN_INDEX") eq "TRUE" ) {
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$bam.bai.OK:";
         if (getConf("BAM_DEPEND") eq "TRUE") { print MAK " $bam"; }
-        print MAK "\n\t".getMosixCmd($cmd)."\n\ttouch $bam.bai.OK\n\n";
+        print MAK "\n\t".getMosixCmd($cmd)."\n\t".getTouch("$bam.bai")."\n\n";
     }
 }
 
@@ -2075,6 +2073,36 @@ sub writeLocalCmd {
     {
         print MAK "\t$cmd\n";
     }
+}
+
+
+#--------------------------------------------------------------
+#   cmd = getTouch(okBase, outputFile)
+#
+#   return the touch command, appending .OK to the output file.
+#--------------------------------------------------------------
+sub getTouch {
+    my ($okBase, $outputFile) = @_;
+
+    $okBase =~ s/\.OK$//;
+
+    if(! defined ($outputFile)) { $outputFile = $okBase; $outputFile =~ s/\.OK$//;}
+
+    return("if [ -e  $outputFile ]; then touch $okBase.OK; else exit 1; fi");
+}
+
+
+#--------------------------------------------------------------
+#   cmd = writeTouch(okBase, outputFile)
+#
+#   write the touch command to the makefile appending .OK to the output file.
+#--------------------------------------------------------------
+sub writeTouch {
+    my ($okBase, $outputFile) = @_;
+
+    if(! defined ($outputFile)) { $outputFile = $okBase; $outputFile =~ s/\.OK$//; }
+
+    print MAK "\t".getTouch($okBase, $outputFile)."\n\n";
 }
 
 
