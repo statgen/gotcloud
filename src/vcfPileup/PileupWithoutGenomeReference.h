@@ -95,11 +95,12 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
     tempStr.append("\n");
     ifwrite(myOutputVCFFile, tempStr.c_str(), tempStr.length());
   
-    Pileup<PILEUP_TYPE>::processFile(bamFileName);
+    int returnVal = 0;
+    returnVal = Pileup<PILEUP_TYPE>::processFile(bamFileName);
 		
     ifclose(myOutputVCFFile);
    
-    return(0);  
+    return(returnVal);
 }
 
 template <class PILEUP_TYPE, class FUNC_CLASS>

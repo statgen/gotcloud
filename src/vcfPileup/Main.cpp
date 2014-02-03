@@ -19,6 +19,7 @@
 
 int main(int argc, char ** argv)
 {			    
+    int returnVal = 0;
     try 
     {
         std::string desc = "Example:\n\
@@ -104,14 +105,14 @@ Alignment statistics are written to the VCF file specified, if the file name end
 
         PileupWithoutGenomeReference<PileupElementBaseQual> pileup(argWindow.getValue(), argAddDelAsBase.getValue(), inputVCFFileIsGZipped, outputVCFFileIsGZipped);   	
 
-        //process file with index    	
+        //process file with index
         if (inputVCFFileName != "")
         {
-            pileup.processFile(inputBAMFileName, inputVCFFileName, outputVCFFileName);
+            returnVal = pileup.processFile(inputBAMFileName, inputVCFFileName, outputVCFFileName);
         }
         else
         {
-            pileup.processFile(inputBAMFileName, outputVCFFileName);
+            returnVal = pileup.processFile(inputBAMFileName, outputVCFFileName);
         }
     }
     catch (TCLAP::ArgException &e) 
@@ -120,5 +121,5 @@ Alignment statistics are written to the VCF file specified, if the file name end
         abort();
     }
 
-    return(0);
+    return(returnVal);
 }

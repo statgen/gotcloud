@@ -39,8 +39,9 @@ PileupElementBaseQual::PileupElementBaseQual()
     {                     
         // TODO, check for malloc failures.
         std::cerr << "Failed Memory Allocation\n";
+        abort();
     }
-}                         
+}
 
 PileupElementBaseQual::PileupElementBaseQual(bool addDelAsBase)
     : PileupElement(),
@@ -73,6 +74,7 @@ PileupElementBaseQual::PileupElementBaseQual(bool addDelAsBase)
     {                     
         // TODO, check for malloc failures.
         std::cerr << "Failed Memory Allocation\n";
+        abort();
     }                     
 }  
                           
@@ -107,6 +109,7 @@ PileupElementBaseQual::PileupElementBaseQual(const PileupElementBaseQual& q)
     {
         // TODO, check for malloc failures.
         std::cerr << "Failed Memory Allocation\n";
+        abort();
     }
 }
 
@@ -213,6 +216,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempBuffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
@@ -221,6 +225,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempInt8Buffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
@@ -229,6 +234,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempInt8Buffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
@@ -237,6 +243,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempBuffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
@@ -245,6 +252,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempInt8Buffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
@@ -253,6 +261,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempUint32Buffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
@@ -261,6 +270,7 @@ void PileupElementBaseQual::addEntry(SamRecord& record)
         if(tempInt8Buffer == NULL)
         {
             std::cerr << "Memory Allocation Failure\n";
+            abort();
             // TODO
             return;
         }
