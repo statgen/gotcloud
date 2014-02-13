@@ -2,7 +2,7 @@
 # the Makefile it should include from libStatGen/Makefiles/$(PARENT_MAKE)
 
 # Update version as necessary.
-VERSION=1.0.1
+VERSION=1.1.0
 
 ########################
 # Library Path:
@@ -33,7 +33,7 @@ include $(INCLUDE_MAKE)
 # Replace VERIFY_BAM_ID with your your program's name.
 $(INCLUDE_MAKE):
 	@echo Unable to locate: $(INCLUDE_MAKE)
-	@echo To change the location, set LIB_PATH_GENERAL or LIB_PATH_VERIFY_BAM_ID to the appropriate path to libStatGen.  Or specify \"make LIB_PATH_GENERAL=yourPath\" or \"make LIB_PATH_SAMPLE_PROGRAM=yourPath\"
+	@echo To change the location, set LIB_PATH_GENERAL or LIB_PATH_VERIFY_BAM_ID to the appropriate path to libStatGen.  Or specify \"make LIB_PATH_GENERAL=yourPath\" or \"make LIB_PATH_VERIFY_BAM_ID=yourPath\"
 	@echo Use make cloneLib if you have git and want to clone the current libStatGen at that location.
 
 

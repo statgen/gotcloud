@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010  Regents of the University of Michigan
+ *  Copyright (C) 2010, 2014  Regents of the University of Michigan
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,10 +39,36 @@
 
 Logger* Logger::gLogger = NULL; // Message log 
 
+int execute(int argc, char** argv);
+
 // main function of verifyBamID
 int main(int argc, char** argv) {
-  printf("verifyBamID 1.0.0 -- verify identity and purity of sequence data\n"
-	 "(c) 2010 Hyun Min Kang, Goo Jun, and Goncalo Abecasis\n\n");
+    int returnVal = 0;
+    String compStatus;
+    try
+    {
+        returnVal = execute(argc, argv);
+    }
+    catch(std::runtime_error e)
+    {
+        returnVal = -1;
+        compStatus = "Exception";
+        PhoneHome::completionStatus(compStatus.c_str());
+        std::string errorMsg = "Exiting due to ERROR:\n\t";
+        errorMsg += e.what();
+        std::cerr << errorMsg << std::endl;
+        return(-1);
+    }
+    compStatus = returnVal;
+    PhoneHome::completionStatus(compStatus.c_str());
+    return(returnVal);
+}
+
+
+// main function of verifyBamID
+int execute(int argc, char** argv) {
+  printf("verifyBamID %s -- verify identity and purity of sequence data\n"
+	 "(c) 2010-2014 Hyun Min Kang, Goo Jun, and Goncalo Abecasis\n\n", VERSION);
 
   VerifyBamIDArgs args;
   ParameterList pl;
@@ -95,6 +121,7 @@ int main(int argc, char** argv) {
     LONG_PARAMETER_GROUP("Output options")
     LONG_STRINGPARAMETER("out",&args.sOutFile)
     LONG_PARAMETER("verbose",&args.bVerbose)
+    LONG_PHONEHOME(VERSION)
   END_LONG_PARAMETERS();
 
   pl.Add(new LongParameters("Available Options",longParameters));
