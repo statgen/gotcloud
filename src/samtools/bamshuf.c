@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "sam.h"
-#include "ksort.h"
+#include "htslib/sam.h"
+#include "htslib/bgzf.h"
+#include "htslib/ksort.h"
 
 #define DEF_CLEVEL 1
 
@@ -59,8 +60,8 @@ static void bamshuf(const char *fn, int n_files, const char *pre, int clevel, in
 	fp = strcmp(fn, "-")? bgzf_open(fn, "r") : bgzf_dopen(fileno(stdin), "r");
 	assert(fp);
 	h = bam_hdr_read(fp);
-	fnt = (char**)calloc(n_files, sizeof(void*));
-	fpt = (BGZF**)calloc(n_files, sizeof(void*));
+	fnt = (char**)calloc(n_files, sizeof(char*));
+	fpt = (BGZF**)calloc(n_files, sizeof(BGZF*));
 	cnt = (int64_t*)calloc(n_files, 8);
 	l = strlen(pre);
 	for (i = 0; i < n_files; ++i) {
@@ -128,7 +129,7 @@ int main_bamshuf(int argc, char *argv[])
 	}
 	if (is_un) clevel = 0;
 	if (optind + 2 > argc) {
-		fprintf(stderr, "\nUsage:   bamshuf [-Ou] [-n nFiles] [-c cLevel] <in.bam> <out.prefix>\n\n");
+		fprintf(stderr, "\nUsage:   samtools bamshuf [-Ou] [-n nFiles] [-c cLevel] <in.bam> <out.prefix>\n\n");
 		fprintf(stderr, "Options: -O      output to stdout\n");
 		fprintf(stderr, "         -u      uncompressed BAM output\n");
 		fprintf(stderr, "         -l INT  compression level [%d]\n", DEF_CLEVEL);

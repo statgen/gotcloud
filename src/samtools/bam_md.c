@@ -3,9 +3,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include "faidx.h"
+#include "htslib/faidx.h"
 #include "sam.h"
-#include "kstring.h"
+#include "htslib/kstring.h"
 #include "kaln.h"
 #include "kprobaln.h"
 
@@ -16,7 +16,7 @@
 #define UPDATE_MD 16
 #define HASH_QNM  32
 
-char bam_nt16_nt4_table[] = { 4, 0, 1, 4, 2, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4 };
+const char bam_nt16_nt4_table[] = { 4, 0, 1, 4, 2, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4 };
 
 int bam_aux_drop_other(bam1_t *b, uint8_t *s);
 
@@ -341,7 +341,7 @@ int bam_fillmd(int argc, char *argv[])
 	if (is_uncompressed) strcat(mode_w, "u");
 	if (optind + 1 >= argc) {
 		fprintf(stderr, "\n");
-		fprintf(stderr, "Usage:   samtools fillmd [-eubrS] <aln.bam> <ref.fasta>\n\n");
+		fprintf(stderr, "Usage:   samtools calmd [-eubrS] <aln.bam> <ref.fasta>\n\n");
 		fprintf(stderr, "Options: -e       change identical bases to '='\n");
 		fprintf(stderr, "         -u       uncompressed BAM output (for piping)\n");
 		fprintf(stderr, "         -b       compressed BAM output\n");

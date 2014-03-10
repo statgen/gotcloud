@@ -24,21 +24,22 @@ int bed_overlap(const void *_h, const char *chr, int beg, int end); // test if c
 static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
 {
 	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-	int ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
-	if (!(b->core.flag&BAM_FUNMAP)) {
-		if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-		else if (aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
-	}
+    int ret;
+    while (1)
+    {
+        ret = aux->iter? bam_iter_read(aux->fp, aux->iter, b) : bam_read1(aux->fp, b);
+        if ( ret<0 ) break;
+        if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
+        if ( (int)b->core.qual < aux->min_mapQ ) continue;
+        if ( aux->min_len && bam_cigar2qlen(&b->core, bam1_cigar(b)) < aux->min_len ) continue;
+        break;
+    }
 	return ret;
 }
 
 int read_file_list(const char *file_list,int *n,char **argv[]);
 
-#ifdef _MAIN_BAM2DEPTH
-int main(int argc, char *argv[])
-#else
 int main_depth(int argc, char *argv[])
-#endif
 {
 	int i, n, tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0, nfiles;
 	const bam_pileup1_t **plp;
@@ -84,7 +85,7 @@ int main_depth(int argc, char *argv[])
     }
     else
         n = argc - optind; // the number of BAMs on the command line
-	data = calloc(n, sizeof(void*)); // data[i] for the i-th input
+	data = calloc(n, sizeof(aux_t*)); // data[i] for the i-th input
 	beg = 0; end = 1<<30; tid = -1;  // set the default region
 	for (i = 0; i < n; ++i) {
 		bam_header_t *htmp;
@@ -107,7 +108,7 @@ int main_depth(int argc, char *argv[])
 	// the core multi-pileup loop
 	mplp = bam_mplp_init(n, read_bam, (void**)data); // initialization
 	n_plp = calloc(n, sizeof(int)); // n_plp[i] is the number of covering reads from the i-th BAM
-	plp = calloc(n, sizeof(void*)); // plp[i] points to the array of covering reads (internal in mplp)
+	plp = calloc(n, sizeof(bam_pileup1_t*)); // plp[i] points to the array of covering reads (internal in mplp)
 	while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) { // come to the next covered position
 		if (pos < beg || pos >= end) continue; // out of range; skip
 		if (bed && bed_overlap(bed, h->target_name[tid], pos, pos + 1) == 0) continue; // not in BED; skip
@@ -141,3 +142,10 @@ int main_depth(int argc, char *argv[])
     }
 	return 0;
 }
+
+#ifdef _MAIN_BAM2DEPTH
+int main(int argc, char *argv[])
+{
+	return main_depth(argc, argv);
+}
+#endif
