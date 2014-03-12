@@ -128,6 +128,7 @@ diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefile
     -I '^.*/Sample[1-3].recal.bam.done: .*/Sample[1-3].merged.bam.done$' \
     -I '@echo .*".* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal $(basename $^) 2> $(basename $@).log"$' \
     -I '@.* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed qplot step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I 'MAKEFLAGS=$(patsubst --jobserver-fds=%,,$(patsubst -j,,$(MAKEFLAGS))) .*scripts/runcluster.pl -bashdir .*Makefiles/jobfiles .* '\''make -f .*Makefiles/align_Sample[1-3]\.Makefile \( -j \?[0-9]*\)\? > .*Makefiles/align_Sample[1-3]\.Makefile\.log'\''$' \
     >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed Makefile results validation. See mismatches in $DIFFRESULTS"

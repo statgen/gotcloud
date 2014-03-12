@@ -22,67 +22,107 @@ use File::Basename;
 use Cwd;
 use Cwd 'abs_path';
 
-my($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
+my ($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 (my $version = '$Revision: 1.5 $ ') =~ tr/[0-9].//cd;
-$mepath = abs_path($mepath);
-if ($mepath !~ /(.*)\/scripts/) { die "No 'scripts' found in '$mepath'\n"; }
-push @INC,$1 . '/bin';                  # use lib is a BEGIN block and does not work
-require Multi;
 
-my %opts = (
-    opts => '',
-    engine => 'slurm',
-    concurrent => 1,
-    verbose => 0,
+#   Define known types of clusters.  Array is command to queue with and extra options to use
+#   First field indicates if the command runs to completion (i, interactive) or batch (b)
+#   Batch runs are forced to run to completion by creating shell script to run the command.
+#   Second field is the command to use to run the command
+#   Third  field are options for the second field
+#   Fourth field is cmd user uses to see if cmds have completed
+my %ClusterTypes = (
+    # name     wait?  command     opts for command   status command
+    sgei     => ['i', 'qrsh',     '-now n',          ''],
+    sge      => ['b', 'qsub',     '',                "qstat -u $ENV{USER}"],
+    mosbatch => ['i', 'mosbatch', '-E/tmp',          ''],
+    slurm    => ['b', 'sbatch',   '',                "squeue -u $ENV{USER}"],
+    slurmi   => ['i', 'srun',     '',                "squeue -u $ENV{USER}"],
+    pbs      => ['b', 'qsub',     '',                "qstat -u $ENV{USER}"],
+    local    => ['i', '',         '',                ''],
 );
 
+my %opts = (
+    bashdir => '.',
+    autorm_ending => '~autorm.sh',
+    opts => '',
+    engine => 'local',
+    jobname => 'GC',
+    modelfile => "$me.model",
+    verbose => 0,
+);
 Getopt::Long::GetOptions( \%opts,qw(
     help
     verbose
-    concurrent=n
+    jobname=s
     engine=s
+    modelfile=s
+    bashdir=s
     opts=s
-    file=s
 )) || die "Failed to parse options\n";
 
 #   Simple help if requested, sanity check input options
-if ($opts{help}) {
-    warn "$me$mesuffix [options] [type command]\n" .
+if ($opts{help} || $#ARGV < 1) {
+    warn "$me$mesuffix [options] type command\n" .
         "Version $version\n" .
         "Use this to run a command for GotCloud in your local cluster.\n" .
         "This is typically called by Perl scripts in GotCloud\n" .
+        "Valid engine_types are: " .
+        ' ' . join(' ', sort keys %ClusterTypes) . "\n";
+    warn "This program is typically called by Perl scripts in GotCloud\n" .
         "More details available by entering: perldoc $0\n\n";
     if ($opts{help}) { system("perldoc $0"); }
     exit 1;
 }
-my $engine;
-my @c = ();
-if ($opts{file}) {                          # Special hook to submit a file of commands
-    open(IN, $opts{file}) ||
-        die "Unable to open file '$opts{file}': $!\n";
-    while (<IN>) {
-        chomp();
-        push @c,$_;
-    }
-    close(IN);
-    warn "Read commands from '$opts{file}'\n";
-    $engine = $opts{engine};                # How to submit this to run
+$opts{engine} = shift(@ARGV);
+my $cmd = join(' ', @ARGV);
+
+if ($opts{engine} eq 'flux') { $opts{engine} = 'pbs'; }     # Set up aliases
+if ($opts{engine} eq 'mosix') { $opts{engine} = 'mosbatch'; }
+if (! exists($ClusterTypes{$opts{engine}})) {
+    die "Cluster type '$opts{engine}' is not supported - no jobs started\n";
 }
-else {
-    $engine = shift(@ARGV) || '';
-    @c = join(' ', @ARGV);
-    $opts{engine} = $engine;
+if (! $cmd) {
+    die "No command was provided to submit to '$opts{engine}' - no jobs started\n";
 }
+
+#   Hidden hook to get details for this engine type
+if ($cmd eq 'runcluster-show-details') {
+    print "Name=$opts{engine}  Type=$ClusterTypes{$opts{engine}}[0] Cmd=$ClusterTypes{$opts{engine}}[1] Opts=$ClusterTypes{$opts{engine}}[2] Status=$ClusterTypes{$opts{engine}}[3]\n";
+    exit;
+}
+
+if ($opts{bashdir} eq '.') { $_ = `pwd`; chomp($_); $opts{bashdir} = $_; }
+else { mkdir $opts{bashdir}, 0755; }            # If necessary, create directory for jobs
+$opts{jobname} .= $ClusterTypes{$opts{engine}}[0];      # Append i or b to jobname
 
 
 #   Check the path to the cwd will be visible in the batch environment
-if ($opts{engine} eq 'mosix' || $opts{engine} eq 'mosbatch') {
+if ($opts{engine} =~ /^mos/) {
     if (FixCWD()) {
-        #warn "Current working directory set to '" . getcwd() . "'\n";
+        if ($opts{verbose}) { warn "Current working directory set to '" . getcwd() . "'\n"; }
     }
 }
-if ($opts{verbose}) { $Multi::VERBOSE = 1; $Multi::VERBOSE = 1; }   # Twice avoids warning
-exit Multi::RunCluster($engine, $opts{opts}, \@c, $opts{concurrent});
+
+#   Interactive jobs are easier, as we just prefix the command with some other command
+my $runcmd;
+if ($ClusterTypes{$opts{engine}}[0] eq 'i') {
+    $runcmd = icommand("$ClusterTypes{$opts{engine}}[1] $ClusterTypes{$opts{engine}}[2] $opts{opts}", $cmd);
+}
+if ($ClusterTypes{$opts{engine}}[0] eq 'b') {
+    $runcmd = bcommand("$ClusterTypes{$opts{engine}}[1] $ClusterTypes{$opts{engine}}[2] $opts{opts}", $cmd);
+}
+if (! $runcmd) {
+    die "Unable to create commands to submit to '$opts{engine}' - no jobs started\n";
+}
+#   Run the command, remove any shell scripts we created, exit with correct return code
+if ($opts{verbose}) { warn "Executing '$opts{engine}' cmd: $runcmd\n"; }
+#   Avoid race condition for MOSIX :-(
+#if ($opts{engine} =~ /^mos/) { sleep(1); warn "waiting\n"; }
+my $rc = system($runcmd) >> 8;
+if ((! $opts{verbose}) && $runcmd =~ /\s+(\S+$opts{autorm_ending})/) { unlink $1; }  # Delete shell we created
+exit($rc);
+
 
 #==================================================================
 # Subroutine:
@@ -94,11 +134,9 @@ exit Multi::RunCluster($engine, $opts{opts}, \@c, $opts{concurrent});
 #
 #   Returns:  boolean if CD was done
 #==================================================================
-# TODO - we should make this a configurable option not hard-coded based
-# on our system.
+# TODO - we should make this a configurable option not hard-coded based on our system
 sub FixCWD {
     # my ($a, $b) = @_;
-
     my $abs_path = abs_path('.');
     if ($abs_path =~ /\/net/) { return 0; }
     $abs_path =~ s/^\/exports//;                # Local network screw-up
@@ -110,6 +148,97 @@ sub FixCWD {
     return 0;
 }
 
+#==================================================================
+# Subroutine:
+#   $cmd = icommand($prefixcmd, $cmd)
+#
+#   Returns an interactive command to be run. This might simply
+#   be the original command prefixed by some simple command
+#   or it might be the command is run in a shell script
+#   so that pipe failures can be caught.
+#
+#   Returns:  command to execute
+#==================================================================
+sub icommand {
+    my ($prefixcmd, $cmd) = @_;
+
+    #   If the command looks like a shell script we support, run it directly
+    #   If not multiple cmds or pipe, maybe we can run it directly
+    if ($cmd !~ /[|;(]/) {
+        if ($cmd =~ /^\s*(\S+)/) {        # Isolate pgm to run
+            my $s = `/usr/bin/file $1 2>/dev/null`;
+            if ($s =~ /ascii text executable/i) {   # Simple shell script
+                return $prefixcmd . ' ' . $cmd;
+            }
+        }
+    }
+    #   This command must be wrapped in a BASH script
+    my $f = $opts{bashdir} . '/' . $opts{jobname} . '_' . $$ . $opts{autorm_ending};
+    open(OUT, '>' . $f) || die "icommand: Unable to create script: $f:  $!\n";
+    print OUT "#!/bin/bash\nset -o pipefail\n$cmd\nexit \$?\n";
+    close(OUT);
+    if ($opts{verbose}) { warn "Created shell script '$f' to run command\n"; }
+    chmod(0755, $f) || exit 1;
+    return $prefixcmd . ' ' . $f;
+}
+
+#==================================================================
+# Subroutine:
+#   $cmd = bcommand($prefixcmd, $cmd)
+#
+#   Returns a batch command to be run in the form of a script
+#   which actually submits the script to the engine and then
+#   waits for the job to finish running.
+#
+#   Returns:  command to execute
+#==================================================================
+sub bcommand {
+    my ($prefixcmd, $cmd) = @_;
+
+    my $f = $opts{bashdir} . '/' . $opts{jobname} . '_' . $$ . $opts{autorm_ending};
+    open(OUT, '>' . $f) ||
+        die "Unable to create file '$f': $!\n";
+    my $ff = $opts{modelfile};
+    if (! -r $ff) { $ff = $ENV{HOME} . '/' . $opts{modelfile}; }
+    if (! -r $ff) { $ff = $mepath . '/' . $opts{modelfile}; }
+    open(IN, $ff) ||
+        die "Unable to open file '$ff': $!\n";
+
+    while (<IN>) {
+        if (/^#%(\S+)/) {                   # Yes substitution
+            my $key = $1;
+            if ($key eq 'OPTIONS') {        # Look for engine.options in HOME or cwd
+                my $ff = $opts{engine} . '.options';
+                if (! -r $ff) { $ff = $ENV{HOME} . '/' . $opts{engine} . '.options'; }
+                if (open(INOPTIONS, $ff)) {
+                    my @l = <INOPTIONS>;
+                    print OUT @l;
+                    close(INOPTIONS);
+                }
+                next;
+            }
+            if ($key eq 'JOBNAME') {        # Set jobname variable
+                print OUT "jname='$opts{jobname}.$$'\n";
+                next;
+            }
+            if ($key eq 'VERBOSE') {        # Set jobname variable
+                print OUT "verbose='$opts{verbose}'\n";
+                next;
+            }
+            if ($key eq 'COMMAND') {        # Here is command to run
+                print OUT "$cmd\n";
+                next;
+            }
+        }
+        print OUT $_;
+    }
+    close(IN);
+    close(OUT);
+    if ($opts{verbose}) { warn "Created shell script '$f' to run command\n"; }
+    chmod(0700, $f);
+    if ($opts{engine} eq 'pbs') { return $prefixcmd . ' ' . $f . ' ' . $opts{engine}; }
+    return $prefixcmd . ' ' . $f;
+}
 
 #==================================================================
 #   Perldoc Documentation
@@ -122,8 +251,8 @@ runcluster.pl - Run a command from GotCloud on your local cluster
 
 =head1 SYNOPSIS
 
-  runcluster.pl slurmi 'echo this is a command to run'
-  runcluster.pl -opts "-w s03,s04 --mem 4g" slurmb 'echo this is another command'
+  runcluster.pl local 'echo this is a command to run'
+  runcluster.pl -opts "-w s03,s04 --mem 4g" slurm 'echo this is another command'
   runcluster.pl -opts "-w s03,s04 --mem 4g" mosix echo this is another command
 
 =head1 DESCRIPTION
@@ -137,29 +266,28 @@ This script may need to be modified for your cluster environment.
 
 =over 4
 
-=item B<-concurrent N>
+=item B<-bashdir dir>
 
-Specifies the number of concurrent tasks that might be run at once.
-This defaults to '1'.
-It only makes sense to specify this if you should be using
-the file=path form for 'command' (see below).
-
-=item B<-engine string>
-
-Specifies the type of batch engine to use.
-Common choices are mosix, mosbatch, slurmi, and slurm, but your
-local installation might support others.
-This defaults to 'slurm'.
-
-=item B<-file path>
-
-Specifies a file of commands to submit to the batch system.
-You must either specify the B<-file> option or
-specify the batch system and command as arguments to this command (see below).
+Specifies the path to a directory where this program could create
+shell scripts, as necessary.
+The path to this directory must be accessible to the cluster job.
+This directory is created as necessary.
+This defaults to the current working directory.
 
 =item B<-help>
 
 Generates this output.
+
+=item B<-jobname name>
+
+Specifies a the beginning part of shell scripts created by this program.
+This defaults to 'GC'.
+
+=item B<-modelfile file>
+
+Specifies a model batch file to be used to create the script for
+batch systems (e.g. B<-engine slurm> or B<-engine pbs>).
+The default is B<runcluster.model> in the same directory as this program.
 
 =item B<-opts str>
 
@@ -171,7 +299,11 @@ the many options required. In this case the option is of the
 form B<pbsfile=somefile> where the file I<somefile> consists
 of only the #PBS comment lines you would normally put in a
 script to be run.
-The default file for PBS is B<$HOME/.pbsfile>.
+The default file for PBS is B<$HOME/pbs.options>.
+
+Similarly, SLURM engines support its own convention.
+The default file for SLURM is B<$HOME/slurm.options>.
+
 
 =item B<-verbose>
 
@@ -180,19 +312,16 @@ Will generate additional messages about the running of this program.
 =back
 
 =head1 PARAMETERS
-#--------------------------------------------------------------
 
 =over 4
 
 =item B<engine_type>
 
-If B<-file> was not specified, you must specify this argument.
 Specifies the type of engine to submit the command to.
-This can be slurm, local, sge, mosix and pbs.
+The list of valid engine_types can be seen with B<runcluster.pl>.
 
 =item B<command>
 
-If B<-file> was not specified, you must specify this argument.
 Specifies the command to be run in the cluster.
 This string can be specified as one quoted parameter
 (e.g. 'make -j 4 -f abc/Makefile') or

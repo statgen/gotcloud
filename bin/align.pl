@@ -10,7 +10,7 @@
 #       rm -rf ~/outdata
 #       d=/gotcloud/test/align
 #       /gotcloud/bin/align.pl -conf $d/test.conf \
-#          -index_file $d/indexFile.txt -ref $d/../chr20Ref/ \
+#          -index_file $d/indexFile.txt -ref_dir $d/../chr20Ref/ \
 #          -fastq_prefix $d   -out ~/outdata
 #
 #   You can verify the results on the test data are expected using:
@@ -135,7 +135,6 @@ if($opts{gotcloudroot})
 }
 require GC_Common;
 require Conf;
-require Multi;
 
 my @confSettings;
 push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
@@ -237,7 +236,7 @@ if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
 if ($opts{index_file})   { push(@confSettings, "INDEX_FILE = $opts{index_file}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
-if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchops}"); }
+if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
 
 #############################################################################
 #   Load configuration variables from conf file
@@ -550,9 +549,9 @@ if(getConf('BAM_INDEX'))
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
 #############################################################################
-my @mkcmds = ();
+my %mkcmds = ();
 my ($fastq1, $fastq2, $rgCommand, $saiFiles, $allPolish, $allSteps, $alnFiles, $polFiles);
-foreach my $tmpmerge (keys %mergeToFq1) {
+foreach my $tmpmerge (sort (keys %mergeToFq1)) {
     my $mergeName = $tmpmerge;
     #   Reset generic variables
     $allPolish = '';
@@ -694,57 +693,96 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         $s .= " -j ".$opts{numjobspersample};
     }
     $s .= " > $makef.log";
-    push @mkcmds, $s;
+    $mkcmds{$mergeName} = $s;
 }
 
 #--------------------------------------------------------------
-#   Makefile created, commands built in @mkcmds
+#   Makefile created, commands built in %mkcmds
 #   Normal case is to run these, either locally or in batch mode
 #--------------------------------------------------------------
 warn '-' x 69 . "\n";
 
 if ($opts{'dry-run'}) {
     die "#  These commands would have been run:\n" .
-        '  ' . join("\n  ",@mkcmds) . "\n";
+        '  ' . join("\n  ",sort(values %mkcmds)) . "\n";
 }
 
 #   We now have an array of commands to run launch and wait for them
 warn "Waiting while samples are processed...\n";
 my $t = time();
-$_ = $Multi::VERBOSE;               # Avoid Perl warning
-if ($opts{verbose}) { $Multi::VERBOSE = 1; }
 
 my $totaljobs = 1;
-if(defined $opts{numconcurrentsamples}) { $totaljobs = $opts{numconcurrentsamples}; }
+if(defined $opts{numconcurrentsamples}){ $totaljobs = $opts{numconcurrentsamples}; }
+
+
 if(defined $opts{numjobspersample}) { $totaljobs *= $opts{numjobspersample}; }
-if(((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq '') ||
-   (getConf('BATCH_TYPE') eq 'local')) && $totaljobs > $opts{maxlocaljobs})
+if((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq ''))
+{
+    setConf('BATCH_TYPE', 'local');
+}
+
+if((getConf('BATCH_TYPE') eq 'local') && ($totaljobs > $opts{maxlocaljobs}))
 {
     die "ERROR: can't run $totaljobs jobs with 'BATCH_TYPE = local', " .
         "max is $opts{maxlocaljobs}\n" .
         "Rerun with a different 'BATCH_TYPE' or override the local maximum ".
         "using '--maxlocaljobs $totaljobs'\n" .
         "#  These commands would have been run:\n" .
-        '  ' . join("\n  ",@mkcmds) . "\n";
+        '  ' . join("\n  ",sort(values %mkcmds)) . "\n";
 }
 
+#--------------------------------------------------------------
+#   Generate the runcluster commands in a single Makefile
+#--------------------------------------------------------------
+my $allMakef = "$out_dir/Makefiles/alignAll.Makefile";
+open(ALL_MAK,'>' . $allMakef) ||
+die "Unable to open '$allMakef' for writing.  $!\n";
 
-my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples}, "$out_dir/Makefiles/jobfiles");
-if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
+print ALL_MAK ".PHONY : all ".join(" ",sort(keys %mkcmds))."\n\n";
+print ALL_MAK "all: ".join(" ",sort(keys %mkcmds))."\n\n";
+
+#   Build runcluster command to be run, execute it for each command to be run
+my $unsetMakeFlags = 'MAKEFLAGS=$(patsubst --jobserver-fds=%,,$(patsubst -j,,$(MAKEFLAGS)))';
+my $runcmd = $opts{runcluster} . ' -bashdir ' . "$out_dir/Makefiles/jobfiles";
+if (getConf('BATCH_OPTS')) { $runcmd .= " -opts '" . getConf('BATCH_OPTS') . "'"; }
+if ($opts{verbose}) { $runcmd .= ' -verbose'; }
+$runcmd .= ' ' . getConf('BATCH_TYPE');
+my $errs = 0;
+foreach my $tgt (sort(keys %mkcmds))
+{
+    print ALL_MAK "$tgt:\n";
+    print ALL_MAK "\t" . $unsetMakeFlags . ' ' . $runcmd . " '" . $mkcmds{$tgt} . "'\n\n";
+}
+close ALL_MAK;
+my $allMakeCmd = "make -f $allMakef";
+if ($opts{numconcurrentsamples})
+{
+    $allMakeCmd .= " -j ".$opts{numconcurrentsamples};
+}
+$allMakeCmd .= " > $allMakef.log 2> $allMakef.err";
+print STDERR "Running $allMakeCmd...\n\n";
+system($allMakeCmd) && $errs++;
+if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n"; }
+
 $t = time() - $t;
 print STDERR "Processing finished in $t secs";
 if ($errs) {
-        print STDERR " WITH ERRORS.  Check the logs\n" .
+        print STDERR " WITH ERRORS.  Check the logs:\n" .
+        "   $allMakef.err\n" .
+        "   $allMakef.log\n".
         "  TYPE=".getConf('BATCH_TYPE')."\n" .
         "  OPTS=".getConf('BATCH_OPTS')."\n" .
-        "  CMDS=" . join("\n    ", @mkcmds) . "\n";
+        "  CMDS=" . join("\n    ", sort(keys %mkcmds)) . "\n";
 }
 else {
     print STDERR " with no errors reported\n";
-    my $href = Multi::EngineDetails(getConf('BATCH_TYPE'));
-    if ($href->{wait} eq 'n') {
-        warn "\nReal tasks were submitted to '".getConf('BATCH_TYPE')."' and probably is not finished\n" .
-            "Use '$href->{status}' to determine when commands completes\n";
+    #   Call runcluster to figure out if this was batch or interactive
+    my $cmd = $opts{runcluster} . ' ' . getConf('BATCH_TYPE') . ' runcluster-show-details';
+    $_ = `$cmd`;
+    if (/Type=(.)/) {
+        if ("$1" eq 'b') {
+            print STDERR "\nReal tasks were submitted to '".getConf('BATCH_TYPE')."' and probably are not finished\n";
+        }
     }
 }
 exit($errs);
