@@ -6,86 +6,26 @@
 
 sep="##################################################"
 eko='/bin/echo -e'
-waitsec=60                          # How long to wait before checking for result
 
-opts=''                             # Options to qsub/sbatch
-jname=gcbatch.$$                    # Name of job
 #%JOBNAME                           # Override previous line
 #%VERBOSE
 
+#%BASETOUCHFILE                     # basefile=path which is used to touch OK/err files
+okfile=${basefile:-/tmp/unset.value}.ok
+errfile=${basefile:-/tmp/unset.value}.err
+rm -f $okfile $errfile
+
 #   Just run the command
-if [ "$1" != "pbs" ]; then
-  set -o pipefail
+set -o pipefail
 #%COMMAND                           # Here is command to execute
-  rc=$?
-  if [ "$rc" != "0" ]; then
-    $eko "$sep\n#  ERROR rc=$rc\n$sep\n"
-  else
-    echo "#  SUCCESS rc=$rc"
-  fi
-  exit $rc
+rc=$?
+if [ "$rc" != "0" ]; then
+  $eko "$sep\n#  ERROR rc=$rc\n$sep\n"
+  touch $errfile                    # This can be detected by the submitter to know success
+else
+  echo "#  SUCCESS rc=$rc"
+  touch $okfile                     # This can be detected by the submitter to know failure
 fi
-
-#########################   SLURM   ########################
-if [ "$1" = "slurmumake" ]; then
-  #  Submit this script to the engine
-  s=`sbatch $opts -J $jname $0 2>&1`            # e.g. Submitted batch job 2356333
-  sa=( ${s} )
-  if [ "${sa[0]}" != "Submitted" ]; then
-    $eko "$sep\n#  ERROR submitting $0 with sbatch (opts=$opts -J $jname)  Result=$s\n$sep\n"
-    exit 2
-  fi
-  jobid=${sa[3]}
-  #  Wait for the batch job to complete
-  loop=y
-  while [ "$loop" = "y" ]; do
-    s=`sacct -b -j $jobid | grep $jobid`            # e.g. 2356334   FAILED   2:0
-    sa=( ${s} )
-    if [ "${sa[0]}" = "$jobid" ]; then
-      if [ "${sa[1]}" = "COMPLETED" ]; then
-        exit 0
-      fi
-      if [ "${sa[1]}" = "FAILED" ]; then
-        rc=`echo ${sa[2]} | cut -d : -f 1`
-        exit $rc
-      fi
-    fi
-    sleep $waitsec
-  done
-fi
-
-#########################   PBS   ########################
-if [ "$1" = "pbs" ]; then
-  #  Submit this script to the engine
-  s=`qsub $opts -N $jname $0 2>&1`          # e.g. 11371743.nyx.engin.umich.edu
-  jobid=`echo $s | cut -d . -f 1`           # e.g. 11371743
-  if [ $jobid = "" ]; then
-    $eko "$sep\n#  ERROR submitting $0 with qsub (opts=$opts -N $jname)  Result=$s\n$sep\n"
-    exit 2
-  fi
-  #  Wait for the batch job to complete
-  loop=y
-  while [ "$loop" = "y" ]; do
-    s=`qstat -r $jobid | grep $jobid`       # e.g. 11371743.nyx.engin.umi tpg  cac $0  -- -- -- 768mb  01:00:00 Q --
-    sa=( ${s} )
-    if [ "${sa[9]}" = "C" ]; then           # Job completed, try to guess return code
-      s=`checkjob -v $jobid | grep 'Completion Code:'`  # e.g. Completion Code: 2  Time: Mon Dec  9 16:17:13
-      sa=( ${s} )
-      if [ "${sa[2]}" = "0" ]; then         # Special PBS feature, job can succeed if never run
-        s=`checkjob -v $jobid | grep 'NOTE:'`
-        if [ "$s" != "" ]; then
-          echo $s
-          exit 9
-        fi
-      fi
-      exit ${sa[2]}
-    fi
-    sleep $waitsec
-  done
-fi
-
-#   Parameter was not recognized
-echo "Invalid usage:  expected $0 batchtype"
-exit 3
+exit $rc
 
 

@@ -49,6 +49,9 @@ my %opts = (
     engine => 'local',
     jobname => 'GC',
     modelfile => "$me.model",
+    waitinterval => 10,                 # Check for ok/err files really often
+    waittries => 18,                    # Check for file this many times
+    maxwaittries => 72,                 # Do not let $waittries grow past this
     verbose => 0,
 );
 Getopt::Long::GetOptions( \%opts,qw(
@@ -88,7 +91,9 @@ if (! $cmd) {
 
 #   Hidden hook to get details for this engine type
 if ($cmd eq 'runcluster-show-details') {
-    print "Name=$opts{engine}  Type=$ClusterTypes{$opts{engine}}[0] Cmd=$ClusterTypes{$opts{engine}}[1] Opts=$ClusterTypes{$opts{engine}}[2] Status=$ClusterTypes{$opts{engine}}[3]\n";
+    print "Name=$opts{engine}  Type=$ClusterTypes{$opts{engine}}[0] " .
+        "Cmd=$ClusterTypes{$opts{engine}}[1] " .
+        "Opts=$ClusterTypes{$opts{engine}}[2] Status=$ClusterTypes{$opts{engine}}[3]\n";
     exit;
 }
 
@@ -104,25 +109,54 @@ if ($opts{engine} =~ /^mos/) {
     }
 }
 
-#   Interactive jobs are easier, as we just prefix the command with some other command
-my $runcmd;
+#   Interactive jobs are easier, just build command and execute it
 if ($ClusterTypes{$opts{engine}}[0] eq 'i') {
-    $runcmd = icommand("$ClusterTypes{$opts{engine}}[1] $ClusterTypes{$opts{engine}}[2] $opts{opts}", $cmd);
-}
-if ($ClusterTypes{$opts{engine}}[0] eq 'b') {
-    $runcmd = bcommand("$ClusterTypes{$opts{engine}}[1] $ClusterTypes{$opts{engine}}[2] $opts{opts}", $cmd);
-}
-if (! $runcmd) {
-    die "Unable to create commands to submit to '$opts{engine}' - no jobs started\n";
-}
-#   Run the command, remove any shell scripts we created, exit with correct return code
-if ($opts{verbose}) { warn "Executing '$opts{engine}' cmd: $runcmd\n"; }
-#   Avoid race condition for MOSIX :-(
-#if ($opts{engine} =~ /^mos/) { sleep(1); warn "waiting\n"; }
-my $rc = system($runcmd) >> 8;
-if ((! $opts{verbose}) && $runcmd =~ /\s+(\S+$opts{autorm_ending})/) { unlink $1; }  # Delete shell we created
-exit($rc);
+    my $runcmd = icommand("$ClusterTypes{$opts{engine}}[1] $ClusterTypes{$opts{engine}}[2] $opts{opts}", $cmd);
+    if (! $runcmd) {
+        die "Unable to create commands to submit to '$opts{engine}' - no jobs started\n";
+    }
+    #   Run the command, remove any shell scripts we created, exit with correct return code
+    if ($opts{verbose}) { warn "Executing '$opts{engine}' cmd: $runcmd\n"; }
+    #   Avoid possible race condition for MOSIX :-(
+    #if ($opts{engine} =~ /^mos/) { sleep(1); warn "waiting\n"; }
+    my $rc = system($runcmd) >> 8;
+    if ((! $opts{verbose}) && $runcmd =~ /\s+(\S+$opts{autorm_ending})/) { unlink $1; }  # Delete shell we created
+    exit($rc);
 
+}
+
+#   Batch jobs are more complex.  Submit the job and wait for it to complete
+if ($ClusterTypes{$opts{engine}}[0] eq 'b') {
+    my $runshell;
+    my $runcmd = bcommand("$ClusterTypes{$opts{engine}}[1] $ClusterTypes{$opts{engine}}[2] $opts{opts}", $cmd);
+    if (! $runcmd) {
+        die "Unable to create commands to submit to '$opts{engine}' - no jobs started\n";
+    }
+    if ($runcmd =~ /\s+(\S+$opts{autorm_ending})/) { $runshell = $1; }  # Script we are running
+
+    #   Run the command, catch the job-id and then wait for it complete
+    if ($opts{verbose}) { warn "Executing '$opts{engine}' cmd: $runcmd\n"; }
+    my $f = "/tmp/$$.batchlog";
+    my $rc = system("$runcmd > $f") >> 8;
+    if ($rc) {                              # Unable to submit job
+        system("cat $f");
+        unlink($f);
+        exit($rc);
+    }
+    my $submitline = '';
+    if (open(IN,$f)) {                      # Get job-id from submit command output
+        $submitline = <IN>;
+        chomp($submitline);
+        close(IN);
+    }
+    unlink($f);
+    #   Wait for batch job to complete
+    if ($runshell) {
+        $rc = waitforcommand($runshell, $submitline, $opts{engine});
+    }
+    if ((! $opts{verbose}) && $runshell) { unlink $runshell; }      # Delete shell we created
+    exit($rc);
+}
 
 #==================================================================
 # Subroutine:
@@ -187,8 +221,9 @@ sub icommand {
 #   $cmd = bcommand($prefixcmd, $cmd)
 #
 #   Returns a batch command to be run in the form of a script
-#   which actually submits the script to the engine and then
-#   waits for the job to finish running.
+#   which actually submits the script to the engine
+#   When the command completes, it will touch a file (error or ok)
+#   which can be detected by waitforcommand()
 #
 #   Returns:  command to execute
 #==================================================================
@@ -229,6 +264,10 @@ sub bcommand {
                 print OUT "$cmd\n";
                 next;
             }
+            if ($key eq 'BASETOUCHFILE') {        # Here is path to shell we created
+                print OUT "basefile=$f\n";
+                next;
+            }
         }
         print OUT $_;
     }
@@ -236,8 +275,67 @@ sub bcommand {
     close(OUT);
     if ($opts{verbose}) { warn "Created shell script '$f' to run command\n"; }
     chmod(0700, $f);
-    if ($opts{engine} eq 'pbs') { return $prefixcmd . ' ' . $f . ' ' . $opts{engine}; }
     return $prefixcmd . ' ' . $f;
+}
+
+#==================================================================
+# Subroutine:
+#   waitforcommand($shell, $submitline, $engine)
+#
+#   Wait for a Batch script to complete.
+#   $submitline is the output from the batch command (e.g. sbatch)
+#   From this we can extract the job-id.
+#   The script we create will create an ok or err file when
+#   it completes.  This is our normal way to check the job
+#   has finished, but just in case the job was cancelled or
+#   failed in some other way, every once in a while we must
+#   query the batch system to see if the job is still running.
+#
+#   The ok/err files are $shell + .ok or .err and have been
+#   set up in the runcluster.model shell script to run the command.
+#
+#   Returns:   return code of command being run
+#
+#==================================================================
+sub waitforcommand {
+    my ($shell, $submitline, $engine) = @_;
+
+    #   Get the job-id
+    my $jobid = '';
+    if ($submitline =~ /Submitted batch job (\S+)/) { $jobid = $1; }    # Good for SLURM
+    if (! $jobid) {
+        warn "Unable to determind $engine job-id. Waiting may fail. Line=$submitline\n";
+        $jobid = 'lost-job-id';
+    }
+    my $querycmd = $ClusterTypes{$opts{engine}}[3] . ' -j ' . $jobid;
+
+    #   The most efficient way to wait is to check for the ok/err files
+    #   to appear. We try that for a while and eventually try the
+    #   query for the batch system and see if the job is still there
+    while (1) {
+        foreach (1 .. $opts{waittries}) {
+            if (-r "$shell.err") {
+                unlink("$shell.err");
+                if ($opts{verbose}) { print "Found $shell.err\n"; }
+                return 1;
+            }
+            if (-r "$shell.ok")  {
+                unlink("$shell.ok");
+                if ($opts{verbose}) { print "Found $shell.ok\n"; }
+                return 0;
+            }
+            if ($opts{verbose}) { print "Wait $_\n"; }
+            sleep($opts{waitinterval});
+        }
+        if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
+        if (system($querycmd . " 2>&1 >/dev/null")) {
+            warn "Batch job '$jobid' completed without setting $shell.ok or $shell.err - something is wrong\n";
+            return 99;
+        }
+        $opts{waittries} += 12;
+        if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
+        if ($opts{verbose}) { print "Next pass waittries=$opts{waittries}\n"; }
+    }
 }
 
 #==================================================================
