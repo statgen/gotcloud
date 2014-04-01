@@ -2043,7 +2043,7 @@ sub getMosixCmd {
     my $cmd = shift;
 
     $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
-    my $newcmd = $runcluster." -bashdir $outdir/jobfiles ";
+    my $newcmd = $runcluster.' -bashdir $(OUT_DIR)/jobfiles ';
     if($batchopts)
     {
         $newcmd .= "-opts '".$batchopts."' ";

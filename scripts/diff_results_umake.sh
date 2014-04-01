@@ -48,10 +48,12 @@ done
 TBI1=chr20.hardfiltered.vcf.gz.tbi
 TBI2=chr20.filtered.vcf.gz.tbi
 
+status=0
+
 echo "Results from DIFF will be in $DIFFRESULTS"
 
 diff -r $RESULTS_DIR $EXPECTED_DIR \
-    $SKIP_GZS -x $TBI1 -x $TBI2 -x $DIFF_FILE -x umake_test.snpcall.conf -x umake_test.snpcall.Makefile.log\
+    $SKIP_GZS -x $TBI1 -x $TBI2 -x $DIFF_FILE -x umake_test.snpcall.conf -x umake_test.snpcall.Makefile.log -x jobfiles\
     -I "^Analysis completed on " \
     -I "^Analysis finished on " \
     -I "^Analysis started on " \
@@ -79,7 +81,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
-    exit 2
+    status=2
 fi
 
 
@@ -90,7 +92,7 @@ do
   if [ ! -f ${file/$EXPECTED_DIR/$RESULTS_DIR} ]
   then
       echo "ERROR: Missing ${file/$EXPECTED_DIR/$RESULTS_DIR}"
-      exit 3
+      status=3
   fi
 done
 
@@ -99,7 +101,7 @@ do
   if [ ! -f ${file/$RESULTS_DIR/$EXPECTED_DIR} ]
   then
       echo "ERROR: Unexpected file ${file/$RESULTS_DIR/$EXPECTED_DIR}"
-      exit 3
+      status=3
   fi
 done
 
@@ -107,29 +109,33 @@ for file in $VCF_GZS_WITH_SUBDIR; do
     zdiff -I "^##filedate=.*$" -I"^#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	.*$file$" $EXPECTED_DIR/$file $RESULTS_DIR/$file >> $DIFFRESULTS;
     if [ $? -ne 0 ] ; then
         echo "$file failed. See mismatches in $DIFFRESULTS"
-        exit 2
+        status=2
     fi
 done
 	
 if [ ! -f $RESULTS_DIR/vcfs/chr20/$TBI1 ]; then \
     echo "ERROR, Missing: $RESULTS_DIR/vcfs/chr20/$TBI1"
-    exit 3
+    status=3
 fi
 
 if [ ! -f $EXPECTED_DIR/vcfs/chr20/$TBI1 ]; then \
     echo "ERROR, Missing: $EXPECTED_DIR/vcfs/chr20/$TBI1"
-    exit 3
+    status=3
 fi
 
 if [ ! -f $RESULTS_DIR/vcfs/chr20/$TBI2 ]; then \
     echo "ERROR, Missing: $RESULTS_DIR/vcfs/chr20/$TBI2"
-    exit 3
+    status=3
 fi
 
 if [ ! -f $EXPECTED_DIR/vcfs/chr20/$TBI2 ]; then \
     echo "ERROR, Missing: $EXPECTED_DIR/vcfs/chr20/$TBI2"
-    exit 3
+    status=3
 fi
 
-echo "Successful comparison of data in '$RESULTS_DIR' and '$EXPECTED_DIR'"
-exit 0
+if [ $status == 0 ]
+then
+    echo "Successful comparison of data in '$RESULTS_DIR' and '$EXPECTED_DIR'"
+    exit 0
+fi
+exit $status

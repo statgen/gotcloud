@@ -10,6 +10,8 @@
 #   29 Nov 2012 tpg   Initial coding
 #   04 Feb 2013 tpg   Add support for slurm and mosix
 #   11 Feb 2013 tpg   Add PBS support
+#   30 Mar 2014 tpg   Wait for SLURM batch jobs to complete
+#    5 Apr 2014 tpg   Wait for SGE and PBS batch jobs to complete
 #
 # This is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
@@ -303,12 +305,16 @@ sub waitforcommand {
     #   Get the job-id
     my $jobid = '';
     if ($submitline =~ /Submitted batch job (\S+)/) { $jobid = $1; }    # Good for SLURM
+    if ($submitline =~ /^(\d+)\./) { $jobid = $1; }         # Good for PBS
+    if ($submitline =~ /job (\d+) \(/) { $jobid = $1; }     # Good for SGE
     if (! $jobid) {
         warn "Unable to determind $engine job-id. Waiting may fail. Line=$submitline\n";
         $jobid = 'lost-job-id';
     }
-    my $querycmd = $ClusterTypes{$opts{engine}}[3] . ' -j ' . $jobid;
-
+    #   Figure out syntax for query command. Assume SLURM, adjust for others.
+    my $querycmd = $ClusterTypes{$opts{engine}}[3] . ' ' . $jobid;
+    if ($engine eq 'slurm') { $querycmd = $ClusterTypes{$opts{engine}}[3] . ' -j ' . $jobid; }
+    if ($engine eq 'pbs')   { $querycmd = $ClusterTypes{$opts{engine}}[3] . ' -f ' . $jobid; }
     #   The most efficient way to wait is to check for the ok/err files
     #   to appear. We try that for a while and eventually try the
     #   query for the batch system and see if the job is still there
@@ -328,9 +334,28 @@ sub waitforcommand {
             sleep($opts{waitinterval});
         }
         if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
-        if (system($querycmd . " 2>&1 >/dev/null")) {
+        my $qout = "/tmp/$$.queryoutput";
+        if (system($querycmd . " 2>&1 >$qout") || (-z $qout)) {
             warn "Batch job '$jobid' completed without setting $shell.ok or $shell.err - something is wrong\n";
+            unlink($qout);
             return 99;
+        }
+        #   Some systems remove q jobid from the queue when it completes
+        #   some keep the entry around so we must parse the query output to
+        #   guess what really happened.
+        if ($engine eq 'pbs') {
+            my $jobstate = '';
+            if (open(WAITREAD, $qout)) {
+                while (<WAITREAD>) {
+                    if (/job_state = C/) { $jobstate = 'C'; last; }
+                }
+            }
+            close(WAITREAD);
+            unlink($qout);
+            if ($jobstate eq 'C') {
+                warn "Batch job '$jobid' was cancelled\n";
+                return 98;
+            }
         }
         $opts{waittries} += 12;
         if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
