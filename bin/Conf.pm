@@ -265,7 +265,7 @@ sub setConf {
 
     $fpfx = getConf('FASTQ_PREFIX');
     $type = getConf('MAP_TYPE', 1);
-    $threads = getConf('BWA/THREADS';
+    $threads = getConf('BWA/THREADS');
 
 =cut
 
@@ -274,7 +274,7 @@ sub getConf {
     if (! defined($required)) { $required = 0; }
 
     my $section = 'global';
-    if ($key =~ /^(\w+)\/(.+)/) { ($key, $section) = ($1, $2); }
+    if ($key =~ /^(\w+)\/(.+)/) { ($section, $key) = ($1, $2); }
 
     if (! defined($CONF_HASH{$section}{$key})) {
         if (! $required) { return ''; }
@@ -286,7 +286,7 @@ sub getConf {
     #   Resolve sub-variables of the form $(varname)
     my $val = $CONF_HASH{$section}{$key};
     for (1 .. 50) {             # Avoid any chance of forever looops
-        if ($val !~ /^(.*)\$\((\w+)\)(.*)$/) { last; }
+        if ($val !~ /^(.*)\$\(([\w\/]+)\)(.*)$/) { last; }
         my ($pre, $var, $post) = ($1, $2, $3);
         if (exists($CONF_HASH{$section}{$var})) {
             $val = $pre . $CONF_HASH{$section}{$var} . $post;
@@ -296,6 +296,14 @@ sub getConf {
             $val = $pre . $CONF_HASH{global}{$var} . $post;
             next;
         }
+
+        # Check if the var being substituted has a section
+        if ($var =~ /^(\w+\/.+)/)
+        {
+            $val = $pre . getConf($1, $required).$post;
+            next;
+        }
+
         my $s = "'$section'";
         if ($section ne 'global') { $s .= " or in 'global'"; }
         warn "Config variable '$var' is not defined in section $s." .

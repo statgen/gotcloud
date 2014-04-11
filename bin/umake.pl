@@ -67,6 +67,9 @@ my $batchopts = '';
 my $gcroot = '';
 my $noPhoneHome = '';
 
+# Track if any of the "bams" are crams.
+my $isCram = 0;
+
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
                            "outdir|out_dir=s",\$outdir,
@@ -621,6 +624,11 @@ while(<IN>) {
         $hPops{$mpop} = 1;
     }
     foreach my $bam (@bams) {
+        if($bam =~ /cram$/)
+        {
+            # This bam is a cram.
+            $isCram = 1;
+        }
         if(!($bam =~ /^\// ))
         {
             # check if it starts with a configuration value.
@@ -1280,7 +1288,15 @@ foreach my $chr (@chrs) {
                 my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
                 push(@pvcfs,$pvcf);
                 #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+                my $cmd;
+                my $vcfInBam = $bam;
+                if($isCram == 1)
+                {
+                    # Cram has to be converted to bam and streamed to vcfPileup
+                    $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr | ";
+                    $vcfInBam = "-.ubam";
+                }
+                $cmd .= getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\t".getTouch("$pvcf")."\n");
             }
@@ -1374,7 +1390,16 @@ foreach my $chr (@chrs) {
                     my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
                     push(@pvcfs,$pvcf);
                     #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                    my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+                    my $cmd;
+                    my $vcfInBam = $bam;
+                    if($isCram == 1)
+                    {
+                        # Cram has to be converted to bam and streamed to vcfPileup
+                        $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam | ";
+#                        $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                        $vcfInBam = "-.ubam";
+                    }
+                    $cmd .= getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\t".getTouch("$pvcf")."\n");
                 }
@@ -1984,7 +2009,7 @@ sub runPileup
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
     }
 
-    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
+    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.uubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);
