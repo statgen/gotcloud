@@ -58,7 +58,8 @@ public:
 
     ~String()
     {
-        delete [] buffer;
+        if(buffer != NULL)
+            delete [] buffer;
     }
 
     String & Clear()
@@ -104,6 +105,8 @@ public:
     String & operator = (double rhs);
     String   operator + (double rhs) const;
     String & operator += (double rhs);
+
+    void appendFullFloat(float rhs);
 
     String & operator = (unsigned int rhs);
     String   operator + (unsigned int rhs) const;
