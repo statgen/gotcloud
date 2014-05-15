@@ -1,0 +1,9 @@
+lib/perl5
+!lib/perl5/GotCloud
+bin/config_data
+bin/json_pp
+bin/moo-outdated
+bin/instmodsh
+bin/package-stash-conflicts
+bin/prove
+man/

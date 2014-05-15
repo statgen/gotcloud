@@ -1,0 +1,19 @@
+requires 'Modern::Perl',          '1.20140107';
+requires 'List::MoreUtils',       '0.33';
+requires 'Readonly::XS',          '1.05';
+requires 'Type::Tiny',            '0.038';
+requires 'Moo',                   '1.004002';
+requires 'App::Cmd',              '0.323';
+requires 'Cache::File',           '2.09';
+requires 'Parallel::ForkManager', '1.06';
+requires 'File::Spec',            '3.40';
+requires 'namespace::clean',      '0.22';
+
+test_requires 'IPC::System::Simple', '1.25';
+test_requires 'Test::Warn',          '0.24';
+test_requires 'Test::Differences',   '0.61';
+test_requires 'Text::Diff',          '1.41';
+test_requires 'Test::Deep',          '0.112';
+test_requires 'Test::Exception',     '0.32';
+test_requires 'Test::Class',         '0.41';
+test_requires 'Test::Most',          '0.33';
