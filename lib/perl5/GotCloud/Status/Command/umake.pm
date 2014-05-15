@@ -28,7 +28,13 @@ sub validate_args {
     push @{$self->{stash}{steps}}, defined $opt->step ? @{$opt->step} : reverse @{$self->{stash}->{parser}->steps};
   }
 
-  $self->{stash}->{max_procs} = $opt->concurrent || $self->{stash}->{parser}->total_chromosomes;
+  my $max_procs = $self->{stash}->{parser}->total_chromosomes;
+
+  if ($opt->concurrent and ($opt->concurrent < $max_procs)) {
+    $max_procs = $opt->concurrent;
+  }
+
+  $self->{stash}->{max_procs} = $max_procs;
 }
 
 sub execute {
@@ -94,6 +100,7 @@ sub process_results {
       completed_steps      => $completed_steps,
       total_steps          => $total_steps,
       completed_percentage => percentage($total_steps, $completed_steps),
+      steps                => [],
     };
 
     for my $step (reverse @{$parser->steps}) {
@@ -101,6 +108,10 @@ sub process_results {
       my $total_targets     = scalar @{$targets};
       my @error_targets     = grep {$_->chromosome eq $chr and $_->step eq $step} @{$fail_ref};
       my $completed_targets = $total_targets - scalar @error_targets;
+
+      unless ($opt->detail) {
+        next if $total_targets <= 0;
+      }
 
       push @{$result_ref->{steps}}, {
         name                 => $step,
@@ -111,7 +122,9 @@ sub process_results {
         };
     }
 
-    push @{$params->{chromosomes}}, $result_ref;
+    if (scalar @{$result_ref->{steps}}) {
+      push @{$params->{chromosomes}}, $result_ref;
+    }
   }
 
   $self->{stash}->{params} = $params;
