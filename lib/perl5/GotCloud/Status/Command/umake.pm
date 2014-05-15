@@ -28,7 +28,14 @@ sub validate_args {
     push @{$self->{stash}{steps}}, defined $opt->step ? @{$opt->step} : reverse @{$self->{stash}->{parser}->steps};
   }
 
-  $self->{stash}->{max_procs} = $opt->concurrent || $self->{stash}->{parser}->total_chromosomes;
+  $self->{stash}->{max_procs} = $self->{stash}->{parser}->total_chromosomes;
+
+  if ($opt->concurrent) {
+    my $concur    = $opt->concurrent;
+    my $total_chr = $self->{stash}->{parser}->total_chromosomes;
+
+    $self->{stash}->{max_procs} = ($concur > $total_chr) ? $total_chr : $concur;
+  }
 }
 
 sub execute {
