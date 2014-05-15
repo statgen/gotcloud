@@ -1,5 +1,11 @@
 install-perl-deps:
-	@$(PWD)/bin/cpanm --without-feature=test --local-lib $(PWD) --self-contained --installdeps $(PWD)
+	$(PWD)/bin/cpanm --without-feature=test --local-lib $(PWD) --installdeps $(PWD)
+
+install-perl-deps-with-tests:
+	$(PWD)/bin/cpanm --local-lib $(PWD) --installdeps $(PWD)
+
+install-perl-deps-self-contained:
+	$(PWD)/bin/cpanm --without-feature=test --local-lib $(PWD) --self-contained --installdeps $(PWD)
 
 uninstall-perl-deps:
 	find lib/perl5/* -maxdepth 1 -name '*GotCloud*' -prune -o -print -exec rm -rf {} \;
