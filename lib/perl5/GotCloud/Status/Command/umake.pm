@@ -101,6 +101,7 @@ sub process_results {
       completed_steps      => $completed_steps,
       total_steps          => $total_steps,
       completed_percentage => percentage($total_steps, $completed_steps),
+      steps                => [],
     };
 
     for my $step (reverse @{$parser->steps}) {
@@ -108,6 +109,8 @@ sub process_results {
       my $total_targets     = scalar @{$targets};
       my @error_targets     = grep {$_->chromosome eq $chr and $_->step eq $step} @{$fail_ref};
       my $completed_targets = $total_targets - scalar @error_targets;
+
+      next if $total_targets <= 0;
 
       push @{$result_ref->{steps}}, {
         name                 => $step,
@@ -118,7 +121,9 @@ sub process_results {
         };
     }
 
-    push @{$params->{chromosomes}}, $result_ref;
+    if (scalar @{$result_ref->{steps}}) {
+      push @{$params->{chromosomes}}, $result_ref;
+    }
   }
 
   $self->{stash}->{params} = $params;
