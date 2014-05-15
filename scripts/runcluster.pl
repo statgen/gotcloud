@@ -50,6 +50,9 @@ my %opts = (
     opts => '',
     engine => 'local',
     jobname => 'GC',
+    log => '',
+    logfile => '',
+    logkey => 'no_key',
     modelfile => "$me.model",
     waitinterval => 10,                 # Check for ok/err files really often
     waittries => 18,                    # Check for file this many times
@@ -61,6 +64,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     verbose
     jobname=s
     engine=s
+    log=s
     modelfile=s
     bashdir=s
     opts=s
@@ -84,6 +88,10 @@ my $cmd = join(' ', @ARGV);
 
 if ($opts{engine} eq 'flux') { $opts{engine} = 'pbs'; }     # Set up aliases
 if ($opts{engine} eq 'mosix') { $opts{engine} = 'mosbatch'; }
+if ($opts{log} && $opts{log} =~ /(\S+),(.+)/) {             # Set up logfile and key
+    $opts{logfile} = $1;
+    $opts{logkey} = $2;
+}
 if (! exists($ClusterTypes{$opts{engine}})) {
     die "Cluster type '$opts{engine}' is not supported - no jobs started\n";
 }
@@ -211,7 +219,15 @@ sub icommand {
     #   This command must be wrapped in a BASH script
     my $f = $opts{bashdir} . '/' . $opts{jobname} . '_' . $$ . $opts{autorm_ending};
     open(OUT, '>' . $f) || die "icommand: Unable to create script: $f:  $!\n";
-    print OUT "#!/bin/bash\nset -o pipefail\n$cmd\nexit \$?\n";
+    print OUT "#!/bin/bash\nset -o pipefail\n";
+    if ($opts{logfile}) {
+        print OUT "d=`date +%s`\necho \"RUNSTART: $opts{logkey} \$d\" >> $opts{logfile}\n";
+    }
+    print OUT $cmd . "\nrc=\$?\n";
+    if ($opts{logfile}) {
+        print OUT "d=`date +%s`\necho \"RUNSTOP:  $opts{logkey} \$d rc=\$rc\" >> $opts{logfile}\n";
+    }
+    print OUT "exit \$rc\n";
     close(OUT);
     if ($opts{verbose}) { warn "Created shell script '$f' to run command\n"; }
     chmod(0755, $f) || exit 1;
@@ -268,6 +284,14 @@ sub bcommand {
             }
             if ($key eq 'BASETOUCHFILE') {        # Here is path to shell we created
                 print OUT "basefile=$f\n";
+                next;
+            }
+            if ($key eq 'LOGFILE') {
+                print OUT "logfile=$opts{logfile}\n";
+                next;
+            }
+            if ($key eq 'LOGKEY') {
+                print OUT "logkey=$opts{logkey}\n";
                 next;
             }
         }
@@ -405,6 +429,11 @@ Generates this output.
 
 Specifies a the beginning part of shell scripts created by this program.
 This defaults to 'GC'.
+
+=item B<-log file,string>
+
+Specifies the path to a log to append a start end end message for this command.
+There is no default log file.
 
 =item B<-modelfile file>
 
