@@ -87,6 +87,19 @@ if ( $fcn eq 'align') {
     exit $rc>>8;
 }
 
+if ( $fcn eq 'indel') {
+    foreach my $p ("$bindir/pipeline.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, "--name", "$fcn", @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc>>8;
+}
+
 if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
 {
     foreach my $p ("$bindir/umake.pl") {
@@ -191,6 +204,7 @@ gotcloud [command] [options]
    version         Print the gotcloud version
    align           Run the alignment pipeline
    snpcall         Run the snp calling pipeline
+   indel           Run the indel calling pipeline
    ldrefine        Run the LD-aware genotype refinement pipeline
    vc              Run the variant call steps that are configured on in your configuration file
 
@@ -219,6 +233,10 @@ Run the alignment pipeline. Type 'gotcloud align -help' for more detailed inform
 =item B<snpcall>
 
 Run the snp calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
+
+=item B<indel>
+
+Run the indel calling pipeline. Type 'gotcloud indel -help' for more detailed information
 
 =item B<vc>
 
