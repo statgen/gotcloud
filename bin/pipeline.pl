@@ -404,7 +404,7 @@ foreach my $bed (@uniqBeds) {
 my %regions = ();
 
 my @chrs = split(/\s+/,getConf("CHRS"));
-my $unitChunk = getConf("UNIT_CHUNK");
+my $unitChunk = getStepConf($opts{name},"UNIT_CHUNK");
 foreach my $chr (@chrs)
 {
     if(! defined $hChrSizes{$chr})
@@ -529,6 +529,48 @@ foreach my $dir (keys %allDirs)
 #   Close the Makefile
 ############################################################################
 close MAK;
+
+
+
+print STDERR "--------------------------------------------------------------------\n";
+print STDERR "Finished creating makefile $makef\n\n";
+
+my $rc = 0;
+if($opts{numjobs} != 0) {
+    my $cmd = "make -k -f $makef -j $opts{numjobs} ". getConf("MAKE_OPTS") . " > $makef.log";
+    if(($opts{batchtype} eq 'local') && ($opts{numjobs} > $opts{maxlocaljobs}))
+    {
+        die "ERROR: can't run $opts{numjobs} jobs with 'BATCH_TYPE = local', " .
+            "max is $opts{maxlocaljobs}\n" .
+            "Rerun with a different 'BATCH_TYPE' or override the local maximum ".
+            "using '--maxlocaljobs $opts{numjobs}'\n" .
+            "#  These commands would have been run:\n" .
+            "  $cmd\n";
+    }
+
+    print STDERR "Running: $makef\n";
+    print STDERR "Logging to: $makef.log\n\n";
+    my $t = time();
+    #           my $rc = 0xffff & system($cmd);
+    #           exit($rc);
+    system($cmd);
+    $rc = ${^CHILD_ERROR_NATIVE};
+    $t = time() - $t;
+    print STDERR " Commands finished in $t secs";
+    if ($rc) { print STDERR " WITH ERRORS.  Check the logs\n"; }
+    else { print STDERR " with no errors reported\n"; }
+    # system($cmd) &&
+    #    die "Makefile, $makef failed d=$cmd\n";
+}
+else {
+    print STDERR "Try 'make -f $makef ". getConf("MAKE_OPTS") . " -n | less' for a sanity check before running\n";
+    print STDERR "Run 'make -k -f $makef ". getConf("MAKE_OPTS") . " -j [#parallele jobs]'\n";
+}
+print STDERR "--------------------------------------------------------------------\n";
+
+exit($rc >> 8);
+
+
 
 #############################################################################
 #   END MAIN
