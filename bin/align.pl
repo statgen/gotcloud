@@ -489,22 +489,22 @@ while ($line = <IN>)
     my $mergeName = $fields[$fieldname2index{MERGE_NAME}];
     push @{$mergeToFq1{$mergeName}}, $fastq1;
 
-    if (exists($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
+    if (defined($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
     else { $fq1toFq2{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{RGID}))     { $fq1toRg{$fastq1} = $fields[$fieldname2index{RGID}]; }
+    if (defined($fieldname2index{RGID}))     { $fq1toRg{$fastq1} = $fields[$fieldname2index{RGID}]; }
     else { $fq1toRg{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{SAMPLE}))   { $fq1toSm{$fastq1} = $fields[$fieldname2index{SAMPLE}]; }
+    if (defined($fieldname2index{SAMPLE}))   { $fq1toSm{$fastq1} = $fields[$fieldname2index{SAMPLE}]; }
     else { $fq1toSm{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{LIBRARY}))  { $fq1toLib{$fastq1} = $fields[$fieldname2index{LIBRARY}]; }
+    if (defined($fieldname2index{LIBRARY}))  { $fq1toLib{$fastq1} = $fields[$fieldname2index{LIBRARY}]; }
     else { $fq1toLib{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{CENTER}))   { $fq1toCn{$fastq1} = $fields[$fieldname2index{CENTER}]; }
+    if (defined($fieldname2index{CENTER}))   { $fq1toCn{$fastq1} = $fields[$fieldname2index{CENTER}]; }
     else { $fq1toCn{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
+    if (defined($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
     else { $fq1toPl{$fastq1} = '.'; }
 
     # Update the list of per sample bams if this is the first
