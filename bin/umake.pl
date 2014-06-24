@@ -1152,7 +1152,7 @@ foreach my $chr (@chrs) {
         print MAK ".OK\n";
         my $cmd = getConf("VCFCAT")." @vcfs  | ".getConf("BGZIP")." -c > $vcf.gz";
         writeLocalCmd($cmd);
-        writeTouch("$vcf");
+        writeTouch("$vcf", "$vcf.gz");
 
         for(my $j=0; $j < @unitStarts; ++$j) {
             $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
