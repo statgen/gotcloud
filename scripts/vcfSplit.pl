@@ -88,7 +88,10 @@ else {
 
 open(OUT,">$out.vcflist") || die "Cannot open file\n";
 if ( $gzFlag ) {
-    print OUT join(".gz\n",@vcfs).".gz\n";
+    if((scalar @vcfs) > 0)
+    {
+        print OUT join(".gz\n",@vcfs).".gz\n";
+    }
 }
 else {
     print OUT join("\n",@vcfs)."\n";
