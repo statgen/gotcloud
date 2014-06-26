@@ -228,7 +228,11 @@ if($failReqFile eq "1")
     die "Exiting pipeline due to required file(s) missing\n";
 }
 
+my $newpath = getAbsPath(getConf("REF"), "REF");
+setConf("REF", $newpath);
+
 # TODO check for file existence
+# determine what references it needs.
 
 #############################################################################
 ## STEP  : Parse BAM INDEX FILE
