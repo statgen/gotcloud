@@ -53,7 +53,7 @@ status=0
 echo "Results from DIFF will be in $DIFFRESULTS"
 
 diff -r $RESULTS_DIR $EXPECTED_DIR \
-    $SKIP_GZS -x $TBI1 -x $TBI2 -x $DIFF_FILE -x umake_test.snpcall.conf -x umake_test.snpcall.Makefile.log -x jobfiles\
+    $SKIP_GZS -x $TBI1 -x $TBI2 -x $DIFF_FILE -x umake_test.snpcall.conf -x umake_test.snpcall.Makefile.log -x umake_test.snpcall.Makefile.cluster -x jobfiles\
     -I "^Analysis completed on " \
     -I "^Analysis finished on " \
     -I "^Analysis started on " \

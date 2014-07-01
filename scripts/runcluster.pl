@@ -221,11 +221,11 @@ sub icommand {
     open(OUT, '>' . $f) || die "icommand: Unable to create script: $f:  $!\n";
     print OUT "#!/bin/bash\nset -o pipefail\n";
     if ($opts{logfile}) {
-        print OUT "d=`date +%s`\necho \"RUNSTART: $opts{logkey} \$d\" >> $opts{logfile}\n";
+        print OUT "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTART\n";
     }
     print OUT $cmd . "\nrc=\$?\n";
     if ($opts{logfile}) {
-        print OUT "d=`date +%s`\necho \"RUNSTOP:  $opts{logkey} \$d rc=\$rc\" >> $opts{logfile}\n";
+        print OUT "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTOP rc=\$rc\n";
     }
     print OUT "exit \$rc\n";
     close(OUT);
@@ -257,6 +257,14 @@ sub bcommand {
     open(IN, $ff) ||
         die "Unable to open file '$ff': $!\n";
 
+    my $logStart = '';
+    my $logEnd = '';
+    if ($opts{logfile})
+    {
+        $logStart = "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTART";
+        $logEnd = "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTOP rc=\$rc";
+    }
+
     while (<IN>) {
         if (/^#%(\S+)/) {                   # Yes substitution
             my $key = $1;
@@ -286,12 +294,12 @@ sub bcommand {
                 print OUT "basefile=$f\n";
                 next;
             }
-            if ($key eq 'LOGFILE') {
-                print OUT "logfile=$opts{logfile}\n";
+            if ($key eq 'LOGSTART') {
+                print OUT "$logStart\n";
                 next;
             }
-            if ($key eq 'LOGKEY') {
-                print OUT "logkey=$opts{logkey}\n";
+            if ($key eq 'LOGEND') {
+                print OUT "$logEnd\n";
                 next;
             }
         }

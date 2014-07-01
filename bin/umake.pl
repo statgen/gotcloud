@@ -686,6 +686,10 @@ my @pops = sort keys %hPops;
 ############################################################################
 
 my $makef = getConf("OUT_DIR")."/".getConf("MAKE_BASE_NAME").".$makeext.Makefile";
+my $makef_OUT_DIR = $makef;
+$makef_OUT_DIR =~ s/$outdir/\$(OUT_DIR)/g;
+
+
 my @nobaqSubstrings = split(/\s+/,getConf("NOBAQ_SUBSTRINGS"));
 
 open(MAK,">$makef") || die "Cannot open $makef for writing\n";
@@ -972,7 +976,7 @@ foreach my $chr (@chrs) {
                 print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/thunder\n";
                 my $cmd = getConf("THUNDER")." --shotgun $splitVcfs[$i] -o $remotePrefix$thunderOut > $remotePrefix$thunderOut.out 2> $remotePrefix$thunderOut.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                print MAK "\t".getMosixCmd($cmd)."\n";
+                print MAK "\t".getMosixCmd($cmd, "$thunderOut.vcf.gz")."\n";
                 writeTouch("$thunderOut.vcf.gz");
             }
         }
@@ -1004,7 +1008,7 @@ foreach my $chr (@chrs) {
         if ( $#pops > 0 ) {
             my $cmd = getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamIndexRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$beagleDir/chr$chr/subset")."\n";
             print MAK "\n";
             foreach my $pop (@pops) {
                 $cmd = "\t".getConf("TABIX")." -f -pvcf $remotePrefix$beaglePrefix.$pop.vcf.gz\n";
@@ -1024,7 +1028,7 @@ foreach my $chr (@chrs) {
             print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/split/\n";
             my $cmd = getConf("VCFSPLIT")." --in $remotePrefix$beaglePrefix.$pop.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n\n";
+            print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n\n";
         }
     }
 
@@ -1079,19 +1083,19 @@ foreach my $chr (@chrs) {
             }
             my $cmd = getConf("VCF2BEAGLE")." --in $splitVcfs[$i] --out $remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz")."\n";
             $cmd = getConf("BEAGLE")." like=$remotePrefix$beagleLikeDir/chr$chr.PASS.".($i+1).".gz out=$remotePrefix$beagleOutPrefix.$j >$remotePrefix$beagleOutPrefix.$j.out 2>$remotePrefix$beagleOutPrefix.$j.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOutPrefix.$j")."\n";
             $cmd = getConf("BEAGLE2VCF"). " --filter --beagle $remotePrefix$beagleOut.gz --invcf $splitVcfs[$i] --outvcf $remotePrefix$beagleOut.vcf";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOut.vcf")."\n";
             $cmd = getConf("BGZIP"). " -f $remotePrefix$beagleOut.vcf";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOut.vcf.gz")."\n";
             $cmd = getConf("TABIX"). " -f -pvcf $remotePrefix$beagleOut.vcf.gz";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOut.vcf.gz.tbi")."\n";
             print MAK "\n";
         }
     }
@@ -1133,7 +1137,7 @@ foreach my $chr (@chrs) {
         print MAK "\tmkdir --p $splitDir/chr$chr\n";
         $cmd = getConf("VCFSPLIT")." --in $remotePrefix$subsetPrefix.PASS.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-        print MAK "\t".getMosixCmd($cmd)."\n\n";
+        print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n\n";
     }
 
     #############################################################################
@@ -1205,7 +1209,7 @@ foreach my $chr (@chrs) {
             {
                 print MAK "\tsleep $sleepSecs\n";
             }
-            print MAK "\t".getMosixCmd($cmd)."\n";
+            print MAK "\t".getMosixCmd($cmd, "$vcfs[$j]")."\n";
             writeTouch("$vcfs[$j]");
         }
     }
@@ -1292,7 +1296,7 @@ foreach my $chr (@chrs) {
                 #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                 my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\t".getTouch("$pvcf")."\n");
+                push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
             }
 
             print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
@@ -1386,7 +1390,7 @@ foreach my $chr (@chrs) {
                     #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                     my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd)."\n\t".getTouch("$pvcf")."\n");
+                    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
                 }
             }
             print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
@@ -1432,12 +1436,12 @@ foreach my $chr (@chrs) {
 
                     my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd)."\n\t".getTouch("$gvcf")."\n\n");
+                    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
                 }
                 else {
                     my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd)."\n\t".getTouch("$gvcf")."\n\n");
+                    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
                 }
                 push(@gvcfs,$gvcf);
                 push(@vcfs,$vcf);
@@ -1510,7 +1514,7 @@ foreach my $chr (@chrs) {
                 {
                     $newcmd .= "\tsleep $sleepSecs\n";
                 }
-                $newcmd .= "\t".getMosixCmd($cmd)."\n\t".getTouch("$vcf")."\n";
+                $newcmd .= "\t".getMosixCmd($cmd, "$vcf")."\n\t".getTouch("$vcf")."\n";
                 $newcmd =~ s/$outdir/\$(OUT_DIR)/g;
                 push(@cmds,"$newcmd");
             }
@@ -1520,7 +1524,7 @@ foreach my $chr (@chrs) {
                 {
                     $newcmd .= "\tsleep $sleepSecs\n";
                 }
-                $newcmd .= "\t".getMosixCmd($cmd)."\n\t".getTouch("$vcf")."\n";
+                $newcmd .= "\t".getMosixCmd($cmd, "$vcf")."\n\t".getTouch("$vcf")."\n";
                 push(@cmds,"$newcmd");
             }
         }
@@ -1636,7 +1640,7 @@ foreach my $chr (@chrs) {
                         $maxDepths .= ",1000";
                     }
                     # Merge the multiple GLFs for this sample.
-                    $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs");
+                    $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs", "$smGlf");
                     $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     $sampleCmd .= "\n";
                 }
@@ -1706,7 +1710,7 @@ if ( getConf("RUN_INDEX") eq "TRUE" ) {
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$bam.bai.OK:";
         if (getConf("BAM_DEPEND") eq "TRUE") { print MAK " $bam"; }
-        print MAK "\n\t".getMosixCmd($cmd)."\n\t".getTouch("$bam.bai")."\n\n";
+        print MAK "\n\t".getMosixCmd($cmd, "$bam.bai")."\n\t".getTouch("$bam.bai")."\n\n";
     }
 }
 
@@ -1994,7 +1998,7 @@ sub runPileup
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
     }
 
-    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
+    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);
@@ -2050,10 +2054,16 @@ sub parseTarget {
 ## getMosixCmd() : convert a command to mosix command
 ############################################################################
 sub getMosixCmd {
-    my $cmd = shift;
+    my ($cmd, $cmdKey) = @_;
+
+    my $logOption = "";
+    if(defined ($cmdKey) && $cmdKey)
+    {
+        $logOption = "-log $makef_OUT_DIR.cluster,$cmdKey ";
+    }
 
     $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
-    my $newcmd = $runcluster.' -bashdir $(OUT_DIR)/jobfiles ';
+    my $newcmd = $runcluster.' -bashdir $(OUT_DIR)/jobfiles '.${logOption};
     if($batchopts)
     {
         $newcmd .= "-opts '".$batchopts."' ";
@@ -2064,7 +2074,7 @@ sub getMosixCmd {
 
 #############################################################################
 ## writeLocalCmd() : Write a local command to the makefile
-## This shoudl be used for short commands that can be executed on the local machine
+## This should be used for short commands that can be executed on the local machine
 ############################################################################
 sub writeLocalCmd {
     my $cmd = shift;
