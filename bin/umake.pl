@@ -945,6 +945,11 @@ foreach my $chr (@chrs) {
             close IN;
             my $nsplits = $#splitVcfs+1;
 
+            if($nsplits <= 0)
+            {
+                die "WARNING: No VCFs to process, nothing for Thunder to do.\n";
+            }
+
             my $thunderPrefix = "$thunderDir/chr$chr/$pop/thunder/chr$chr.filtered.PASS.beagled.$pop.thunder";
             my @thunderOuts = ();
             my $thunderOutPrefix = $thunderPrefix;
@@ -1039,6 +1044,11 @@ foreach my $chr (@chrs) {
         }
         close IN;
         my $nsplits = $#splitVcfs+1;
+
+        if($nsplits <= 0)
+        {
+            die "WARNING: No VCFs to process, nothing for Beagle to do.\n";
+        }
 
         my @beagleOuts = ();
         my $beagleOutPrefix = "$beagleDir/chr$chr/split/bgl";
