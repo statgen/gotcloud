@@ -1,6 +1,17 @@
 #======================================================================
 #   GotCloud README
 #======================================================================
+See http://genome.sph.umich.edu/wiki/GotCloud for full GotCloud documentation.
+
+#----------------------------------------------------------------------
+#   Build GotCloud
+#----------------------------------------------------------------------
+Before running GotCloud, you need to compile the source:
+ cd src/; make; cd ..
+
+#----------------------------------------------------------------------
+#   Test GotCloud
+#----------------------------------------------------------------------
 To test the GotCloud aligner, run:
 
   gotcloud align --test ~/testalign
@@ -20,7 +31,9 @@ To test the GotCloud umake, run:
 
 
 
-General Help for Variant Calling:
+#----------------------------------------------------------------------
+#   General Help for Variant Calling
+#----------------------------------------------------------------------
 
 Variant Calling requires three types of input files:
   (1) a set of BAM files
@@ -35,13 +48,14 @@ Variant Calling requires three types of input files:
       Contains run-time options & command line arguments.  
       A default configuration is provided.
       User must specify:
-      * CHR = #space separated list of chromosomes
       * BAM_INDEX =   # the path/name of the index file
-      Refer to the default configuration for more information on other settings.
+      * OUT_DIR
 
       Optional specifications...
-      * INPUT_ROOT
-      * OUT_DIR
+      * CHRS = #space separated list of chromosomes - defaults to 1-22 & X
+
+      Refer to the default configuration & the wiki page for more information on other settings.
+         * http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File
 
 Optional input files:
    * Pedigree files (PED format) (to specify gender information in chrX calling)
