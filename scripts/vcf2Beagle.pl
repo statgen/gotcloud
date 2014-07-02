@@ -83,6 +83,14 @@ while(<IN>) {
 	$ref = uc($ref);
 	$alt = uc($alt);
 
+        my @alts = split(/,/,$alt);
+#        if(scalar(@alts) > 1)
+#        {
+#        # Skip multi-allelic
+#            print "WARNING: Skipping multi-allelic sites\n";
+#            next;
+#        }
+
 	my @formats = split(/:/,$format);
 	my $GLidx = -1;
 	my $GL3flag = 0;
@@ -118,6 +126,12 @@ while(<IN>) {
 		}
 
 		if ( $PLflag ) {
+                    if((scalar(@GLs) == 1) && ($c[$GLidx] eq "."))
+                    {
+                        $GLs[0] = 0;
+                        push(@GLs, 0); # index 1
+                        push(@GLs, 0); # index 2
+                    }
 		    if ( $GL3flag ) {
 			push(@liks,sprintf("%.6lf",pow(0.1,$GLs[2]/10.)));
 			push(@liks,sprintf("%.6lf",pow(0.1,$GLs[4]/10.)));
@@ -150,7 +164,7 @@ while(<IN>) {
 	    print OUT " A C ";
 	}
 	else {
-	    if ( length($alt) == 1 ) {
+	    if ( scalar(@alts) == 1 ) {
 		print OUT " $ref $alt ";
 	    }
 	    else {
