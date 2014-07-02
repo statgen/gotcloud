@@ -157,29 +157,73 @@ my $runcluster = "\$(GOTCLOUD_ROOT)/scripts/runcluster.pl";
 
 #   Special case for convenient testing
 if($testdir ne "") {
+    my $origTestDir = $testdir;
     my $outdir=abs_path($testdir);
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
-    my $testoutdir = $outdir."/umaketest";
-    print "Removing any previous results from: $testoutdir\n";
-    system("rm -rf $testoutdir") &&
-        die "Unable to clear the test output directory '$testoutdir'\n";
-    print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
+
     $testdir = $gotcloudRoot . '/test/umake';
     # First check that the test directory exists.
     if(! -r $testdir)
     {
         die "ERROR, '$testdir' does not exist, please download the test data to that directory\n";
     }
-    my $cmd = "$0 --conf $testdir/umake_test.conf --snpcall ";
+    my $cmd = "$0 --conf $testdir/umake_test.conf ";
+
+    my $testoutdir = $outdir."/umaketest";
+    my $rmdir = $testoutdir;
+
+    my $diffScript = "$gotcloudRoot/scripts/diff_results_umake.sh";
+    my $expecteddir = "$testdir/expected";
+
+    my $type = "";
+    if($snpcallOpt)
+    {
+        $type = "snpcall";
+    }
+    if($beagleOpt)
+    {
+        # Verify that first the snpcall test was run.
+        my $checkFile = "$testoutdir/split/chr20/chr20.filtered.PASS.split.vcflist";
+        if(! -r $checkFile)
+        {
+            die "ERROR, $checkFile does not exist, first run snpcall test\n\tgotcloud snpcall --test $origTestDir\n";
+        }
+
+        $type = "beagle";
+        # Just remove the beagle subdirectory.
+        $rmdir .= "/*beagle* $outdir/umaketest/*thunder*";
+    }
+    if($thunderOpt)
+    {
+        # Verify that first the beagle test was run.
+        my $checkFile = "$testoutdir/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist";
+        if(! -r $checkFile)
+        {
+            die "ERROR, $checkFile does not exist, first run beagle test\n\tgotcloud beagle --test $origTestDir\n";
+        }
+
+        $type = "thunder";
+        # Just remove the thunder subdirectory.
+        $rmdir .= "/thunder/chr20/ALL/thunder";
+    }
+
+    $cmd .= "--$type ";
     if($gcroot)
     {
         $cmd .= "--gotcloudRoot $gcroot ";
     }
+
+
+    print "Removing any previous results from: $testoutdir\n";
+    system("rm -rf $rmdir") &&
+        die "Unable to clear the test output directory '$rmdir'\n";
+    print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
+
     $cmd .= "--outdir $testoutdir --numjobs 2 1> $testoutdir.log 2>&1";
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
-    $cmd = "$gotcloudRoot/scripts/diff_results_umake.sh $outdir $gotcloudRoot/test/umake/expected";
+    $cmd = "$diffScript $outdir $expecteddir $type";
     system($cmd) &&
         die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
     print "Successfully ran the test case, congratulations!\n";
@@ -975,6 +1019,7 @@ foreach my $chr (@chrs) {
                 print MAK "$thunderOut.vcf.gz.OK:\n";
                 print MAK "\tmkdir --p $thunderDir/chr$chr/$pop/thunder\n";
                 my $cmd = getConf("THUNDER")." --shotgun $splitVcfs[$i] -o $remotePrefix$thunderOut > $remotePrefix$thunderOut.out 2> $remotePrefix$thunderOut.err";
+                $cmd =~ s/$outdir/\$(OUT_DIR)/g;
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 print MAK "\t".getMosixCmd($cmd, "$thunderOut.vcf.gz")."\n";
                 writeTouch("$thunderOut.vcf.gz");
@@ -1082,18 +1127,23 @@ foreach my $chr (@chrs) {
                 print MAK "\tsleep ".$sleepSecs."\n";
             }
             my $cmd = getConf("VCF2BEAGLE")." --in $splitVcfs[$i] --out $remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleLikeDir/chr$chr.PASS.$j.gz")."\n";
             $cmd = getConf("BEAGLE")." like=$remotePrefix$beagleLikeDir/chr$chr.PASS.".($i+1).".gz out=$remotePrefix$beagleOutPrefix.$j >$remotePrefix$beagleOutPrefix.$j.out 2>$remotePrefix$beagleOutPrefix.$j.err";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOutPrefix.$j")."\n";
             $cmd = getConf("BEAGLE2VCF"). " --filter --beagle $remotePrefix$beagleOut.gz --invcf $splitVcfs[$i] --outvcf $remotePrefix$beagleOut.vcf";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOut.vcf")."\n";
             $cmd = getConf("BGZIP"). " -f $remotePrefix$beagleOut.vcf";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOut.vcf.gz")."\n";
             $cmd = getConf("TABIX"). " -f -pvcf $remotePrefix$beagleOut.vcf.gz";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$remotePrefix$beagleOut.vcf.gz.tbi")."\n";
             print MAK "\n";

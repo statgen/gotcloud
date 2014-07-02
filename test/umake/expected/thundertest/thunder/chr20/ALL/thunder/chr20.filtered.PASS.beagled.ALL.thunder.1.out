@@ -1,0 +1,43 @@
+Thunder_Glf 1.0.9 -- Markov Chain Haplotyping for Shotgun Sequence Data
+(c) 2005-2007 Goncalo Abecasis, Yun Li, with thanks to Paul Scheet
+
+starting LoadShotgunSamples
+
+Loaded 60 individuals from shotgun sequence data
+
+Loaded information on 998 polymorphic sites
+
+
+Processing input files and allocating memory for haplotyping
+               Haplotyping engine (max) ... 28.1 mb
+starting LoadShotgunResults
+
+starting LoadPolymorphicSites
+
+            Haplotyping engine (actual) ... 28.0 mb
+                      Consensus builder ... 265.2 kb
+                      Dosage Calculator ... 118.0 kb
+Memory allocated successfully
+
+Warning: crossover rate map file [] not available
+Warning: error rate map file [] not available
+Loading phased information from the input VCF file
+
+starting LoadHaplotypesFromVCF
+Found initial haplotype set
+
+Markov Chain iteration 1 [564 mosaic crossovers]
+Markov Chain iteration 2 [430 mosaic crossovers]
+Markov Chain iteration 3 [361 mosaic crossovers]
+Markov Chain iteration 4 [330 mosaic crossovers]
+Markov Chain iteration 5 [323 mosaic crossovers]
+Markov Chain iteration 6 [323 mosaic crossovers]
+Markov Chain iteration 7 [329 mosaic crossovers]
+Markov Chain iteration 8 [314 mosaic crossovers]
+Markov Chain iteration 9 [324 mosaic crossovers]
+Markov Chain iteration 10 [313 mosaic crossovers]
+
+Merged sampled haplotypes to generate consensus
+   Consensus estimated to have 479.9 errors in missing genotypes and 169.0 flips in haplotypes
+
+Estimated mismatch rate in Markov model is: 0.00109
