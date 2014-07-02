@@ -101,11 +101,12 @@ while(<IN>) {
 	$ref = uc($ref);
 	$alt = uc($alt);
 	my ($a1,$a2) = ($ref,$alt);
+        my @alts = split(/,/,$alt);
 	my ($n1,$n2) = (0,1);
 	if ( $convFlag ) {
 	    ($a1,$a2) = ("A","C");
 	}
-	elsif ( length($alt) > 1 ) {
+	elsif ( scalar(@alts) != 1 ) {
 	    ($a1,$a2) = split(/,/,$alt);
 	    ($n1,$n2) = (1,2);
 	}
