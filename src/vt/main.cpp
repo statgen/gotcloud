@@ -28,11 +28,13 @@
 #include "discover.h"
 #include "annotate_variants.h"
 #include "annotate_str.h"
+#include "annotate_dbsnp_rsid.h"
 #include "genotype.h"
 #include "genotype2.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"
 #include "concat.h"
+#include "paste.h"
 #include "subset.h"
 #include "partition.h"
 #include "view.h"
@@ -53,6 +55,7 @@
 #include "annotate_str.h"
 #include "consolidate_variants.h"
 #include "test.h"
+#include "config.h"
 
 void print_time(double t)
 {
@@ -87,6 +90,7 @@ void help()
     std::clog << "normalize                 normalize variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
     std::clog << "concat                    concatenate VCF files\n";
+    std::clog << "paste                     paste VCF files\n";
     std::clog << "subset                    subset VCF file to variants polymorphic in a sample\n";
     std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
@@ -128,6 +132,10 @@ int main(int argc, char ** argv)
     {
         print = merge(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="paste")
+    {
+        print = paste(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="concat")
     {
         print = concat(argc-1, ++argv);
@@ -143,6 +151,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="normalize")
     {
         print = normalize(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="config")
+    {
+        config(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="mergedups")
     {
@@ -167,6 +179,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="annotate_regions")
     {
         annotate_regions(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="annotate_dbsnp_rsid")
+    {
+        annotate_dbsnp_rsid(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="discover")
     {

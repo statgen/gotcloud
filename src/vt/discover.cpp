@@ -823,6 +823,9 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
+        bcf_hdr_add_sample(odw->hdr, NULL);
+        //bcf_hdr_set_n_sample(odw->hdr, 1);
+                                
         v = NULL;
 
         std::vector<std::string> variant_types;
@@ -861,7 +864,11 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         faidx_t *fai = fai_load(ref_fasta_file.c_str());
-
+        if (fai==NULL) 
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+            exit(1);
+        }
         variantHunter = new VariantHunter(vtype,
                                     evidence_allele_count_cutoff,
                                     fractional_evidence_allele_count_cutoff,

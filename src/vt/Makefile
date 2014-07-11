@@ -12,6 +12,7 @@ SOURCES = program\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
+		bcf_synced_sreader\
    	    tbx_ordered_reader\
 		view\
 		index\
@@ -56,13 +57,17 @@ SOURCES = program\
 		profile_hwe\
 		profile_len\
 		ordered_region_overlap_matcher\
+		ordered_bcf_overlap_matcher\
 		bed\
 		profile_chrom\
 		annotate_regions\
 		test\
 		str\
 		consolidate_variants\
-		genotype2
+		genotype2\
+		paste\
+		annotate_dbsnp_rsid\
+		config
 
 SOURCESONLY = main.cpp
 

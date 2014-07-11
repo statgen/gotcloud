@@ -618,7 +618,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
         max_track = t;
     }
 
-    if (1)
+    if (debug)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
@@ -648,8 +648,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
         exit(1);
     }
-
-    debug = true;
 
     float max = 0;
     char maxPath = 'X';
@@ -861,7 +859,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (1)
+    if (debug)
     {
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
@@ -992,7 +990,7 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        //std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M || u==MR)
@@ -1167,7 +1165,7 @@ float CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl);
+        return lt->pl2log10_varp(pl) - par.mismatch_penalty;
     }
     else
     {
@@ -1478,7 +1476,7 @@ void CHMM::print_alignment()
  */
 void CHMM::print_alignment(std::string& pad)
 {
-    print_T();
+    if (debug) print_T();
     
     if (!optimal_path_traced)
     {
@@ -1501,8 +1499,6 @@ void CHMM::print_alignment(std::string& pad)
     std::cerr << "optimal track: " << track2string(optimal_track) << "\n";
     std::cerr << "optimal probe len: " << optimal_probe_len << "\n";
     std::cerr << "optimal path length : " << optimal_path_len << "\n";
-    std::cerr << "optimal path     : " << optimal_path << "\n";
-    std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
     std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "

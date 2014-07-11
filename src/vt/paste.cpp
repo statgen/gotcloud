@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "merge.h"
+#include "paste.h"
 
 namespace
 {
@@ -142,7 +142,7 @@ class Igor : Program
         vm = new VariantManip();
     }
 
-    void merge()
+    void paste()
     {
         int32_t nfiles = sr->get_nfiles();
 
@@ -166,6 +166,7 @@ class Igor : Program
                 }
             }
         }
+
         bcf_hdr_add_sample(odw->hdr, NULL);
         
         if (no_samples)
@@ -333,12 +334,12 @@ class Igor : Program
 
 }
 
-bool merge(int argc, char ** argv)
+bool paste(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.merge();
+    igor.paste();
     igor.print_stats();
     return igor.print;
 }
