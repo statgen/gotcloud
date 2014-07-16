@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,14 +21,14 @@
    THE SOFTWARE.
 */
 
-#include "bcf_synced_reader.h"
+#include "bcf_synced_sreader.h"
 
 /**
  * Constructor.
  *
  * @intervals - if empty, will add the contigs found in the header files
  */
-BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vector<GenomeInterval>& intervals, bool sync_by_pos)
+BCFSyncedStreamReader::BCFSyncedStreamReader(std::vector<std::string>& vcf_files, std::vector<GenomeInterval>& intervals, bool sync_by_pos)
 :vcf_files(vcf_files), intervals(intervals), sync_by_pos(sync_by_pos)
 {
     nfiles = vcf_files.size();
@@ -109,7 +109,7 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
  * Populate sequence names from files.
  * Searches headers first folllowed by tabix.
  */
-void BCFSyncedReader::add_interval(int32_t i)
+void BCFSyncedStreamReader::add_interval(int32_t i)
 {
     int32_t nseqs = 0;
     const char **seq_names = NULL;
@@ -148,7 +148,7 @@ void BCFSyncedReader::add_interval(int32_t i)
 /**
  * Populate sequence names from files.
  */
-void BCFSyncedReader::remove_interval(std::string& interval)
+void BCFSyncedStreamReader::remove_interval(std::string& interval)
 {
     if (intervals_map.find(interval)!=intervals_map.end())
     {
@@ -160,7 +160,7 @@ void BCFSyncedReader::remove_interval(std::string& interval)
 /**
  * Load index for the ith file, returns true if successful
  */
-bool BCFSyncedReader::load_index(int32_t i)
+bool BCFSyncedStreamReader::load_index(int32_t i)
 {
     if (ftypes[i]==FT_BCF_GZ)
     {
@@ -183,7 +183,7 @@ bool BCFSyncedReader::load_index(int32_t i)
 /**
  * Gets sequence name of a record.
  */
-const char* BCFSyncedReader::get_seqname(int32_t i, bcf1_t *v)
+const char* BCFSyncedStreamReader::get_seqname(int32_t i, bcf1_t *v)
 {
     return bcf_get_chrom(hdrs[i], v);
 }
@@ -191,7 +191,7 @@ const char* BCFSyncedReader::get_seqname(int32_t i, bcf1_t *v)
 /**
  * Gets number of files read.
  */
-int32_t BCFSyncedReader::get_nfiles()
+int32_t BCFSyncedStreamReader::get_nfiles()
 {
     return nfiles;
 }
@@ -199,7 +199,7 @@ int32_t BCFSyncedReader::get_nfiles()
 /**
  * Gets current sequence being accessed.
  */
-std::string BCFSyncedReader::get_current_sequence()
+std::string BCFSyncedStreamReader::get_current_sequence()
 {
     std::vector<std::string> s;
     split(s, ":", current_interval);
@@ -216,7 +216,7 @@ std::string BCFSyncedReader::get_current_sequence()
 /**
  * Gets current 1 based position being accessed.
  */
-int32_t BCFSyncedReader::get_current_pos1()
+int32_t BCFSyncedStreamReader::get_current_pos1()
 {
     return current_pos1;
 }
@@ -224,7 +224,7 @@ int32_t BCFSyncedReader::get_current_pos1()
 /**
  * Prints buffer.
  */
-void BCFSyncedReader::print_buffer()
+void BCFSyncedStreamReader::print_buffer()
 {
     for (int32_t i = 0; i<nfiles; ++i)
     {
@@ -241,7 +241,7 @@ void BCFSyncedReader::print_buffer()
 /**
  * Closes files.
  */
-void BCFSyncedReader::close()
+void BCFSyncedStreamReader::close()
 {
     for (int32_t i = 0; i<nfiles; ++i)
     {
@@ -254,7 +254,7 @@ void BCFSyncedReader::close()
 /**
  * Inserts a record into pq.
  */
-void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
+void BCFSyncedStreamReader::insert_into_pq(int32_t i, bcf1_t *v)
 {
     pq.push(new bcfptr(i, bcf_get_pos1(v), hdrs[i], v, sync_by_pos));
 }
@@ -262,7 +262,7 @@ void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
 /**
  * Gets record from pool, creates a new record if necessary
  */
-bcf1_t* BCFSyncedReader::get_bcf1_from_pool()
+bcf1_t* BCFSyncedStreamReader::get_bcf1_from_pool()
 {
     if(!pool.empty())
     {
@@ -282,13 +282,13 @@ bcf1_t* BCFSyncedReader::get_bcf1_from_pool()
 /**
  * Returns record to pool
  */
-void BCFSyncedReader::store_bcf1_into_pool(bcf1_t* v)
+void BCFSyncedStreamReader::store_bcf1_into_pool(bcf1_t* v)
 {
     pool.push_back(v);
     v = 0;
 }
 
-int32_t bcfptr_cmp(bcfptr *a, bcfptr *b)
+int32_t bcfptr_scmp(bcfptr *a, bcfptr *b)
 {
     if (a->pos1 == b->pos1)
     {
@@ -310,9 +310,9 @@ int32_t bcfptr_cmp(bcfptr *a, bcfptr *b)
  * Ensures that buffer for each file contains at least records of 2 different positions
  * Updates the latest position.  [store latest and second latest]
  * returns false when all files are read through.
- * Note that these bcf1_t memory allocation are handled by BCFSyncedReader.
+ * Note that these bcf1_t memory allocation are handled by BCFSyncedStreamReader.
  */
-bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
+bool BCFSyncedStreamReader::read_next_position(std::vector<bcfptr*>& current_recs)
 {
     //put records in pool
     for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -330,7 +330,7 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
         bcfptr* variant = pq.top();
         bcfptr* cvariant = variant;
 
-        while (bcfptr_cmp(cvariant, variant)==0)
+        while (bcfptr_scmp(cvariant, variant)==0)
         {
             bcfptr *b = pq.top();
             current_recs.push_back(b);
@@ -364,7 +364,7 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
  * This should only be invoked if the buffer is empty.
  * Returns true if successful.
  */
-bool BCFSyncedReader::initialize_next_interval()
+bool BCFSyncedStreamReader::initialize_next_interval()
 {
     while (intervals_index < intervals.size())
     {
@@ -406,7 +406,7 @@ bool BCFSyncedReader::initialize_next_interval()
  * returns true if buffer is filled or it is not necessary to fill buffer.
  * returns false if no more records are found to fill buffer
  */
-void BCFSyncedReader::fill_buffer(int32_t i)
+void BCFSyncedStreamReader::fill_buffer(int32_t i)
 {
     //not necessary to fill buffer
     if (buffer[i].size()>=2)

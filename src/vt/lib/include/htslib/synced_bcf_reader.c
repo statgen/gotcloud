@@ -511,6 +511,8 @@ static int _reader_match_alleles(bcf_srs_t *files, bcf_sr_t *reader, bcf1_t *tmp
                 if ( nmatch==tmpl->n_allele ) { irec=i; break; }    // found: exact match
                 continue;
             }
+
+            if ( line->n_allele==1 && tmpl->n_allele==1 ) { irec=i; break; }    // both sites are non-variant
             
             // COLLAPSE_SOME: at least some ALTs must match
             for (ial=1; ial<tmpl->n_allele; ial++)
@@ -657,40 +659,6 @@ int bcf_sr_seek(bcf_srs_t *readers, const char *seq, int pos)
         nret += _reader_seek(&readers->readers[i],seq,pos,MAX_CSI_COOR-1);
     }
     return nret;
-}
-
-size_t mygetline(char **line, size_t *n, FILE *fp)
-{
-    if (line == NULL || n == NULL || fp == NULL)
-    {
-        errno = EINVAL;
-        return -1;
-    }
-    if (*n==0 || !*line)
-    {
-        *line = NULL;
-        *n = 0;
-    }
-
-    size_t nread=0;
-    int c;
-    while ((c=getc(fp))!= EOF && c!='\n')
-    {
-        if ( ++nread>=*n )
-        {
-            *n += 255;
-            *line = (char*) realloc(*line, sizeof(char)*(*n));
-        }
-        (*line)[nread-1] = c;
-    }
-    if ( nread>=*n )
-    {
-        *n += 255;
-        *line = (char*) realloc(*line, sizeof(char)*(*n));
-    }
-    (*line)[nread] = 0;
-    return nread>0 ? nread : -1;
-
 }
 
 int bcf_sr_set_samples(bcf_srs_t *files, const char *fname, int is_file)
