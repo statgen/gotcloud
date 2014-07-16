@@ -454,12 +454,15 @@ open(IN,$index_file) ||
 #   Read the first line and check if it is a header or a reference
 my $line = <IN>;
 chomp($line);
+$line =~ s/^\s+|\s+$//g;
 
 #   Track positions for each field
 my @fieldnames = qw(MERGE_NAME FASTQ1 FASTQ2 RGID SAMPLE LIBRARY CENTER PLATFORM);
 my %fieldname2index = ();
 foreach my $key (@fieldnames) { $fieldname2index{$key} = undef(); } # Avoid tedious hardcoding
-my @fields = split('\t', $line);
+# There are no spaces in the field names, so split on spaces.
+my @fields = split(/\s+/, $line);
+my $numHeaderFields = scalar @fields;
 foreach my $index (0..$#fields)
 {
     my $field = uc($fields[$index]);
@@ -467,7 +470,7 @@ foreach my $index (0..$#fields)
     $fieldname2index{$field} = $index;
 }
 foreach my $key (qw(MERGE_NAME FASTQ1)) {       # These are required, other columns could be missing
-    if (! exists($fieldname2index{$key})) { die "Index File, $index_file, is missing required header field, $key\n"; }
+    if (! defined($fieldname2index{$key})) { die "Index File, $index_file, is missing required header field, $key\n"; }
 }
 
 #----------------------------------------------------------------------------
@@ -484,7 +487,23 @@ my %smToMerge = ();
 while ($line = <IN>)
 {
     chomp($line);
-    @fields = split('\t', $line);
+    $line =~ s/^\s+|\s+$//g;
+    @fields = split(/\t\s*/, $line);
+    next if(scalar @fields == 0);
+
+    # Remove leading/trailing spaces from each field.
+    foreach my $field (@fields)
+    {
+        $field =~ s/^\s+|\s+$//g;
+    }
+    if($numHeaderFields != scalar @fields)
+    {
+        die "\nERROR, incorrect number of fields in $index_file, ".scalar @fields.
+        " fields instead of the $numHeaderFields fields found in the header line:\n\t".
+        join("\n\t",@fields).
+        "\nRemember, tabs are the delimiter and leading/trailing white spaces are trimmed\n\n";
+    }
+
     my $fastq1 = $fields[$fieldname2index{FASTQ1}];
     my $mergeName = $fields[$fieldname2index{MERGE_NAME}];
     push @{$mergeToFq1{$mergeName}}, $fastq1;

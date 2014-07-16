@@ -123,6 +123,7 @@ sub AlignStorage {
         if (! /MERGE_NAME/) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
         while (<IN>) {
             my @c = split(' ',$_);
+            next if(scalar @c == 0);
             my $f = "$c[1]";
             # Check if the path is not absolute and needs the prefix.
             if ($f !~ /^\//) { $f = "$prefix$c[1]"; }
