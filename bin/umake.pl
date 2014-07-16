@@ -42,6 +42,8 @@ my $snpcallOpt = "";
 my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
+my $beagle4Opt = "";
+my $split4Opt = "";
 my $indexOpt = "";
 my $pileupOpt = "";
 my $glfMultiplesOpt = "";
@@ -77,6 +79,8 @@ my $optResult = GetOptions("help",\$help,
                            "extract",\$extractOpt,
                            "beagle",\$beagleOpt,
                            "thunder",\$thunderOpt,
+                           "beagle4",\$beagle4Opt,
+                           "split4",\$split4Opt,
                            "index",\$indexOpt,
                            "pileup",\$pileupOpt,
                            "glfMultiples",\$glfMultiplesOpt,
@@ -191,7 +195,7 @@ if($testdir ne "") {
         }
 
         $type = "beagle";
-        # Just remove the beagle subdirectory.
+        # Just remove the beagle & thunder subdirectories.
         $rmdir .= "/*beagle* $outdir/umaketest/*thunder*";
     }
     if($thunderOpt)
@@ -206,6 +210,32 @@ if($testdir ne "") {
         $type = "thunder";
         # Just remove the thunder subdirectory.
         $rmdir .= "/thunder/chr20/ALL/thunder";
+    }
+    if($split4Opt)
+    {
+        # Verify that first the snpcall test was run.
+        my $checkFile = "$testoutdir/split/chr20/chr20.filtered.PASS.split.vcflist";
+        if(! -r $checkFile)
+        {
+            die "ERROR, $checkFile does not exist, first run snpcall test\n\tgotcloud snpcall --test $origTestDir\n";
+        }
+
+        $type = "split4";
+        # Remove the remove the beagle subdirectory.
+        $rmdir .= "/*split4* $outdir/umaketest/*beagle4*";
+    }
+    if($beagle4Opt)
+    {
+        # Verify that first the split4 test was run.
+        my $checkFile = "$testoutdir/split4/chr20/chr20.filtered.PASS.split.list";
+        if(! -r $checkFile)
+        {
+            die "ERROR, $checkFile does not exist, first run split4 test\n\tgotcloud snpcall --test $origTestDir\n";
+        }
+
+        $type = "beagle4";
+        # Just remove the beagle4 subdirectory.
+        $rmdir .= "/*beagle4*";
     }
 
     $cmd .= "--$type ";
@@ -289,13 +319,14 @@ else
 ## Extract : PILEUP -> GLFEXTRACT -> SPLIT : 1,6,7
 ## BEAGLE  : BEAGLE -> SUBSET : 8,9
 ## THUNDER : THUNDER -> 10
-my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_SVM RUN_EXTRACT RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER);
+## BEAGLE4 : SPLIT4 -> BEAGLE4 : 11 12
+my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_SVM RUN_EXTRACT RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER RUN_SPLIT4 RUN_BEAGLE4);
 my @orderFlags = ();
 
 ## if --snpcall --beagle --subset or --thunder
 if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
      ($indexOpt) || ($pileupOpt) || ($glfMultiplesOpt) || ($vcfPileupOpt) ||
-     ($filterOpt) || ($svmOpt) || ($splitOpt) ) {
+     ($filterOpt) || ($svmOpt) || ($splitOpt) || ($beagle4Opt) || ($split4Opt) ) {
     foreach my $o (@orders) {
         push(@orderFlags, 0);
         setConf($o, "FALSE");
@@ -320,6 +351,18 @@ if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
     }
     if ( $thunderOpt ) {
         foreach my $i (10) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $beagle4Opt ) {
+        foreach my $i (12) {
+            $orderFlags[$i] = 1;
+            setConf($orders[$i], "TRUE");
+        }
+    }
+    if ( $split4Opt ) {
+        foreach my $i (11) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
@@ -369,12 +412,13 @@ if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
 }
 else {
     foreach my $o (@orders) {
-        push(@orderFlags, ( getConf($o) eq "TRUE") ? 1 : 0 );
+        setConf($o, (uc getConf($o)));
+        push(@orderFlags, (getConf($o) eq "TRUE") ? 1 : 0 );
     }
 }
 
 ## check if the current orders are compatible with any of the valid orders
-my @validOrders = ([0,1,2,3,4,5,7],[0,1,6,7],[8,9],[10]);
+my @validOrders = ([0,1,2,3,4,5,7],[0,1,6,7],[8,9],[10],[11,12]);
 my $validFlag = 0;
 foreach my $v (@validOrders) {
     my @vjs = ();
@@ -571,7 +615,9 @@ my %reqExeHash = (
                   'RUN_SVM' => [qw(VCFPASTE BGZIP TABIX VCFSUMMARY SVM_SCRIPT SVMLEARN SVMCLASSIFY INVNORM VCF_SPLIT_CHROM)],
                   'RUN_EXTRACT' => [qw(BGZIP TABIX GLFEXTRACT)],
                   'RUN_SPLIT' => [qw(BGZIP VCFSPLIT)],
+                  'RUN_SPLIT4' => [qw(BGZIP VCFSPLIT4)],
                   'RUN_BEAGLE'=> [qw(LIGATEVCF BGZIP TABIX VCF2BEAGLE BEAGLE BEAGLE2VCF)],
+                  'RUN_BEAGLE4'=> [qw(LIGATEVCF4 BEAGLE4)],
                   'RUN_SUBSET' => [qw(VCFCOOKER TABIX VCFSPLIT)],
                   'RUN_THUNDER' => [qw(LIGATEVCF BGZIP TABIX THUNDER)],
                  );
@@ -623,6 +669,14 @@ elsif($beagleOpt)
 elsif($thunderOpt)
 {
     $makeext = "thunder";
+}
+elsif($beagle4Opt)
+{
+    $makeext = "beagle4";
+}
+elsif($split4Opt)
+{
+    $makeext = "split4";
 }
 
 $outdir = getConf("OUT_DIR");
@@ -794,6 +848,9 @@ my $splitDirReal = "$outdir/".getConf("SPLIT_DIR");
 my $targetDir = "\$(OUT_DIR)/".getConf("TARGET_DIR");
 my $targetDirReal = "$outdir/".getConf("TARGET_DIR");
 my $beagleDir = "\$(OUT_DIR)/".getConf("BEAGLE_DIR");
+my $beagle4Dir = "\$(OUT_DIR)/".getConf("BEAGLE4_DIR");
+my $split4Dir = "\$(OUT_DIR)/".getConf("SPLIT4_DIR");
+my $split4DirReal = "$outdir/".getConf("SPLIT4_DIR");
 my $thunderDir = "\$(OUT_DIR)/".getConf("THUNDER_DIR");
 my $thunderDirReal = "$outdir/".getConf("THUNDER_DIR");
 my $remotePrefix = getConf("REMOTE_PREFIX");
@@ -956,7 +1013,9 @@ foreach my $chr (@chrs) {
     print MAK " thunder$chr" if ( getConf("RUN_THUNDER") eq "TRUE" );
     print MAK " subset$chr" if ( getConf("RUN_SUBSET") eq "TRUE" );
     print MAK " beagle$chr" if ( getConf("RUN_BEAGLE") eq "TRUE" );
+    print MAK " beagle4_$chr" if ( getConf("RUN_BEAGLE4") eq "TRUE" );
     print MAK " split$chr" if ( getConf("RUN_SPLIT") eq "TRUE" );
+    print MAK " split4_$chr" if ( getConf("RUN_SPLIT4") eq "TRUE" );
     print MAK " filt$chr" if ( getConf("RUN_EXTRACT") eq "TRUE" );
     print MAK " svm$chr" if ( getConf("RUN_SVM") eq "TRUE" );
     print MAK " filt$chr" if ( getConf("RUN_FILTER") eq "TRUE" );
@@ -1188,6 +1247,114 @@ foreach my $chr (@chrs) {
         $cmd = getConf("VCFSPLIT")." --in $remotePrefix$subsetPrefix.PASS.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n\n";
+    }
+
+    #############################################################################
+    ## STEP 10-7a : RUN BEAGLE4 GENOTYPE REFINEMENT
+    #############################################################################
+    if ( getConf("RUN_BEAGLE4") eq "TRUE" ) {
+        my $beagleVcf = "$beagle4Dir/chr$chr/chr$chr.filtered.PASS.beagled.vcf.gz";
+        print MAK "beagle4_$chr: $beagleVcf.tbi.OK\n\n";
+
+        my $splitPrefix = "$split4DirReal/chr$chr/chr$chr.filtered.PASS.split";
+
+        my @splitVcfs = ();
+        my $listFile = "$splitPrefix.list";
+
+        open(IN,"$listFile") || die "Cannot open $listFile\n";
+        while(<IN>) {
+            chomp;
+            my @F = split;
+            push(@splitVcfs, $F[$#F]);
+        }
+        close IN;
+        my $nsplits = $#splitVcfs+1;
+        if($nsplits <= 0)
+        {
+            die "WARNING: No VCFs to process, nothing for Beagle to do.\n";
+        }
+
+	my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
+        my $beagleLikeDir = "$beagle4Dir/chr$chr/like";
+        my @beagleOuts = ();
+        for(my $i=0; $i < $nsplits; ++$i) {
+            my $j = $i+1;
+            my $beagleOut = "$remotePrefix$beagleLikeDir/chr$chr.PASS.$j.vcf.gz";
+            push(@beagleOuts,$beagleOut);
+        }
+
+        print MAK "$beagleVcf.tbi.OK: ".join(".tbi.OK ",@beagleOuts).".tbi.OK\n";
+        my $cmd = getConf("LIGATEVCF4")." --list $remotePrefix$listFile -bgl $remotePrefix$beagleLikeDir/chr$chr.PASS --vcf $mvcf --out $remotePrefix$beagleVcf";
+        $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+        writeLocalCmd($cmd);
+        $cmd = getConf("TABIX")." -f -pvcf $beagleVcf";
+        $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+        writeLocalCmd($cmd);
+        writeTouch("$beagleVcf.tbi.OK");
+        print MAK "\n";
+
+        for(my $i=0; $i < $nsplits; ++$i) {
+            my $j = $i+1;
+            my $beagleOut = "$remotePrefix$beagleLikeDir/chr$chr.PASS.$j";
+            print MAK "$beagleOut.vcf.gz.tbi.OK:\n";
+            print MAK "\tmkdir --p $beagleLikeDir\n";
+            my $sleepSecs = sprintf("%.2lf",$sleepMultiplier*rand(1000));
+            if($sleepSecs != 0)
+            {
+                print MAK "\tsleep ".$sleepSecs."\n";
+            }
+
+            my $cmd = getConf("BEAGLE4")." gl=$splitVcfs[$i] out=$beagleOut";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+            print MAK "\t".getMosixCmd($cmd, "$beagleOut.vcf.gz")."\n";
+            $cmd = getConf("TABIX"). " -f -pvcf $beagleOut.vcf.gz";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+            print MAK "\t".getMosixCmd($cmd, "$beagleOut.vcf.gz.tbi")."\n";
+            writeTouch("$beagleOut.vcf.gz.tbi.OK");
+            print MAK "\n";
+        }
+    }
+
+    #############################################################################
+    ## STEP 10-6a : SPLIT4 FILTERED VCF INTO CHUNKS FOR GENOTYPING
+    #############################################################################
+    if ( getConf("RUN_SPLIT4") eq "TRUE" ) {
+        # determine whether to expand to lower level target or not
+        my $expandFlag = ( getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
+        $expandFlag = 1 if ( getConf("RUN_EXTRACT") eq "TRUE" );
+        $expandFlag = 2 if ( getConf("RUN_SVM") eq "TRUE" );
+
+        print MAK "split4_$chr:";
+        my $splitPrefix = "$split4Dir/chr$chr/chr$chr.filtered.PASS.split";
+
+        my $listFile = "$splitPrefix.list";
+        print MAK " $listFile";
+        print MAK "\n\n";
+
+        my $nLdSNPs = getConf("LD_NSNPS");
+        my $nLdOverlap = getConf("LD_OVERLAP");
+        my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
+
+        my $subsetPrefix = "$split4Dir/chr$chr/chr$chr.filtered";
+
+        my $dep = "";
+        if ( $expandFlag == 1 ) {
+            $dep = " filt$chr";
+        }
+        elsif ( $expandFlag == 2 ) {
+            $dep = " $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK";
+        }
+
+        my $splitCmd = "";
+        $splitCmd = &getConf("VCFSPLIT4")." --vcf $mvcf --out $remotePrefix$splitPrefix --win $nLdSNPs --overlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
+
+        print MAK "$listFile:$dep\n";
+        print MAK "\tmkdir --p $split4Dir/chr$chr\n";
+
+        $splitCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+        print MAK "\t".getMosixCmd($splitCmd, "$listFile")."\n\n";
     }
 
     #############################################################################

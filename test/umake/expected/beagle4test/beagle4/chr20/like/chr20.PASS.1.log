@@ -1,0 +1,100 @@
+b4.jar (r1219)
+Enter "java -jar b4.jar" for a summary of command line arguments.
+Start time: 12:42 PM EDT on 15 Jul 2014
+
+Command line: java -Xmx3640m -jar beagle.jar
+  seed=993478
+  gprobs=true
+  gl=split4/chr20/chr20.filtered.PASS.split.1.vcf.gz
+  out=beagle4/chr20/like/chr20.PASS.1
+
+reference samples: 0
+target samples:    60
+  singles: 60
+  duos:    0
+  trios:   0
+
+Window 1 [ 20:20000121-20299968 ]
+target markers:    998
+
+Starting burn-in iterations
+
+Window=1 Iteration=1
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   5.06  max edges/level =  10
+mean edges/node  =   1.93  mean count/edge =  23.72
+
+Window=1 Iteration=2
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   6.75  max edges/level =  12
+mean edges/node  =   1.79  mean count/edge =  17.77
+
+Window=1 Iteration=3
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   7.60  max edges/level =  14
+mean edges/node  =   1.55  mean count/edge =  15.78
+
+Window=1 Iteration=4
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   7.55  max edges/level =  14
+mean edges/node  =   1.41  mean count/edge =  15.90
+
+Window=1 Iteration=5
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   7.92  max edges/level =  13
+mean edges/node  =   1.28  mean count/edge =  15.15
+
+Starting phasing iterations
+
+Window=1 Iteration=6
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   7.76  max edges/level =  14
+mean edges/node  =   1.22  mean count/edge =  15.46
+
+Window=1 Iteration=7
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   8.30  max edges/level =  15
+mean edges/node  =   1.19  mean count/edge =  14.45
+
+Window=1 Iteration=8
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   8.30  max edges/level =  15
+mean edges/node  =   1.16  mean count/edge =  14.45
+
+Window=1 Iteration=9
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   8.47  max edges/level =  14
+mean edges/node  =   1.15  mean count/edge =  14.17
+
+Window=1 Iteration=10
+Time for building model:         0 seconds
+Time for sampling (singles):     1 seconds
+Singles model
+mean edges/level =   8.28  max edges/level =  13
+mean edges/node  =   1.15  mean count/edge =  14.49
+
+Number of markers:             998
+Total time for building model: 4 seconds
+Total time for sampling:       10 seconds
+Total run time:                16 seconds
+
+End time: 12:42 PM EDT on 15 Jul 2014
+b4.jar (r1219) finished
