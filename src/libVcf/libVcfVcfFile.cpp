@@ -478,6 +478,18 @@ bool VcfFile::iterateMarker() {
 
   lineTokens.ReplaceColumns(line, '\t');
 
+  if(lineTokens.Length() < 8)
+  {
+      if((line.Length() > 0) && (line[0] == '#'))
+      {
+          throw VcfFileException("All VCF Header lines must be before the '#CHROM' line, but line %d of %s is after it.\n\t%s",
+                             nNumLines, iFile->getFileName(), line.c_str());
+
+      }
+      throw VcfFileException("Line %d of %s does not have enough columns for a VCF record (at least 8 are required)\n\t%s",
+                             nNumLines, iFile->getFileName(), line.c_str());
+  }
+
   VcfMarker* pMarker;
 
   if ( nBuffers == 0 ) {
