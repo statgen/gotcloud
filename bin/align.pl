@@ -454,7 +454,14 @@ open(IN,$index_file) ||
 #   Read the first line and check if it is a header or a reference
 my $line = <IN>;
 chomp($line);
-$line =~ s/^\s+|\s+$//g;
+my $numSubs = 0;
+$numSubs = $line =~ s/^\s+|\s+$//g;
+my $numHdrWarn = 0;
+if(($numSubs > 0) || ($line =~ m/ \t|\t /))
+{
+    print "\nWarning: Removed spaces from the header fields of ${index_file}\n";
+    ++$numHdrWarn;
+}
 
 #   Track positions for each field
 my @fieldnames = qw(MERGE_NAME FASTQ1 FASTQ2 RGID SAMPLE LIBRARY CENTER PLATFORM);
@@ -462,6 +469,21 @@ my %fieldname2index = ();
 foreach my $key (@fieldnames) { $fieldname2index{$key} = undef(); } # Avoid tedious hardcoding
 # There are no spaces in the field names, so split on spaces.
 my @fields = split(/\s+/, $line);
+
+# If spaces were used instead of a tab between header fields, warn.
+if($line =~ m/[^\t ] +[^ \t]/)
+{
+    print "\nWarning: treating spaces as tabs in the header fields of ${index_file}\n";
+    ++$numHdrWarn;
+}
+
+# If there were two consecutive tabs between header fields, warn.
+if($line =~ m/\t\t/)
+{
+    print "\nWarning: ignoring extra tabs in the header fields of ${index_file}\n";
+    ++$numHdrWarn;
+}
+
 my $numHeaderFields = scalar @fields;
 foreach my $index (0..$#fields)
 {
@@ -484,12 +506,28 @@ my %fq1toCn = ();
 my %fq1toPl = ();
 my %mergeToFq1 = ();
 my %smToMerge = ();
+my $numBlanks = 0;
+my $numFieldSubs = 0;
+my $numMultiTab = 0;
 while ($line = <IN>)
 {
     chomp($line);
     $line =~ s/^\s+|\s+$//g;
     @fields = split(/\t\s*/, $line);
-    next if(scalar @fields == 0);
+
+    if(scalar @fields == 0)
+    {
+        ++$numBlanks;
+        next;
+    }
+    if($line =~ m/\t\s+|\s+\t/)
+    {
+        ++$numFieldSubs;
+    }
+    if($line =~ m/\t\t/)
+    {
+        ++$numMultiTab;
+    }
 
     # Remove leading/trailing spaces from each field.
     foreach my $field (@fields)
@@ -543,6 +581,29 @@ while ($line = <IN>)
     }
 }
 close(IN);
+
+if($numBlanks > 0)
+{
+    my $lineString = "line";
+    if($numBlanks > 1)
+    {
+        $lineString .= "s";
+    }
+    warn "\nWarning: skipped $numBlanks blank $lineString in $index_file\n";
+}
+if($numFieldSubs > 0)
+{
+    warn "\nWarning: Removed spaces from begining/end of each field in $index_file.\n";
+}
+if($numFieldSubs > 0)
+{
+    warn "\nWarning: ignoring extra tabs between fields of $index_file.\n";
+}
+
+if(($numHdrWarn > 0) || ($numBlanks > 0) || ($numFieldSubs > 0) || ($numFieldSubs > 0))
+{
+    warn "\n";
+}
 
 
 # Output the bam index to the FINAL_BAM_DIR directory
