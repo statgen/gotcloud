@@ -780,6 +780,16 @@ else {
 my @pops = sort keys %hPops;
 
 #############################################################################
+## STEP 2a : Check for valid number of samples
+############################################################################
+# Beagle & Thunder cannot run on single samples.
+if(($numSamples < 2) && ((getConf("RUN_BEAGLE") eq "TRUE") || (getConf("RUN_BEAGLE4") eq "TRUE") || (getConf("RUN_THUNDER") eq "TRUE")))
+{
+    die "\nERROR: ldrefine, beagle, thunder, and beagle4 require at least 2 samples, but there is only $numSamples sample in $bamIndex.\n\n";
+}
+
+
+#############################################################################
 ## STEP 3 : Create MAKEFILE
 ############################################################################
 
