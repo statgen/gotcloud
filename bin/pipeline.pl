@@ -57,6 +57,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     dry-run|dryrun
     batchtype=s
     batchopts=s
+    test=s
     out_dir|outdir=s
     conf=s
     bam_index|bamindex=s
@@ -118,6 +119,40 @@ require Conf;
 my @confSettings;
 push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
 
+#--------------------------------------------------------------
+#   Check if we are running the test case.
+#--------------------------------------------------------------
+if ($opts {test}) {
+    # remove a trailing slash if there is one.
+    $opts{test} =~ s/\/\z//;
+    my $outdir=abs_path($opts{test});
+    system("mkdir -p $outdir") &&
+        die "Unable to create directory '$outdir'\n";
+    my $testoutdir = $outdir . "/$opts{name}test";
+    print "Removing any previous results from: $testoutdir\n";
+    system("rm -rf $testoutdir") &&
+        die "Unable to clear the test output directory '$testoutdir'\n";
+    print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
+    my $testdir = $gotcloudRoot . "/test/umake";
+    if(! -r $testdir)
+    {
+        die "ERROR, '$testdir' does not exist, please download the test data to that directory\n";
+    }
+    my $cmd = "$0 --name $opts{name} -conf $testdir/umake_test.conf -out $testoutdir --numjobs 2";
+    if($opts{gotcloudroot})
+    {
+        $cmd .= " --gotcloudRoot $gotcloudRoot";
+    }
+    system($cmd) &&
+        die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
+    $cmd = "$gotcloudRoot/scripts/diff_results_indel.sh $outdir $gotcloudRoot/test/indel/expected";
+    system($cmd) &&
+        die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
+    print "Successfully ran the test case, congratulations!\n";
+    exit;
+}
+
+
 #############################################################################
 #   Set defaults for command-line options if they weren't set.
 #############################################################################
@@ -147,7 +182,7 @@ if ((! $opts{conf}) || (! -r $opts{conf})) {
     {
         $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
     }
-    $usage .= "Usage:\tgotcloud $opts{name} --conf [conf.file]\n".
+    $usage .= "Usage:\tgotcloud --name $opts{name} --conf [conf.file]\n".
     "Specify --help to get more usage infromation\n";
     die "$usage";
 }
@@ -523,7 +558,7 @@ foreach my $step (@steps)
 #############################################################################
 #   Write Directory Targets
 ############################################################################
-foreach my $dir (keys %allDirs)
+foreach my $dir (sort(keys %allDirs))
 {
     writeMake("$dir:\n\tmkdir -p $dir\n\n");
 }
@@ -540,7 +575,7 @@ print STDERR "------------------------------------------------------------------
 print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
-if($opts{numjobs} != 0) {
+if($opts{numjobs} && ($opts{numjobs} != 0)) {
     my $cmd = "make -k -f $makef -j $opts{numjobs} ". getConf("MAKE_OPTS") . " > $makef.log";
     if(($opts{batchtype} eq 'local') && ($opts{numjobs} > $opts{maxlocaljobs}))
     {
