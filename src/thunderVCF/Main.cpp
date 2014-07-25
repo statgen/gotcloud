@@ -524,6 +524,11 @@ END_LONG_PARAMETERS();
 
    LoadShotgunSamples(ped, shotgunfile);
    
+   if(ped.count <= 1)
+   {
+       error("  thunderVCF requires more than 1 sample.");
+   }
+
    LoadPolymorphicSites(shotgunfile);
    
    SetCrashExplanation("loading map information for polymorphic sites");
