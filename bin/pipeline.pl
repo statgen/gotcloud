@@ -97,7 +97,10 @@ if(!$opts{gotcloudroot})
         open my $openFile, '<', $file or die "$!, $file";
         $fileContents = <$openFile>;
         close $openFile;
-
+        if(!defined $fileContents)
+        {
+            die "ERROR: The gotcloud configuration file, '$file', is empty.\n";
+        }
         if ($fileContents =~ m/^\s*GOTCLOUD_ROOT\s*=\s*(.*)/)
         {
             $opts{gotcloudroot} = "$1";
