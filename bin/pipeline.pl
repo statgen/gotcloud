@@ -427,7 +427,6 @@ elsif ( $multiTargetMap ne "" ) {
     }
     close IN;
 
-#    for(my $i=0; $i < @samples; ++$i)
     foreach my $sample (sort(keys(%samples)))
     {
         die "Cannot find target information for sample $sample\n" unless (defined($hSM2BedIndex{$sample}));
@@ -541,7 +540,9 @@ foreach my $step (@steps)
     undef %tmpVals;
 #    %tmpVals = ();
 #    $mu->record("starting $step");
+
     handleStep($step, getStepInfo($step, "TYPE"), \&processTarget);
+
 #    $mu->record("after $step");
 #    print "$step, tmpVals size = ".total_size(\%tmpVals)."\n";
 #    my $end = Time::HiRes::gettimeofday();
@@ -734,6 +735,19 @@ sub processTarget
         writeTarget($output, $makeDepends,
                     resolveTmp(getStepInfo($step, "CMD")));
         $stepTargets .= " ".$output.".OK";
+
+        # if we are generating a file containing the outputs, write to it.
+        if(getStepConf($step, "FILELIST"))
+        {
+            my $filelist = resolveTmp(getStepConf($step, "FILELIST"));
+            my ($fileName, $dir) = fileparse($filelist);
+            system("mkdir -p $dir") &&
+            die "Unable to create directory '$dir'\n";
+            open(my $fh, '>>', $filelist)
+            or die "Unable to append to $filelist\n$!\n";
+            print $fh "$output\n";
+            close $fh;
+        }
     }
 }
 
@@ -1226,5 +1240,15 @@ sub setupStepSettings
         # Pull from dependencies - TODO - for now just set to all.
         $allStepInfo{$step}{SAMPLES} = \%samples;
         $allStepInfo{$step}{SAMPLES_ARRAY} = \@samplesArray;
+    }
+
+    # if we are generating a file containing the outputs, remove it if it already exists.
+    if(getStepConf($step, "FILELIST"))
+    {
+        my $filelistName = getStepConf($step, "FILELIST");
+        if(-e $filelistName)
+        {
+            unlink $filelistName or die "Failed to remove previous $filelistName\n";
+        }
     }
 }
