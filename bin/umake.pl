@@ -39,7 +39,6 @@ my $conf = "";
 my $numjobs = 0;
 my $maxlocaljobs = 10;
 my $snpcallOpt = "";
-my $extractOpt = "";
 my $beagleOpt = "";
 my $thunderOpt = "";
 my $beagle4Opt = "";
@@ -76,7 +75,6 @@ my $optResult = GetOptions("help",\$help,
                            "numjobs=i",\$numjobs,
                            "maxlocaljobs=i",\$maxlocaljobs,
                            "snpcall",\$snpcallOpt,
-                           "extract",\$extractOpt,
                            "beagle",\$beagleOpt,
                            "thunder",\$thunderOpt,
                            "beagle4",\$beagle4Opt,
@@ -316,15 +314,14 @@ else
 
 #### POSSIBLE FLOWS ARE
 ## SNPcall : PILEUP -> GLFMULTIPLES -> VCFPILEUP -> FILTER -> SVM -> SPLIT : 1,2,3,4,5,7
-## Extract : PILEUP -> GLFEXTRACT -> SPLIT : 1,6,7
 ## BEAGLE  : BEAGLE -> SUBSET : 8,9
 ## THUNDER : THUNDER -> 10
 ## BEAGLE4 : SPLIT4 -> BEAGLE4 : 11 12
-my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_SVM RUN_EXTRACT RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER RUN_SPLIT4 RUN_BEAGLE4);
+my @orders = qw(RUN_INDEX RUN_PILEUP RUN_GLFMULTIPLES RUN_VCFPILEUP RUN_FILTER RUN_SVM RUN_SPLIT RUN_BEAGLE RUN_SUBSET RUN_THUNDER RUN_SPLIT4 RUN_BEAGLE4);
 my @orderFlags = ();
 
 ## if --snpcall --beagle --subset or --thunder
-if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
+if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) ||
      ($indexOpt) || ($pileupOpt) || ($glfMultiplesOpt) || ($vcfPileupOpt) ||
      ($filterOpt) || ($svmOpt) || ($splitOpt) || ($beagle4Opt) || ($split4Opt) ) {
     foreach my $o (@orders) {
@@ -332,37 +329,31 @@ if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
         setConf($o, "FALSE");
     }
     if ( $snpcallOpt ) {
-        foreach my $i (1,2,3,4,5,7) { # PILEUP to SPLIT
-            $orderFlags[$i] = 1;
-            setConf($orders[$i], "TRUE");
-        }
-    }
-    if ( $extractOpt ) {
-        foreach my $i (1,6,7) { # PILEUP, EXTRACT, SPLIT
+        foreach my $i (1,2,3,4,5,6) { # PILEUP to SPLIT
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
     }
     if ( $beagleOpt ) {
-        foreach my $i (8,9) {
+        foreach my $i (7,8) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
     }
     if ( $thunderOpt ) {
-        foreach my $i (10) {
+        foreach my $i (9) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
     }
     if ( $beagle4Opt ) {
-        foreach my $i (12) {
+        foreach my $i (11) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
     }
     if ( $split4Opt ) {
-        foreach my $i (11) {
+        foreach my $i (10) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
@@ -404,7 +395,7 @@ if ( ( $snpcallOpt) || ( $beagleOpt ) || ( $thunderOpt ) || ( $extractOpt ) ||
         }
     }
     if ( $splitOpt ) {
-        foreach my $i (7) {
+        foreach my $i (6) {
             $orderFlags[$i] = 1;
             setConf($orders[$i], "TRUE");
         }
@@ -418,7 +409,7 @@ else {
 }
 
 ## check if the current orders are compatible with any of the valid orders
-my @validOrders = ([0,1,2,3,4,5,7],[0,1,6,7],[8,9],[10],[11,12]);
+my @validOrders = ([0,1,2,3,4,5,6],[7,8],[9],[10,11]);
 my $validFlag = 0;
 foreach my $v (@validOrders) {
     my @vjs = ();
@@ -469,11 +460,11 @@ for(my $i=0; $i < @orderFlags; ++$i) {
 if ( $validFlag == 0 ) {
     # foreach (@ARGV) { print STDERR "$_\n" };
     #print STDERR qx/ps -o args $$/;
-    die "ERROR IN CONF FILE : Options are not compatible. Use --snpcall, --extract, --beagle, --thunder or compatible subsets\n";
+    die "ERROR IN CONF FILE : Options are not compatible. Use --snpcall, --beagle, --thunder, --beagle4 or compatible subsets\n";
 }
 
 if ( $numSteps == 0 ) {
-    die "ERROR IN CONF FILE : No option is given. Manually configure STEPS_TO_RUN section in the configuration file, or use --snpcall, --extract, --beagle, --thunder or compatible subsets\n";
+    die "ERROR IN CONF FILE : No option is given. Manually configure STEPS_TO_RUN section in the configuration file, or use --snpcall, --beagle, --thunder, --beagle4 or compatible subsets\n";
 }
 
 #--------------------------------------------------------------
@@ -609,11 +600,10 @@ my @reqExes;
 my %reqExeHash = (
                   'RUN_INDEX' => [qw(SAMTOOLS_FOR_OTHERS)],
                   'RUN_PILEUP' => [qw(GLFMERGE SAMTOOLS_FOR_OTHERS SAMTOOLS_FOR_PILEUP BAMUTIL)],
-                  'RUN_GLFMULTIPLES' => [qw(GLFMULTIPLES VCFMERGE)],
+                  'RUN_GLFMULTIPLES' => [qw(GLFFLEX VCFMERGE)],
                   'RUN_FILTER' => [qw(INFOCOLLECTOR VCFCOOKER VCFPASTE BGZIP TABIX VCFSUMMARY VCFMERGE)],
                   'RUN_VCFPILEUP' => [qw(VCFPILEUP)],
                   'RUN_SVM' => [qw(VCFPASTE BGZIP TABIX VCFSUMMARY SVM_SCRIPT SVMLEARN SVMCLASSIFY INVNORM VCF_SPLIT_CHROM)],
-                  'RUN_EXTRACT' => [qw(BGZIP TABIX GLFEXTRACT)],
                   'RUN_SPLIT' => [qw(BGZIP VCFSPLIT)],
                   'RUN_SPLIT4' => [qw(BGZIP VCFSPLIT4)],
                   'RUN_BEAGLE'=> [qw(LIGATEVCF BGZIP TABIX VCF2BEAGLE BEAGLE BEAGLE2VCF)],
@@ -657,10 +647,6 @@ my $makeext = "vc";
 if($snpcallOpt)
 {
     $makeext = "snpcall";
-}
-elsif($extractOpt)
-{
-    $makeext = "extract";
 }
 elsif($beagleOpt)
 {
@@ -842,6 +828,7 @@ my $bamGlfDir = "\$(OUT_DIR)/".getConf("BAM_GLF_DIR");
 my $smGlfDir = "\$(OUT_DIR)/".getConf("SM_GLF_DIR");
 my $smGlfDirReal = "$outdir/".getConf("SM_GLF_DIR");
 my $vcfDir = "\$(OUT_DIR)/".getConf("VCF_DIR");
+my $vcfDirReal = "$outdir/".getConf("VCF_DIR");
 my $pvcfDir = "\$(OUT_DIR)/".getConf("PVCF_DIR");
 my $splitDir = "\$(OUT_DIR)/".getConf("SPLIT_DIR");
 my $splitDirReal = "$outdir/".getConf("SPLIT_DIR");
@@ -1016,7 +1003,6 @@ foreach my $chr (@chrs) {
     print MAK " beagle4_$chr" if ( getConf("RUN_BEAGLE4") eq "TRUE" );
     print MAK " split$chr" if ( getConf("RUN_SPLIT") eq "TRUE" );
     print MAK " split4_$chr" if ( getConf("RUN_SPLIT4") eq "TRUE" );
-    print MAK " filt$chr" if ( getConf("RUN_EXTRACT") eq "TRUE" );
     print MAK " svm$chr" if ( getConf("RUN_SVM") eq "TRUE" );
     print MAK " filt$chr" if ( getConf("RUN_FILTER") eq "TRUE" );
     print MAK " pvcf$chr" if ( getConf("RUN_VCFPILEUP") eq "TRUE" );
@@ -1038,7 +1024,7 @@ foreach my $chr (@chrs) {
 
         foreach my $pop (@pops) {
             my $splitPrefix = "$thunderDirReal/chr$chr/$pop/split/chr$chr.filtered.PASS.beagled.$pop.split";
-            open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
+            open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist for thunder\n";
             my @splitVcfs = ();
             for(my $i=1;<IN>;++$i) {
                 chomp;
@@ -1144,7 +1130,7 @@ foreach my $chr (@chrs) {
         print MAK "beagle$chr: $beaglePrefix.vcf.gz.tbi\n\n";
 
         my $splitPrefix = "$splitDirReal/chr$chr/chr$chr.filtered.PASS.split";
-        open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist\n";
+        open(IN,"$splitPrefix.vcflist") || die "Cannot open $splitPrefix.vcflist for beagle\n";
         my @splitVcfs = ();
         while(<IN>) {
             chomp;
@@ -1215,7 +1201,6 @@ foreach my $chr (@chrs) {
     if ( getConf("RUN_SPLIT") eq "TRUE" ) {
         # determine whether to expand to lower level target or not
         my $expandFlag = ( getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
-        $expandFlag = 1 if ( getConf("RUN_EXTRACT") eq "TRUE" );
         $expandFlag = 2 if ( getConf("RUN_SVM") eq "TRUE" );
 
         print MAK "split$chr:";
@@ -1228,10 +1213,7 @@ foreach my $chr (@chrs) {
         my $mvcf = "$remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz";
 
         my $subsetPrefix = "$splitDir/chr$chr/chr$chr.filtered";
-        if ( $expandFlag == 1 ) {
-            print MAK "$splitDir/chr$chr/subset.OK: filt$chr\n";
-        }
-        elsif ( $expandFlag == 2 ) {
+        if ( $expandFlag == 2 ) {
             print MAK "$splitDir/chr$chr/subset.OK: $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK\n";
         }
         else {
@@ -1261,7 +1243,7 @@ foreach my $chr (@chrs) {
         my @splitVcfs = ();
         my $listFile = "$splitPrefix.list";
 
-        open(IN,"$listFile") || die "Cannot open $listFile\n";
+        open(IN,"$listFile") || die "Cannot open $listFile for beagle4\n";
         while(<IN>) {
             chomp;
             my @F = split;
@@ -1323,7 +1305,6 @@ foreach my $chr (@chrs) {
     if ( getConf("RUN_SPLIT4") eq "TRUE" ) {
         # determine whether to expand to lower level target or not
         my $expandFlag = ( getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
-        $expandFlag = 1 if ( getConf("RUN_EXTRACT") eq "TRUE" );
         $expandFlag = 2 if ( getConf("RUN_SVM") eq "TRUE" );
 
         print MAK "split4_$chr:";
@@ -1340,10 +1321,7 @@ foreach my $chr (@chrs) {
         my $subsetPrefix = "$split4Dir/chr$chr/chr$chr.filtered";
 
         my $dep = "";
-        if ( $expandFlag == 1 ) {
-            $dep = " filt$chr";
-        }
-        elsif ( $expandFlag == 2 ) {
+        if ( $expandFlag == 2 ) {
             $dep = " $remotePrefix$vcfDir/chr$chr/chr$chr.filtered.vcf.gz.OK";
         }
 
@@ -1357,79 +1335,6 @@ foreach my $chr (@chrs) {
         print MAK "\t".getMosixCmd($splitCmd, "$listFile")."\n\n";
     }
 
-    #############################################################################
-    ## STEP 10-6b : SPLIT FILTERED VCF INTO CHUNKS FOR GENOTYPING
-    #############################################################################
-    if ( getConf("RUN_EXTRACT") eq "TRUE" ) {
-        my $expandFlag = ( getConf("RUN_PILEUP") eq "TRUE" ) ? 1 : 0;
-        my $vcfParent = "$remotePrefix$vcfDir/chr$chr";
-        my $vcf = "$vcfParent/chr$chr.filtered.vcf";
-        my @vcfs = ();
-        my @svcfs = ();
-        for(my $j=0; $j < @unitStarts; ++$j) {
-            $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-            push(@vcfs,"$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf");
-            push(@svcfs,"$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].sites.vcf");
-        }
-
-        my $invcf = getConf("VCF_EXTRACT");
-        unless ( ( $invcf =~ /.gz$/ ) && ( -s $invcf ) && ( -s "$invcf.tbi" ) ) {
-            die "Input VCF file $invcf must be bgzipped and tabixed\n";
-        }
-
-        print MAK "filt$chr: $vcf.OK".(($expandFlag == 1) ? " glf$chr" : "")."\n\n";
-        print MAK "$vcf.OK: ";
-        print MAK join(".OK ",@vcfs);
-        print MAK ".OK\n";
-        my $cmd = getConf("VCFCAT")." @vcfs  | ".getConf("BGZIP")." -c > $vcf.gz";
-        writeLocalCmd($cmd);
-        writeTouch("$vcf", "$vcf.gz");
-
-        for(my $j=0; $j < @unitStarts; ++$j) {
-            $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
-            print MAK "$svcfs[$j].OK:\n";
-            print MAK "\tmkdir --p $vcfParent\n";
-            $cmd = getConf("TABIX")." $invcf $chr:$unitStarts[$j]-$unitEnds[$j] | cut -f 1-8 > $svcfs[$j]";
-            writeLocalCmd($cmd);
-            writeTouch("$svcfs[$j]");
-
-            my @glfs = ();
-            my $smGlfBase = "chr$chr/$unitStarts[$j].$unitEnds[$j]";
-            my $smGlfParent = "$remotePrefix$smGlfDirReal/$smGlfBase";
-            my $smGlfParentCopy = ( $copyglf ? "$copyglf/$smGlfBase" : $smGlfParent );
-            for(my $i=0; $i < @allSMs; ++$i) {
-                my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-                my $smGlf = "$smGlfParent/$smGlfFn";
-                push(@glfs,$smGlf);
-            }
-
-            handleGlfIndexFile($smGlfParentCopy, $smGlfParent, $chr,
-                               $unitStarts[$j], $unitEnds[$j]);
-
-            my $glfAlias = "$smGlfParent/".getConf("GLF_INDEX");
-            $glfAlias =~ s/$outdir/\$(OUT_DIR)/g;
-
-            my $sleepSecs = ($j % 10)*$sleepMultiplier;
-            $cmd = getConf("GLFEXTRACT")." --invcf $svcfs[$j] --ped $glfAlias -b $vcfs[$j] > $vcfs[$j].log 2> $vcfs[$j].err";
-            if ( $copyglf ) {
-                $cmd = "mkdir --p $copyglf/chr$chr && rsync -arv $smGlfParent $copyglf/chr$chr && $cmd && rm -rf $smGlfParentCopy";
-            }
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$vcfs[$j].OK: $svcfs[$j].OK ";
-            if ( $expandFlag == 1 ) {
-                print MAK join(".OK ",@glfs);
-                print MAK ".OK";
-            }
-            print MAK "\n";
-            #       print MAK "\tmkdir --p $vcfParent\n";
-            if($sleepSecs != 0)
-            {
-                print MAK "\tsleep $sleepSecs\n";
-            }
-            print MAK "\t".getMosixCmd($cmd, "$vcfs[$j]")."\n";
-            writeTouch("$vcfs[$j]");
-        }
-    }
 
     #############################################################################
     ## STEP 10.5 : RUN SVM FILTERING
@@ -1701,14 +1606,25 @@ foreach my $chr (@chrs) {
         my @cmds = ();
         my @vcfs = ();
 
+        my $invcf = getConf("VCF_EXTRACT");
+        if ( $invcf ) {
+            unless ( ( $invcf =~ /.gz$/ ) && ( -s $invcf ) && ( -s "$invcf.tbi" ) ) {
+            die "Input VCF file $invcf must be bgzipped and tabixed\n";
+        }
+    }
+
+    my $glfsingle = ( getConf("MODEL_GLFSINGLE") eq "TRUE" ? " --glfsingle" : "");
+    my $skipDetect = ( getConf("MODEL_SKIP_DISCOVER") eq "TRUE" ? " --skipDetect" : "");
+    my $afPrior = ( getConf("MODEL_AF_PRIOR") eq "TRUE" ? " --afprior" : "");
+
         for(my $j=0; $j < @unitStarts; ++$j) {
-            my $vcfParent = "$remotePrefix$vcfDir/chr$chr/$unitStarts[$j].$unitEnds[$j]";
+            my $vcfParent = "$remotePrefix$vcfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
             my $vcf = "$vcfParent/chr$chr.$unitStarts[$j].$unitEnds[$j].vcf";
             my @glfs = ();
             my $smGlfParent = "$remotePrefix$smGlfDirReal/chr$chr/$unitStarts[$j].$unitEnds[$j]";
             my $smGlfParentCopy = ( $copyglf ? "$copyglf/chr$chr/$unitStarts[$j].$unitEnds[$j]" : $smGlfParent );
 
-            handleGlfIndexFile($smGlfParentCopy, $smGlfParent, $chr, 
+            handleGlfIndexFile($smGlfParentCopy, $smGlfParent, $vcfParent, $chr, 
                                $unitStarts[$j], $unitEnds[$j]);
 
             for(my $i=0; $i < @allSMs; ++$i) {
@@ -1716,11 +1632,11 @@ foreach my $chr (@chrs) {
                 my $smGlf = "$smGlfParent/$smGlfFn";
                 push(@glfs,$smGlf);
             }
-            my $glfAlias = "$smGlfParent/".getConf("GLF_INDEX");
+            my $glfAlias = "$vcfParent/".getConf("GLF_INDEX");
             $glfAlias =~ s/$outdir/\$(OUT_DIR)/g;
             push(@vcfs,$vcf);
             my $sleepSecs = ($j % 10)*$sleepMultiplier;
-            my $cmd = getConf("GLFMULTIPLES")." --ped $glfAlias -b $vcf > $vcf.log 2> $vcf.err";
+            my $cmd = getConf("GLFFLEX")." --ped $glfAlias -b $vcf ".($invcf ? "--positionfile $invcf " : "")."$glfsingle $skipDetect $afPrior > $vcf.log 2> $vcf.err";
             if ( $copyglf ) {
                 $cmd = "mkdir --p $copyglf/chr$chr && rsync -arv $smGlfParent $copyglf/chr$chr && $cmd && rm -rf $smGlfParentCopy";
             }
@@ -1981,12 +1897,12 @@ exit($rc >> 8);
 #--------------------------------------------------------------
 sub handleGlfIndexFile
 {
-    my ($smGlfParentCopy, $smGlfParent, $chr, $unitStart, $unitEnd) = @_;
+    my ($smGlfParentCopy, $smGlfParent, $vcfParent, $chr, $unitStart, $unitEnd) = @_;
 
     # Ensure the path exists.
-    make_path($smGlfParent);
+    make_path($vcfParent);
 
-    my $glfIndexFile = "$smGlfParent/".getConf("GLF_INDEX");
+    my $glfIndexFile = "$vcfParent/".getConf("GLF_INDEX");
     my $writeGlf = 1;
     # check if the glf index is already created.
     if(-r "$glfIndexFile")
@@ -2230,7 +2146,7 @@ sub parseTarget {
     my ($bed,$offset) = @_;
     my %loci = ();
     # read BED file and construct old loci file
-    open(IN,$bed) || die "Cannot open $bed\n";
+    open(IN,$bed) || die "Cannot open bed file: $bed\n";
     while(<IN>) {
         my ($chr,$start,$end) = split;
         if ( $chr =~ /^chr/ ) {
@@ -2465,10 +2381,6 @@ Specifies the maximum number of jobs that can be run with batchtype local (the d
 
 Run the snpcall set of steps (pileup, glfmultiples, vcfpileup, filter, svm, split).
 
-=item B<--extract>
-
-Run the extract set of steps (pileup, glfextract, and split).
-
 =item B<--beagle>
 
 Run the beagle set of steps (beagle and subset).
@@ -2476,6 +2388,10 @@ Run the beagle set of steps (beagle and subset).
 =item B<--thunder>
 
 Run thunder.
+
+=item B<--beagle4>
+
+Run the beagle4 step.
 
 =item B<--index>
 
@@ -2504,6 +2420,10 @@ Run as if just RUN_SVM was specified.
 =item B<--split>
 
 Run as if just RUN_SPLIT was specified.
+
+=item B<--split4>
+
+Run as if just RUN_SPLIT4 was specified.
 
 =item B<--makebasename dir>
 
