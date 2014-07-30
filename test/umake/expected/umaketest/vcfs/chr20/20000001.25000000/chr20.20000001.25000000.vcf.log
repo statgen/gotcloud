@@ -1,8 +1,10 @@
 glfMultiples -- SNP calls based on .glf or .glz files
-(c) 2008-2013 Goncalo Abecasis, Sebastian Zoellner, Yun Li
+(c) 2008-2014 Goncalo Abecasis, Sebastian Zoellner, Yun Li, Hyun Min Kang, and Mary Kate Trost
 
 Analysis started on Thu Nov  1 17:19:58 2012
 
+Pairwise heterozogosity : 0.001000
+Proportion of polymorphic site : 0.005369
 Calling genotypes for files ...
 glfs/samples/chr20/20000001.25000000/NA06984.20.20000001.25000000.glf
 glfs/samples/chr20/20000001.25000000/NA06986.20.20000001.25000000.glf
@@ -66,19 +68,6 @@ glfs/samples/chr20/20000001.25000000/NA12874.20.20000001.25000000.glf
 glfs/samples/chr20/20000001.25000000/NA12889.20.20000001.25000000.glf
 
 Processing section 20 with 63025520 entries
-          Missing bases =         0 (0.000%)
-        Reference bases =  63025520 (100.000%)
-              A/T bases =    177509 (0.282%, 86236 A, 91273 T)
-              G/C bases =    122541 (0.194%, 60822 G, 61719 C)
-           Depth Filter =         0 bases (0.000%)
-     Map Quality Filter =         0 bases (0.000%)
-        Non-Polymorphic =         0 bases (0.000%)
-            Transitions =       776 bases (0.001%)
-          Transversions =       341 bases (0.001%)
-    Other Polymorphisms =         0 bases (0.000%)
-          Homology Sink =         0 bases (0.000%)
-           Smart Filter =    298884 bases (0.474%)
-                No call =  63024403 bases (99.998%)
 
 Analysis completed on Thu Nov  1 17:20:35 2012
 

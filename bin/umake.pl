@@ -1579,6 +1579,7 @@ foreach my $chr (@chrs) {
             }
             else {
                 my $cmd = getConf("VCFCAT")." @gvcfs > $mvcfPrefix.merged.stats.vcf";
+                $cmd =~ s/$outdir/\$(OUT_DIR)/g;
                 writeLocalCmd($cmd);
             }
             my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".getConf("INDEL_PREFIX").".chr$chr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
@@ -1640,6 +1641,7 @@ foreach my $chr (@chrs) {
             if ( $copyglf ) {
                 $cmd = "mkdir --p $copyglf/chr$chr && rsync -arv $smGlfParent $copyglf/chr$chr && $cmd && rm -rf $smGlfParentCopy";
             }
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             if ( $expandFlag == 1 ) {
                 my $newcmd = "$vcf.OK: ".join(".OK ",@glfs).".OK\n\tmkdir --p $vcfParent\n";
@@ -1664,7 +1666,9 @@ foreach my $chr (@chrs) {
         my $out = "$vcfDir/chr$chr/chr$chr.merged";
         print MAK "vcf$chr: $remotePrefix$out.vcf.OK\n\n";
         print MAK "$remotePrefix$out.vcf.OK: ";
-        print MAK join(".OK ",@vcfs);
+        my $dep = join(".OK ",@vcfs);
+        $dep =~ s/$outdir/\$(OUT_DIR)/g;
+        print MAK $dep;
         print MAK ".OK\n";
         if ( $#uniqBeds < 0 ) {
             my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @vcfs > $out.vcf\n";
@@ -1673,6 +1677,7 @@ foreach my $chr (@chrs) {
         }
         else {  ## targeted regions - rely on the loci info
             my $cmd = getConf("VCFCAT")." @vcfs > $out.vcf";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             writeLocalCmd($cmd);
         }
         print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";

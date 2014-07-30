@@ -2,11 +2,12 @@
            Posterior Threshold :            0.50 (-p99.999)
 
 Additional Options
-        Pedigree File : --ped [glfs/samples/chr20/20000001.25000000/glfIndex.ped]
-                Model : --uniformTsTv [ON], --heterozygosity [1.0e-03]
+        Pedigree File : --ped [vcfs/chr20/20000001.25000000/glfIndex.ped]
+                Model : --uniformTsTv [ON], --heterozygosity [1.0e-03],
+                        --sfs [], --glfsingle
    Map Quality Filter : --minMapQuality, --strict
    Total Depth Filter : --minDepth [1], --maxDepth [10000000]
-      Position Filter : --positionFile []
+      Position Filter : --positionFile [], --skipDetect, --afPrior
     Chromosome Labels : --xChr [X], --yChr [Y], --mito [MT],
                         --xStart [2699520], --xStop [154931044]
     Filtering Options : --hardFilter, --smartFilter [ON], --softFilter
