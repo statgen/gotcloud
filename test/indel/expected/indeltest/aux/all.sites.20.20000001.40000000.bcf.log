@@ -1,0 +1,13 @@
+merge_candidate_variants v0.5
+
+options: [L] input VCF file list   aux/candidate_vcf_files.txt (60 files)
+         [o] output VCF file       aux/all.sites.20.20000001.40000000.bcf
+         [i] intervals             20:20000001-40000000
+
+stats: Total Number of Candidate SNPs                 0
+       Total Number of Candidate Indels               386
+       Total Number of Candidate SNPIndels            2
+       Total Number of Candidate other variant types  0
+
+Time elapsed: 0.04s
+

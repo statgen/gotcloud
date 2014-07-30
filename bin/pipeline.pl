@@ -57,6 +57,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     dry-run|dryrun
     batchtype=s
     batchopts=s
+    test=s
     out_dir|outdir=s
     conf=s
     bam_index|bamindex=s
@@ -96,7 +97,10 @@ if(!$opts{gotcloudroot})
         open my $openFile, '<', $file or die "$!, $file";
         $fileContents = <$openFile>;
         close $openFile;
-
+        if(!defined $fileContents)
+        {
+            die "ERROR: The gotcloud configuration file, '$file', is empty.\n";
+        }
         if ($fileContents =~ m/^\s*GOTCLOUD_ROOT\s*=\s*(.*)/)
         {
             $opts{gotcloudroot} = "$1";
@@ -117,6 +121,40 @@ require Conf;
 
 my @confSettings;
 push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
+
+#--------------------------------------------------------------
+#   Check if we are running the test case.
+#--------------------------------------------------------------
+if ($opts {test}) {
+    # remove a trailing slash if there is one.
+    $opts{test} =~ s/\/\z//;
+    my $outdir=abs_path($opts{test});
+    system("mkdir -p $outdir") &&
+        die "Unable to create directory '$outdir'\n";
+    my $testoutdir = $outdir . "/$opts{name}test";
+    print "Removing any previous results from: $testoutdir\n";
+    system("rm -rf $testoutdir") &&
+        die "Unable to clear the test output directory '$testoutdir'\n";
+    print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
+    my $testdir = $gotcloudRoot . "/test/umake";
+    if(! -r $testdir)
+    {
+        die "ERROR, '$testdir' does not exist, please download the test data to that directory\n";
+    }
+    my $cmd = "$0 --name $opts{name} -conf $testdir/umake_test.conf -out $testoutdir --numjobs 2";
+    if($opts{gotcloudroot})
+    {
+        $cmd .= " --gotcloudRoot $gotcloudRoot";
+    }
+    system($cmd) &&
+        die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
+    $cmd = "$gotcloudRoot/scripts/diff_results_indel.sh $outdir $gotcloudRoot/test/indel/expected";
+    system($cmd) &&
+        die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
+    print "Successfully ran the test case, congratulations!\n";
+    exit;
+}
+
 
 #############################################################################
 #   Set defaults for command-line options if they weren't set.
@@ -147,7 +185,7 @@ if ((! $opts{conf}) || (! -r $opts{conf})) {
     {
         $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
     }
-    $usage .= "Usage:\tgotcloud $opts{name} --conf [conf.file]\n".
+    $usage .= "Usage:\tgotcloud --name $opts{name} --conf [conf.file]\n".
     "Specify --help to get more usage infromation\n";
     die "$usage";
 }
@@ -389,7 +427,6 @@ elsif ( $multiTargetMap ne "" ) {
     }
     close IN;
 
-#    for(my $i=0; $i < @samples; ++$i)
     foreach my $sample (sort(keys(%samples)))
     {
         die "Cannot find target information for sample $sample\n" unless (defined($hSM2BedIndex{$sample}));
@@ -503,7 +540,9 @@ foreach my $step (@steps)
     undef %tmpVals;
 #    %tmpVals = ();
 #    $mu->record("starting $step");
+
     handleStep($step, getStepInfo($step, "TYPE"), \&processTarget);
+
 #    $mu->record("after $step");
 #    print "$step, tmpVals size = ".total_size(\%tmpVals)."\n";
 #    my $end = Time::HiRes::gettimeofday();
@@ -523,7 +562,7 @@ foreach my $step (@steps)
 #############################################################################
 #   Write Directory Targets
 ############################################################################
-foreach my $dir (keys %allDirs)
+foreach my $dir (sort(keys %allDirs))
 {
     writeMake("$dir:\n\tmkdir -p $dir\n\n");
 }
@@ -540,7 +579,7 @@ print STDERR "------------------------------------------------------------------
 print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
-if($opts{numjobs} != 0) {
+if($opts{numjobs} && ($opts{numjobs} != 0)) {
     my $cmd = "make -k -f $makef -j $opts{numjobs} ". getConf("MAKE_OPTS") . " > $makef.log";
     if(($opts{batchtype} eq 'local') && ($opts{numjobs} > $opts{maxlocaljobs}))
     {
@@ -696,6 +735,19 @@ sub processTarget
         writeTarget($output, $makeDepends,
                     resolveTmp(getStepInfo($step, "CMD")));
         $stepTargets .= " ".$output.".OK";
+
+        # if we are generating a file containing the outputs, write to it.
+        if(getStepConf($step, "FILELIST"))
+        {
+            my $filelist = resolveTmp(getStepConf($step, "FILELIST"));
+            my ($fileName, $dir) = fileparse($filelist);
+            system("mkdir -p $dir") &&
+            die "Unable to create directory '$dir'\n";
+            open(my $fh, '>>', $filelist)
+            or die "Unable to append to $filelist\n$!\n";
+            print $fh "$output\n";
+            close $fh;
+        }
     }
 }
 
@@ -1188,5 +1240,15 @@ sub setupStepSettings
         # Pull from dependencies - TODO - for now just set to all.
         $allStepInfo{$step}{SAMPLES} = \%samples;
         $allStepInfo{$step}{SAMPLES_ARRAY} = \@samplesArray;
+    }
+
+    # if we are generating a file containing the outputs, remove it if it already exists.
+    if(getStepConf($step, "FILELIST"))
+    {
+        my $filelistName = getStepConf($step, "FILELIST");
+        if(-e $filelistName)
+        {
+            unlink $filelistName or die "Failed to remove previous $filelistName\n";
+        }
     }
 }

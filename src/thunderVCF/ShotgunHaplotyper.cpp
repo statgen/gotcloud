@@ -694,6 +694,8 @@ bool ShotgunHaplotyper::AllocateMemory(int persons, int maxStates, int m, float 
    {
    individuals = persons;
    states = maxStates > 1 && maxStates < individuals * 2 ? maxStates & ~1: individuals * 2 - 2;
+   // if there is only 1 individual, states will be 0, so change it to 1.
+   if(states == 0) {states = 1;}
    markers = m;
 
    genotypes = AllocateCharMatrix(individuals, markers*3);
