@@ -10,7 +10,7 @@
 medir=`dirname $0`
 if [ "$2" = "" ]; then
   echo "$0 failed"
-  echo "Syntax:  $0 results_dir expected_dir"
+  echo "Syntax:  $0 results_dir expected_dir snpcall|beagle|thunder|split4|beagle4"
   exit 3
 fi
 RESULTS_DIR=$1
@@ -26,9 +26,13 @@ fi
 
 DIR_EXCLUDE=
 if [ "$TYPE" == "snpcall" ]; then
-    EXPECTED_DIR=$EXPECTED_DIR/umaketest;
+    if [ -d $EXPECTED_DIR/umaketest ]; then
+        EXPECTED_DIR=$EXPECTED_DIR/umaketest;
+    fi
 else
-    EXPECTED_DIR=$EXPECTED_DIR/${TYPE}test;
+    if [ -d $EXPECTED_DIR/${TYPE}test ]; then
+        EXPECTED_DIR=$EXPECTED_DIR/${TYPE}test;
+    fi
     if [ "$TYPE" == "beagle" ]; then
         DIR_EXCLUDE="--exclude split4 --exclude beagle4 -x umake_test.beagle4.Makefile -x umake_test.split4.Makefile";
         FIND_EXCLUDE=(-not -path '*/split4/*' -not -path '*/beagle4/*');
