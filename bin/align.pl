@@ -39,6 +39,7 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use IO::Zlib;
 use File::Basename;
 use Cwd;
 use Cwd 'abs_path';
@@ -269,6 +270,7 @@ my $out_dir = getConf('OUT_DIR');
 my $missingReqFile = 0;
 #   These files must exist
 my @reqRefs = qw(REF DBSNP_VCF);
+
 # Loop through the defined steps & check for required exes.
 foreach my $step (@perMergeStep)
 {
@@ -305,7 +307,7 @@ my $removeExt = 0;
 setConf('MAP_TYPE', uc(getConf('MAP_TYPE')));
 
 if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') ) {
-    @mapExtensions = qw(.amb .ann .bwt .fai .pac .sa);
+    @mapExtensions = qw(.amb .ann .bwt .pac .sa);
 }
 elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
     @mapExtensions = qw(.dat _15_keys.jmp _15_meta.jmp _15_positions.jmp);
@@ -335,7 +337,78 @@ for my $extension (@mapExtensions) {
     $missingReqFile += CheckFor_REF_File($extension, $removeExt);
 }
 
+# Always require fai file.
+$missingReqFile += CheckFor_REF_File(".fai", 0);
+
 if ($missingReqFile) { die "Exiting alignment pipeline due to required file(s) missing\n"; }
+
+
+#----------------------------------------------------------------------------
+# Check for consistancy in chromosome naming.
+#----------------------------------------------------------------------------
+# Read names from REF.fai file.
+my $faiFile = getConf('REF').".fai";
+open(FAI, $faiFile) || die "ERROR: Cannot open file $faiFile: $!\n";
+my %faiChrs;
+while(<FAI>)
+{
+    my ($chr) = split(/[\t\n]+/);
+    $faiChrs{$chr} = 1;
+}
+close(FAI);
+
+# Check the VCFs for mathcing chromosomes in the .fai file.
+for my $refType (@reqRefs)
+{
+    my $refVcf = getConf($refType);
+    next if($refVcf !~ /\.vcf(\.gz)?$/); # Not a vcf file.
+
+    # Get TBI
+    my $refTbi = "$refVcf.tbi";
+
+    # TBI files are bgziped
+    die "ERROR: Cannot open file $refTbi: $!\n" unless ( -s $refTbi );
+    tie *REFTBI, "IO::Zlib", $refTbi, "rb";
+
+    # Read 4 bytes (magic string)
+    my $buffer;
+    read(REFTBI, $buffer, 4);
+    if($buffer ne "TBI\1")
+    {
+        #use bytes;
+        #printf '%02x ', ord substr $buffer, 3, 1;
+        die "$refTbi is not a proper TBI file, magic != TBI\\1, instead it is ".$buffer."\n";
+    }
+
+    # Read the next 7 int32_t and throw them away.
+    read(REFTBI, $buffer, 28);
+    # Read the length of the sequence names.
+
+    read(REFTBI, $buffer, 4);
+    my $length = unpack("V", $buffer);
+
+    read(REFTBI, $buffer, $length);
+    foreach my $chr (unpack("(Z*)*", $buffer))
+    {
+        if(!exists $faiChrs{$chr})
+        {
+            my $newChr = "chr$chr";
+            if(exists $faiChrs{$newChr})
+            {
+                die "ERROR: $refTbi has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
+            }
+            $newChr = $chr;
+            $newChr =~ s/^chr//;
+            if(exists $faiChrs{$newChr})
+            {
+                die "ERROR: $refTbi has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
+            }
+            warn "WARNING: $chr found in $refTbi is not in found in $faiFile\n";
+        }
+    }
+    close(REFTBI);
+}
+
 
 #----------------------------------------------------------------------------
 #   Check for required executables
@@ -940,7 +1013,16 @@ sub CheckFor_REF_File {
     }
 
     $file .= $ext;
-    if (-r $file) { return 0; }
+    if(-r $file)
+    {
+        if(-s $file)
+        {
+            return 0;
+        }
+        warn "ERROR: Required file derived from REF has size 0: $file\n";
+        warn "See ${GCURL} for information about building this file\n";
+        return 1;
+    }
     warn "ERROR: Could not read required file derived from REF: $file\n";
     warn "See ${GCURL} for information about building this file\n";
     return 1;
