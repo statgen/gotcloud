@@ -484,6 +484,31 @@ if($deprecatedFiles)
     die "EXITING: Deprecated configuration.  Please update your configyration and rerun.\n";
 }
 
+#----------------------------------------------------------------------------
+#   Check for valid parameters
+#----------------------------------------------------------------------------
+if (getConf('MAP_TYPE') eq 'BWA')
+{
+    # Validate BWA_THREADS & BWA_QUAL.
+    my $option = "-[oeidlkmMOERqB] +[0-9]+|-[LNIY]|-n +[0-9]*.?[0-9]+";
+    if(getConf("BWA_QUAL") !~ /^((${option}) +)*-q +[0-9]+( +(${option}))*$/)
+    {
+        die "ERROR: BWA_QUAL is invalid.  Be sure you specified '-q #threads', ".getConf("BWA_QUAL")."\n";
+    }
+    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+    {
+        die "ERROR: BWA_THREADS is invalid.  Be sure you specified '-t #threads', ".getConf("BWA_THREADS")."\n";
+    }
+}
+elsif(getConf('MAP_TYPE') eq 'BWA_MEM')
+{
+    # Validate BWA_THREADS
+    my $option = "-[kwdcABOELUvT] +[0-9]+|-[SPpaC]|-r +[0-9]*.?[0-9]+";
+    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+    {
+        die "ERROR: BWA_THREADS is invalid.  Be sure you specified '-t #threads', ".getConf("BWA_THREADS")."\n";
+    }
+}
 
 #----------------------------------------------------------------------------
 #   Perform phone home and check storage requirements.
