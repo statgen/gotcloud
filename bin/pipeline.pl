@@ -13,6 +13,7 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use IO::Zlib;
 use File::Basename;
 use Cwd;
 use Cwd 'abs_path';
@@ -348,6 +349,10 @@ while (<INDEX>)
 }
 close(INDEX);
 
+if(scalar keys %bam2sample == 0)
+{
+    die "ERROR: no BAMs to process, check your bam index.\n";
+}
 
 
 #############################################################################
@@ -450,6 +455,22 @@ foreach my $chr (@chrs)
 {
     if(! defined $hChrSizes{$chr})
     {
+        if($chr =~ /^chr/)
+        {
+            my $tmpChr = $chr;
+            $tmpChr =~ s/^chr//;
+            if(defined($hChrSizes{$tmpChr}))
+            {
+                die "Cannot find chromosome name, '$chr', in the reference file (ref has '$tmpChr').  Set 'CHRS' consistent with the reference file.\n";
+            }
+        }
+        else
+        {
+            if(defined($hChrSizes{"chr".$chr}))
+            {
+                die "Cannot find chromosome name, '$chr', in the reference file (ref has 'chr$chr').  Set 'CHRS' consistent with the reference file.\n";
+            }
+        }
         warn "skipping $chr, since it is not in the reference\n";
         # add no regions.
         my @tmpReg;
@@ -483,7 +504,69 @@ foreach my $chr (@chrs)
             push(@{$regions{$chr}}, @tmpReg);
         }
     }
+    if(! exists $regions{$chr})
+    {
+        if($#uniqBeds < 0)
+        {
+            die "ERROR: no regions in chromosome, $chr.  Fix the problem or remove it from CHRS & rerun.\n";
+        }
+        die "ERROR: no regions in the BED files for chromosome, $chr.  Fix the problem or remove it from CHRS & rerun.\n";
+    }
 }
+
+#----------------------------------------------------------------------------
+# Check for consistancy in chromosome naming.
+#----------------------------------------------------------------------------
+for my $bam (sort keys %bam2sample)
+{
+    die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
+    tie *BAM, "IO::Zlib", $bam, "rb";
+
+    # Read 4 bytes (magic string)
+    my $buffer;
+    read(BAM, $buffer, 4);
+    if($buffer ne "BAM\1")
+    {
+        #use bytes;
+        #printf '%02x ', ord substr $buffer, 3, 1;
+        die "$bam is not a proper BAM file, magic != BAM\\1, instead it is ".$buffer."\n";
+    }
+    # Read the length of the header text.
+    read(BAM, $buffer, 4);
+    my $hdrLen = unpack("V", $buffer);
+    # Read & throw away the header.
+    read(BAM, $buffer, $hdrLen);
+    # Read the number of reference sequences
+    read(BAM, $buffer, 4);
+    my $numRef = unpack("V", $buffer);
+
+    # Read the length of the sequence names.
+    for(my $i = 0; $i < $numRef; ++$i)
+    {
+        # Read the length of the ref name.
+        read(BAM, $buffer, 4);
+        my $refNameLen = unpack("V", $buffer);
+        read(BAM, $buffer, $refNameLen);
+        my $chr = unpack("Z*", $buffer);
+        if(!exists $hChrSizes{$chr})
+        {
+            my $newChr = "chr$chr";
+            if(exists $hChrSizes{$newChr})
+            {
+                die "ERROR: $bam has $chr, but $fai has $newChr.  Chromosome names must be consistent.\n";
+            }
+            $newChr = $chr;
+            $newChr =~ s/^chr//;
+            if(exists $hChrSizes{$newChr})
+            {
+                die "ERROR: $bam has $chr, but $fai has $newChr.  Chromosome names must be consistent.\n";
+            }
+            warn "WARNING: $chr found in $bam is not in found in $fai\n";
+        }
+    }
+
+}
+
 
 #############################################################################
 ## Create MAKEFILE
@@ -1128,8 +1211,32 @@ sub parseTarget {
     open(IN,$bed) || die "Cannot open $bed\n";
     while(<IN>) {
         my ($chr,$start,$end) = split;
-        if ( $chr =~ /^chr/ ) {
-            $chr = substr($chr,3);
+        if(!defined($hChrSizes{$chr}))
+        {
+            if($chr =~ /^chr/)
+            {
+                my $tmpChr = $chr;
+                $tmpChr =~ s/^chr//;
+                if(!defined($hChrSizes{$tmpChr}))
+                {
+                    warn "BED, $bed, chromosome, $chr, not found in the reference file, so will not be processed.\n";
+                }
+                else
+                {
+                    $chr = $tmpChr;
+                }
+            }
+            else
+            {
+                if(!defined($hChrSizes{"chr".$chr}))
+                {
+                    warn "BED, $bed, chromosome, $chr, not found in the reference file, so will not be processed.\n";
+                }
+                else
+                {
+                    $chr = "chr$chr";
+                }
+            }
         }
         $loci{$chr} = [] unless defined($loci{$chr});
 
