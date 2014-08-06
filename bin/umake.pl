@@ -778,10 +778,34 @@ my $numSamples = 0;
 open(IN,$bamIndex) || die "Cannot open $bamIndex file\n";
 while(<IN>) {
     my ($smID,$pop,@bams) = split;
+    next if(!defined $smID); # Skip empty line
+
+    # fail if there is no population or are no BAMs specified.
+    if(!defined $pop)
+    {
+        die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 1 column.\n";
+    }
+
+    if(scalar @bams == 0)
+    {
+        die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 2 columns.\n";
+    }
+
+    # Make sure the sample id & population don't look like bam file names.
+    if($smID =~ /\.bam$/)
+    {
+        die "ERROR: Check the format of $bamIndex.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $smID\n";
+    }
+    if($pop =~ /\.bam$/)
+    {
+        die "ERROR: Check the format of $bamIndex.\nSecond column should be the population, but it looks like a bam file.\n\tExample: $pop\n";
+    }
+
     my @mpops = split(/,/,$pop);
 
     if ( defined($hSM2pops{$smID}) || defined($hSM2bams{$smID}) ) {
-        die "Duplicated sample ID $smID\n";
+        die "ERROR: Duplicated sample ID $smID in $bamIndex\n".
+        "All BAMs for a SampleID should be on one line\n";
     }
 
     $hSM2pops{$smID} = \@mpops;
@@ -815,7 +839,7 @@ while(<IN>) {
              (getConf("RUN_VCFPILEUP") eq "TRUE") )
         {
             # die if bam is not readable
-            unless ( -r $bam ) { die "ERROR: Cannot read '$bam'\n"; }
+            unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
             unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
         }
     }

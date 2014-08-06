@@ -293,16 +293,31 @@ open(INDEX,$bamIndex) || die "Cannot open $bamIndex file\n";
 while (<INDEX>)
 {
     chomp;
-#    s/\r?\n?$//;
     if(!/^#/)
     {
         my ($sampleID, $pop, @bams) = split;
         next if(!defined $sampleID); # Skip empty line
-        # fail if there are no BAMs specified.
-        if(scalar(@bams) == 0)
+        # fail if there is no population or are no BAMs specified.
+        if(!defined $pop)
         {
-            die "ERROR: SampleID $sampleID in $bamIndex has no bams\n";
+            die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 1 column.\n";
         }
+
+        if(scalar @bams == 0)
+        {
+            die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 2 columns.\n";
+        }
+
+        # Make sure the sample id & population don't look like bam file names.
+        if($sampleID =~ /\.bam$/)
+        {
+            die "ERROR: Check the format of $bamIndex.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $sampleID\n";
+        }
+        if($pop =~ /\.bam$/)
+        {
+            die "ERROR: Check the format of $bamIndex.\nSecond column should be the population, but it looks like a bam file.\n\tExample: $pop\n";
+        }
+
         # Check if the sample already exists.
         if(defined $sample2bams{$sampleID})
         {
