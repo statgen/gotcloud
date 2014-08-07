@@ -535,6 +535,7 @@ foreach my $chr (@chrs)
 for my $bam (sort keys %bam2sample)
 {
     die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
+
     tie *BAM, "IO::Zlib", $bam, "rb";
 
     # Read 4 bytes (magic string)
@@ -625,10 +626,27 @@ my @steps = split(' ', getStepConf($opts{name},"STEPS", 1));
 my %allDirs = ();
 my %allStepInfo;
 
+my $needbai = 0;
+
 print MAK "all: @steps\n";
 foreach my $step (@steps)
 {
     setupStepSettings($step);
+}
+
+
+if($needbai != 0)
+{
+    # Validate the BAI files.
+    for my $bam (sort keys %bam2sample)
+    {
+        my $bai = "$bam.bai";
+        my $bai2 = $bam;
+        $bai2 =~ s/\.bam$/.bai/;
+
+        unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read .bai file, '$bai'\n"; }
+        unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+    }
 }
 
 foreach my $step (@steps)
@@ -980,7 +998,7 @@ sub getStepType
 
     if(hasTmpKey($output, "BAM"))    { $outputtype .= "PerBamPerSample"; }
     elsif(hasTmpKey($output, "SAMPLE")) { $outputtype .= "PerSample"; }
-    if(hasTmpKey($output, "CHR"))    { $outputtype .= "PerChr"; }
+    if(hasTmpKey($output, "CHR"))    { $outputtype .= "PerChr"; $needbai = 1;}
     if(hasTmpKey($output, "START"))  { $outputtype .= "PerRegion"; }
 
 # TODO check for any other tmp keys - invalid.

@@ -842,6 +842,18 @@ while(<IN>) {
             unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
             unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
         }
+
+        if ( (getConf("RUN_PILEUP") eq "TRUE") ||
+             (getConf("RUN_VCFPILEUP") eq "TRUE") )
+        {
+            # die if bai is not readable
+            my $bai = "$bam.bai";
+            my $bai2 = $bam;
+            $bai2 =~ s/\.bam$/.bai/;
+
+            unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
+            unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+        }
     }
     push(@allSMs,$smID);
     push(@allbams,@bams);
