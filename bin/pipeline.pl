@@ -564,6 +564,8 @@ for my $bam (sort keys %bam2sample)
         my $refNameLen = unpack("V", $buffer);
         read(BAM, $buffer, $refNameLen);
         my $chr = unpack("Z*", $buffer);
+        read(BAM, $buffer, 4);
+        my $refLen = unpack("V", $buffer);
         if(!exists $hChrSizes{$chr})
         {
             my $newChr = "chr$chr";
