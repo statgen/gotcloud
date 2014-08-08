@@ -560,18 +560,37 @@ foreach my $chr (@chrs)
 my @refChrVcfs;
 if ( getConf("RUN_FILTER") eq "TRUE" )
 {
-    # convert the INDEL_PREFIX to an absolute path.
-    my $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
-    setConf("INDEL_PREFIX", $newpath);
-    # check for the INDEL files for each chromosome
-    foreach my $chrchr (@chrchrs)
+    # If INDEL_VCF is specified, use that instead of INDEL_PREFIX.
+    if(getConf("INDEL_VCF"))
     {
-        if(! -r getConf("INDEL_PREFIX").".$chrchr.vcf")
+        my $newPath = getAbsPath(getConf("INDEL_VCF"), "REF");
+        setConf("INDEL_VCF", $newPath);
+        # Only VcfCooker takes INDEL_VCF and it works with either chr or non-chr chromosome names
+        # even if other files have the other type of name, so no need to validate the chromosome names.
+
+        # Check that the path exists.
+        if (! -r $newPath)
         {
-            warn "ERROR: Could not read required indel file based on INDEL_PREFIX for $chrchr: ".getConf("INDEL_PREFIX").".$chrchr.vcf\n";
+            warn "ERROR: Could not read required 'INDEL_VCF': $newPath\n";
+            warn "\tDid you mean to use 'INDEL_PREFIX' instead?  If so, unset INDEL_VCF.\n";
             $failReqFile = "1";
         }
-        push(@refChrVcfs, getConf("INDEL_PREFIX").".$chrchr.vcf");
+    }
+    else
+    {
+        # convert the INDEL_PREFIX to an absolute path.
+        my $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
+        setConf("INDEL_PREFIX", $newpath);
+        # check for the INDEL files for each chromosome
+        foreach my $chrchr (@chrchrs)
+        {
+            if(! -r getConf("INDEL_PREFIX").".$chrchr.vcf")
+            {
+                warn "ERROR: Could not read required indel file based on INDEL_PREFIX for $chrchr: ".getConf("INDEL_PREFIX").".$chrchr.vcf\n";
+                $failReqFile = "1";
+            }
+            push(@refChrVcfs, getConf("INDEL_PREFIX").".$chrchr.vcf");
+        }
     }
 }
 
@@ -1676,7 +1695,13 @@ foreach my $chr (@chrs) {
             else {
                 print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK\n";
             }
-            $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".getConf("INDEL_PREFIX").".$chrchr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
+            my $indelVCF = getConf("INDEL_PREFIX").".$chrchr.vcf";
+            if(getConf("INDEL_VCF"))
+            {
+                $indelVCF = getConf("INDEL_VCF");
+            }
+
+            $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
             $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
@@ -1795,7 +1820,13 @@ foreach my $chr (@chrs) {
                 $cmd =~ s/$outdir/\$(OUT_DIR)/g;
                 writeLocalCmd($cmd);
             }
-            my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF ".getConf("INDEL_PREFIX").".$chrchr.vcf --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
+            my $indelVCF = getConf("INDEL_PREFIX").".$chrchr.vcf";
+            if(getConf("INDEL_VCF"))
+            {
+                $indelVCF = getConf("INDEL_VCF");
+            }
+
+            my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
             $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
