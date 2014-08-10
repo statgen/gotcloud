@@ -531,9 +531,11 @@ if(getConf("RUN_SVM") eq "TRUE")
     push(@reqRefs, "OMNI_VCF");
 }
 
+
 my @refVcfs;
 foreach my $f (@reqRefs)
 {
+
     # Replace the path with the absolute path
     my $newPath = getAbsPath(getConf($f), 'REF');
     setConf($f, $newPath);
@@ -543,6 +545,26 @@ foreach my $f (@reqRefs)
     warn "ERROR: Could not read required $f: $newPath\n";
     $failReqFile = "1";
 }
+
+
+#############################################################################
+## Read FASTA INDEX file to determine chromosome size
+############################################################################
+my %hChrSizes = ();
+my $ref = getConf("REF");
+my $fai = $ref.".fai";
+if(getConf("REF_FAI"))
+{
+    $fai = getConf("REF_FAI");
+}
+
+open(IN,$fai) || die "Cannot open $fai file for reading";
+while(<IN>) {
+    my ($chr,$len) = split;
+    $hChrSizes{$chr} = $len;
+}
+close IN;
+
 
 my @chrs = split(/\s+/,getConf("CHRS"));
 my @chrchrs;
@@ -555,9 +577,24 @@ foreach my $chr (@chrs)
         $chrchr = $chr;
     }
     push(@chrchrs, $chrchr);
+
+    if(! exists $hChrSizes{$chr})
+    {
+        my $newChr = "chr$chr";
+        if(exists $hChrSizes{$newChr})
+        {
+            die "ERROR: REF file, $fai, has $newChr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+            }
+        $newChr = $chr;
+        $newChr =~ s/^chr//;
+        if(exists $hChrSizes{$newChr})
+        {
+            die "ERROR: REF file, $fai, has $newChr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+        }
+        die "ERROR: REF file, $fai, does not have $chr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+    }
 }
 
-my @refChrVcfs;
 if ( getConf("RUN_FILTER") eq "TRUE" )
 {
     # If INDEL_VCF is specified, use that instead of INDEL_PREFIX.
@@ -582,14 +619,34 @@ if ( getConf("RUN_FILTER") eq "TRUE" )
         my $newpath = getAbsPath(getConf("INDEL_PREFIX"), "REF");
         setConf("INDEL_PREFIX", $newpath);
         # check for the INDEL files for each chromosome
-        foreach my $chrchr (@chrchrs)
+        for (my $i = 0; $i < @chrs; $i++)
         {
-            if(! -r getConf("INDEL_PREFIX").".$chrchr.vcf")
+            my $chrchr = $chrchrs[$i];
+            my $chr = $chrs[$i];
+            my $vcf = getConf("INDEL_PREFIX").".$chrchr.vcf";
+            if(! -r $vcf)
             {
-                warn "ERROR: Could not read required indel file based on INDEL_PREFIX for $chrchr: ".getConf("INDEL_PREFIX").".$chrchr.vcf\n";
+                warn "ERROR: Could not read required indel file based on INDEL_PREFIX for $chrchr: $vcf\n";
                 $failReqFile = "1";
             }
-            push(@refChrVcfs, getConf("INDEL_PREFIX").".$chrchr.vcf");
+            else{
+                # Check that the VCF has the correct chromosome.
+                open(VCF, $vcf);
+                while(<VCF>)
+                {
+                    next if(/^#/);
+                    my ($vcfchr) = split(/[\t\n]+/);
+                    # Single chromsome, so only check one record.
+                    if($vcfchr ne $chr)
+                    {
+                        die "ERROR: $vcf has $vcfchr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+                    }
+                    # Since the vcf is just for a single chromosome,
+                    # only need to check one record.
+                    last;
+                }
+                close(VCF);
+            }
         }
     }
 }
@@ -597,102 +654,6 @@ if ( getConf("RUN_FILTER") eq "TRUE" )
 if($failReqFile eq "1")
 {
     die "Exiting pipeline due to required file(s) missing\n";
-}
-
-#----------------------------------------------------------------------------
-# Check for consistancy in chromosome naming.
-#----------------------------------------------------------------------------
-# Read names from REF.fai file.
-my $faiFile = getConf('REF').".fai";
-open(FAI, $faiFile) || die "ERROR: Cannot open file $faiFile: $!\n";
-my %faiChrs;
-while(<FAI>)
-{
-    my ($chr) = split(/[\t\n]+/);
-    $faiChrs{$chr} = 1;
-}
-close(FAI);
-
-# Check the VCFs for matching chromosomes in the .fai file.
-for my $refVcf (@refVcfs)
-{
-    next if($refVcf !~ /\.vcf(\.gz)?$/); # Not a vcf file.
-
-    # Get TBI
-    my $refTbi = "$refVcf.tbi";
-
-    # TBI files are bgziped
-    die "ERROR: Cannot open file $refTbi: $!\n" unless ( -s $refTbi );
-    tie *REFTBI, "IO::Zlib", $refTbi, "rb";
-
-    # Read 4 bytes (magic string)
-    my $buffer;
-    read(REFTBI, $buffer, 4);
-    if($buffer ne "TBI\1")
-    {
-        #use bytes;
-        #printf '%02x ', ord substr $buffer, 3, 1;
-        die "$refTbi is not a proper TBI file, magic != TBI\\1, instead it is ".$buffer."\n";
-    }
-
-    # Read the next 7 int32_t and throw them away.
-    read(REFTBI, $buffer, 28);
-    # Read the length of the sequence names.
-
-    read(REFTBI, $buffer, 4);
-    my $length = unpack("V", $buffer);
-
-    read(REFTBI, $buffer, $length);
-    foreach my $chr (unpack("(Z*)*", $buffer))
-    {
-        if(!exists $faiChrs{$chr})
-        {
-            my $newChr = "chr$chr";
-            if(exists $faiChrs{$newChr})
-            {
-                die "ERROR: $refTbi has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
-            }
-            $newChr = $chr;
-            $newChr =~ s/^chr//;
-            if(exists $faiChrs{$newChr})
-            {
-                die "ERROR: $refTbi has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
-            }
-            warn "WARNING: $chr found in $refTbi is not in found in $faiFile\n";
-        }
-    }
-    close(REFTBI);
-}
-
-# Check the VCFs for matching chromosomes in the .fai file.
-for my $refVcf (@refChrVcfs)
-{
-    # Read the vcf and check the chr.
-    open(VCF, $refVcf);
-    while(<VCF>)
-    {
-        next if(/^#/);
-        my ($vcfchr) = split(/[\t\n]+/);
-        # Single chromsome, so only check one record.
-        if(!exists $faiChrs{$vcfchr})
-        {
-            my $newChr = "chr$vcfchr";
-            if(exists $faiChrs{$newChr})
-            {
-                die "ERROR: $refVcf has $vcfchr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
-            }
-            $newChr = $vcfchr;
-            $newChr =~ s/^chr//;
-            if(exists $faiChrs{$newChr})
-            {
-                die "ERROR: $refVcf has $vcfchr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
-            }
-            warn "WARNING: $vcfchr found in $refVcf is not in found in $faiFile\n";
-        }
-        # Since the vcf is just for a single chromosome, only need to check one record.
-        last;
-    }
-    close(VCF);
 }
 
 #----------------------------------------------------------------------------
@@ -911,57 +872,6 @@ else {
 my @pops = sort keys %hPops;
 
 
-# Check the bam files for valid chromosomes (must be found in the ref fai file).
-for my $bam (@allbams)
-{
-    die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
-    tie *BAM, "IO::Zlib", $bam, "rb";
-
-    # Read 4 bytes (magic string)
-    my $buffer;
-    read(BAM, $buffer, 4);
-    if($buffer ne "BAM\1")
-    {
-        #use bytes;
-        #printf '%02x ', ord substr $buffer, 3, 1;
-        die "$bam is not a proper BAM file, magic != BAM\\1, instead it is ".$buffer."\n";
-    }
-    # Read the length of the header text.
-    read(BAM, $buffer, 4);
-    my $hdrLen = unpack("V", $buffer);
-    # Read & throw away the header.
-    read(BAM, $buffer, $hdrLen);
-    # Read the number of reference sequences
-    read(BAM, $buffer, 4);
-    my $numRef = unpack("V", $buffer);
-
-    # Read the length of the sequence names.
-    for(my $i = 0; $i < $numRef; ++$i)
-    {
-        # Read the length of the ref name.
-        read(BAM, $buffer, 4);
-        my $refNameLen = unpack("V", $buffer);
-        read(BAM, $buffer, $refNameLen);
-        my $chr = unpack("Z*", $buffer);
-        if(!exists $faiChrs{$chr})
-        {
-            my $newChr = "chr$chr";
-            if(exists $faiChrs{$newChr})
-            {
-                die "ERROR: $bam has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
-            }
-            $newChr = $chr;
-            $newChr =~ s/^chr//;
-            if(exists $faiChrs{$newChr})
-            {
-                die "ERROR: $bam has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
-            }
-            warn "WARNING: $chr found in $bam is not in found in $faiFile\n";
-        }
-    }
-
-}
-
 #############################################################################
 ## STEP 2a : Check for valid number of samples
 ############################################################################
@@ -996,23 +906,8 @@ print MAK "\n\n";
 
 
 #############################################################################
-## STEP 4 : Read FASTA INDEX file to determine chromosome size
+## Determine Regions.
 ############################################################################
-my %hChrSizes = ();
-my $ref = getConf("REF");
-my $fai = $ref.".fai";
-if(getConf("REF_FAI"))
-{
-    $fai = getConf("REF_FAI");
-}
-
-open(IN,$fai) || die "Cannot open $fai file for reading";
-while(<IN>) {
-    my ($chr,$len) = split;
-    $hChrSizes{$chr} = $len;
-}
-close IN;
-
 my ($callstart,$callend);
 if ( $callregion ) {
     if ( $callregion =~ /^([^:]+):(\d+)(\-\d+)?$/ ) {
@@ -1023,6 +918,109 @@ if ( $callregion ) {
     }
     else {
         die "Cannot recognize option --region $callregion\nExpected format: N:N-N\n";
+    }
+}
+
+#----------------------------------------------------------------------------
+# Check for consistancy in chromosome naming.
+#----------------------------------------------------------------------------
+my %fileChrs = ();
+# Check the bam files for valid chromosomes (must be found in the ref fai file).
+for my $bam (@allbams)
+{
+    die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
+    tie *BAM, "IO::Zlib", $bam, "rb";
+
+    # Read 4 bytes (magic string)
+    my $buffer;
+    read(BAM, $buffer, 4);
+    if($buffer ne "BAM\1")
+    {
+        #use bytes;
+        #printf '%02x ', ord substr $buffer, 3, 1;
+        die "$bam is not a proper BAM file, magic != BAM\\1, instead it is ".$buffer."\n";
+    }
+    # Read the length of the header text.
+    read(BAM, $buffer, 4);
+    my $hdrLen = unpack("V", $buffer);
+    # Read & throw away the header.
+    read(BAM, $buffer, $hdrLen);
+    # Read the number of reference sequences
+    read(BAM, $buffer, 4);
+    my $numRef = unpack("V", $buffer);
+
+    # Read the length of the sequence names.
+    for(my $i = 0; $i < $numRef; ++$i)
+    {
+        # Read the length of the ref name.
+        read(BAM, $buffer, 4);
+        my $refNameLen = unpack("V", $buffer);
+        read(BAM, $buffer, $refNameLen);
+        my $chr = unpack("Z*", $buffer);
+
+        $fileChrs{$bam}{$chr} = 1;
+
+        read(BAM, $buffer, 4);
+        my $refLen = unpack("V", $buffer);
+    }
+}
+
+# Check the VCFs for matching chromosomes in the .fai file.
+for my $refVcf (@refVcfs)
+{
+    next if($refVcf !~ /\.vcf(\.gz)?$/); # Not a vcf file.
+
+    # Get TBI
+    my $refTbi = "$refVcf.tbi";
+
+    # TBI files are bgziped
+    die "ERROR: Cannot open file $refTbi: $!\n" unless ( -s $refTbi );
+    tie *REFTBI, "IO::Zlib", $refTbi, "rb";
+
+    # Read 4 bytes (magic string)
+    my $buffer;
+    read(REFTBI, $buffer, 4);
+    if($buffer ne "TBI\1")
+    {
+        #use bytes;
+        #printf '%02x ', ord substr $buffer, 3, 1;
+        die "$refTbi is not a proper TBI file, magic != TBI\\1, instead it is ".$buffer."\n";
+    }
+
+    # Read the next 7 int32_t and throw them away.
+    read(REFTBI, $buffer, 28);
+    # Read the length of the sequence names.
+
+    read(REFTBI, $buffer, 4);
+    my $length = unpack("V", $buffer);
+
+    read(REFTBI, $buffer, $length);
+    foreach my $chr (unpack("(Z*)*", $buffer))
+    {
+        $fileChrs{$refVcf}{$chr} = 1;
+    }
+    close(REFTBI);
+}
+
+foreach my $chr (@chrs)
+{
+    foreach my $file ( sort keys %fileChrs)
+    {
+        if(!exists $fileChrs{$file}{$chr})
+        {
+            my $newChr = "chr$chr";
+            if(exists $fileChrs{$file}{$newChr})
+            {
+                die "ERROR: $file has $newChr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+            }
+            $newChr = $chr;
+            $newChr =~ s/^chr//;
+            if(exists $fileChrs{$file}{$newChr})
+            {
+                die "ERROR: $file has $newChr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+            }
+            die "ERROR: $file does not have $chr, but CHRS has $chr.  Chromosome names must be consistent.\n";
+        }
     }
 }
 
