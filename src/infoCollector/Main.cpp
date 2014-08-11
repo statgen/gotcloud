@@ -87,6 +87,11 @@ int main(int argc, char** argv) {
     //fprintf(stderr,"line = %s",line.c_str());
     StringArray tok;
     tok.ReplaceTokens(line," \t\r\n");
+    if(tok.Length() == 0)
+    {
+        // Skip blank line.
+        continue;
+    }
     if ( tok.Length() < indexSkip + 1 ) {
       Logger::gLogger->error("Cannot recognize %s in the index file",line.c_str());
     }
