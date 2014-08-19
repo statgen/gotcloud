@@ -70,7 +70,7 @@ my $gcroot = '';
 my $noPhoneHome = '';
 
 # Track if any of the "bams" are crams.
-my $isCram = 0;
+my %isCram = ();
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -797,11 +797,6 @@ while(<IN>) {
         $hPops{$mpop} = 1;
     }
     foreach my $bam (@bams) {
-        if($bam =~ /cram$/)
-        {
-            # This bam is a cram.
-            $isCram = 1;
-        }
         if(!($bam =~ /^\// ))
         {
             # check if it starts with a configuration value.
@@ -829,18 +824,6 @@ while(<IN>) {
             # die if bam is not readable
             unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
             unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
-        }
-
-        if ( (getConf("RUN_PILEUP") eq "TRUE") ||
-             (getConf("RUN_VCFPILEUP") eq "TRUE") )
-        {
-            # die if bai is not readable
-            my $bai = "$bam.bai";
-            my $bai2 = $bam;
-            $bai2 =~ s/\.bam$/.bai/;
-
-            unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
-            unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
         }
     }
     push(@allSMs,$smID);
@@ -944,10 +927,42 @@ for my $bam (@allbams)
     read(BAM, $buffer, 4);
     if($buffer ne "BAM\1")
     {
+        # Check if it is a CRAM file.
+        if($buffer eq "CRAM")
+        {
+            # This bam is a cram.
+            $isCram{$bam} = 1;
+
+            # Check for cram index.
+            if ( (getConf("RUN_PILEUP") eq "TRUE") ||
+                 (getConf("RUN_VCFPILEUP") eq "TRUE") )
+            {
+                # die if cram index is not readable
+                my $crai = "$bam.crai";
+                unless ( -r $crai ) { die "ERROR: Cannot read CRAM.crai file, '$crai'\n"; }
+                unless ( -s $crai ) { die "ERROR: $crai' is empty.\n"; }
+            }
+
+            # TODO, validate CRAM.
+            next;
+        }
         #use bytes;
         #printf '%02x ', ord substr $buffer, 3, 1;
         die "$bam is not a proper BAM file, magic != BAM\\1, instead it is ".$buffer."\n";
     }
+    # Check for BAM index.
+    if ( (getConf("RUN_PILEUP") eq "TRUE") ||
+         (getConf("RUN_VCFPILEUP") eq "TRUE") )
+    {
+        # die if bai is not readable
+        my $bai = "$bam.bai";
+        my $bai2 = $bam;
+        $bai2 =~ s/\.bam$/.bai/;
+        unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
+        unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+    }
+
+
     # Read the length of the header text.
     read(BAM, $buffer, 4);
     my $hdrLen = unpack("V", $buffer);
@@ -1656,7 +1671,7 @@ foreach my $chr (@chrs) {
                 #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                 my $cmd;
                 my $vcfInBam = $bam;
-                if($isCram == 1)
+                if(exists $isCram{$bam})
                 {
                     # Cram has to be converted to bam and streamed to vcfPileup
                     $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr | ";
@@ -1764,7 +1779,7 @@ foreach my $chr (@chrs) {
                     #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
                     my $cmd;
                     my $vcfInBam = $bam;
-                    if($isCram == 1)
+                    if(exists $isCram{$bam})
                     {
                         # Cram has to be converted to bam and streamed to vcfPileup
                         $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam | ";
