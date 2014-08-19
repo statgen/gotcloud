@@ -1,18 +1,33 @@
-#ifndef __SAMTOOLS_H__
-#define __SAMTOOLS_H__
+/*  samtools.h -- utility routines.
 
-#include <stdarg.h>
+    Copyright (C) 2013-2014 Genome Research Ltd.
 
-/** 
- *  A simplified version of Mann-Whitney U-test is calculated
- *  by default (no CDF) because it is faster and seems to work
- *  better in machine learning filtering. When enabled by setting
- *  CDF_MWU_TESTS, additional annotations will appear on mpileup's
- *  output (RPB2 in addition to RPB, etc.).
- */
-#define CDF_MWU_TESTS 0
+    Author: Petr Danecek <pd3@sanger.ac.uk>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.  */
+
+#ifndef SAMTOOLS_H
+#define SAMTOOLS_H
 
 const char *samtools_version(void);
-void error(const char *format, ...);
+
+void print_error(const char *format, ...);
+void print_error_errno(const char *format, ...);
 
 #endif

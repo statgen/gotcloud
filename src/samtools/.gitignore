@@ -1,5 +1,6 @@
 *.o
 *.dSYM
+*~
 /version.h
 
 lib*.a
@@ -11,7 +12,8 @@ lib*.a
 /misc/md5fa
 /misc/md5sum-lite
 /misc/wgsim
-/razip
 /samtools
 
 /TAGS
+
+core
