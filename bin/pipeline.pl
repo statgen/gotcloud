@@ -449,7 +449,7 @@ elsif ( $multiTargetMap ne "" ) {
 
     foreach my $sample (sort(keys(%samples)))
     {
-        die "Cannot find target information for sample $sample\n" unless (defined($hSM2BedIndex{$sample}));
+        die "ERROR: Cannot find target information for sample $sample\n" unless (defined($hSM2BedIndex{$sample}));
         $hBedIndices{$sample} = $hSM2BedIndex{$sample};
     }
 }
@@ -476,14 +476,14 @@ foreach my $chr (@chrs)
             $tmpChr =~ s/^chr//;
             if(defined($hChrSizes{$tmpChr}))
             {
-                die "Cannot find chromosome name, '$chr', in the reference file (ref has '$tmpChr').  Set 'CHRS' consistent with the reference file.\n";
+                die "ERROR: Cannot find chromosome name, '$chr', in the reference file (ref has '$tmpChr').  Set 'CHRS' consistent with the reference file.\n";
             }
         }
         else
         {
             if(defined($hChrSizes{"chr".$chr}))
             {
-                die "Cannot find chromosome name, '$chr', in the reference file (ref has 'chr$chr').  Set 'CHRS' consistent with the reference file.\n";
+                die "ERROR: Cannot find chromosome name, '$chr', in the reference file (ref has 'chr$chr').  Set 'CHRS' consistent with the reference file.\n";
             }
         }
         warn "skipping $chr, since it is not in the reference\n";
@@ -530,8 +530,9 @@ foreach my $chr (@chrs)
 }
 
 #----------------------------------------------------------------------------
-# Check for consistancy in chromosome naming.
+# Get BAM chromosome names.
 #----------------------------------------------------------------------------
+my %bamChrs = ();
 for my $bam (sort keys %bam2sample)
 {
     die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
@@ -556,7 +557,6 @@ for my $bam (sort keys %bam2sample)
     read(BAM, $buffer, 4);
     my $numRef = unpack("V", $buffer);
 
-    # Read the length of the sequence names.
     for(my $i = 0; $i < $numRef; ++$i)
     {
         # Read the length of the ref name.
@@ -564,25 +564,10 @@ for my $bam (sort keys %bam2sample)
         my $refNameLen = unpack("V", $buffer);
         read(BAM, $buffer, $refNameLen);
         my $chr = unpack("Z*", $buffer);
+        $bamChrs{$bam}{$chr} = 1;
         read(BAM, $buffer, 4);
         my $refLen = unpack("V", $buffer);
-        if(!exists $hChrSizes{$chr})
-        {
-            my $newChr = "chr$chr";
-            if(exists $hChrSizes{$newChr})
-            {
-                die "ERROR: $bam has $chr, but $fai has $newChr.  Chromosome names must be consistent.\n";
-            }
-            $newChr = $chr;
-            $newChr =~ s/^chr//;
-            if(exists $hChrSizes{$newChr})
-            {
-                die "ERROR: $bam has $chr, but $fai has $newChr.  Chromosome names must be consistent.\n";
-            }
-            warn "WARNING: $chr found in $bam is not in found in $fai\n";
-        }
     }
-
 }
 
 
@@ -628,26 +613,109 @@ my @steps = split(' ', getStepConf($opts{name},"STEPS", 1));
 my %allDirs = ();
 my %allStepInfo;
 
+my %allFileLists = ();
+
 my $needbai = 0;
+my $allChr = 0;
 
 print MAK "all: @steps\n";
 foreach my $step (@steps)
 {
     setupStepSettings($step);
+
+    if(($needbai != 1) || ($allChr != 1))
+    {
+        foreach my $depend (@{$allStepInfo{$step}{DEPEND}})
+        {
+            if(($depend eq "BAM") || ($depend eq "PER_SAMPLE_BAM"))
+            {
+                # Depends on BAMs, check if it just runs by region.
+                if(getStepInfo($step, "TYPE") =~ /PerChr/)
+                {
+                    $needbai = 1;
+                }
+                else
+                {
+                    $allChr = 1;
+                }
+                last;
+            }
+        }
+    }
 }
 
 
-if($needbai != 0)
+my %numBamWarn = ();
+for my $bam (sort keys %bam2sample)
 {
-    # Validate the BAI files.
-    for my $bam (sort keys %bam2sample)
+    # Validate all BAM chromosomes are in the reference.
+    if($allChr)
     {
+        # all chromosomes in the BAMs must be in the reference.
+        foreach my $chr (sort(keys $bamChrs{$bam}))
+        {
+            if(!exists $hChrSizes{$chr})
+            {
+                my $newChr = "chr$chr";
+                if(exists $hChrSizes{$newChr})
+                {
+                    die "ERROR: $bam has $chr, but $fai has $newChr.  Chromosome names must be consistent.\n";
+                }
+                $newChr = $chr;
+                $newChr =~ s/^chr//;
+                if(exists $hChrSizes{$newChr})
+                {
+                    die "ERROR: $bam has $chr, but $fai has $newChr.  Chromosome names must be consistent.\n";
+                }
+                die "ERROR: chromosome '$chr' found in $bam is not found in $fai\n";
+            }
+        }
+    }
+    if($needbai)
+    {
+        # Only check that all of the chromosomes in CHRS are in the BAM.
+        foreach my $chr (@chrs)
+        {
+            if(!exists $bamChrs{$bam}{$chr})
+            {
+                if($chr =~ /^chr/)
+                {
+                    my $tmpChr = $chr;
+                    $tmpChr =~ s/^chr//;
+                    if(exists $bamChrs{$bam}{$tmpChr})
+                    {
+                        die "ERROR: Cannot find chromosome name, '$chr', in BAM file, '$bam', instead it has '$tmpChr'.  The BAM file, CHRS, and the reference file must have consistent chromosome names.\n";
+                    }
+                }
+                else
+                {
+                    if(exists $bamChrs{$bam}{"chr".$chr})
+                    {
+                        die "ERROR: Cannot find chromosome name, '$chr', in BAM file, '$bam', instead it has 'chr$chr'.  The BAM file, CHRS, and the reference file must have consistent chromosome names.\n";
+                    }
+                }
+                ++$numBamWarn{$chr};
+                if($numBamWarn{$chr} == 1)
+                {
+                    warn "Warning: $chr in 'CHRS' was not found in BAM, $bam.\n";
+                }
+            }
+        }
+
+        # Validate the BAI files.
         my $bai = "$bam.bai";
         my $bai2 = $bam;
         $bai2 =~ s/\.bam$/.bai/;
-
         unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read .bai file, '$bai'\n"; }
         unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+    }
+}
+
+foreach my $chr (sort(keys %numBamWarn))
+{
+    if($numBamWarn{$chr} > 1)
+    {
+        warn "Warning: $chr in 'CHRS' was not found in $numBamWarn{$chr} BAMs.\n";
     }
 }
 
@@ -858,9 +926,18 @@ sub processTarget
         if(getStepConf($step, "FILELIST"))
         {
             my $filelist = resolveTmp(getStepConf($step, "FILELIST"));
-            my ($fileName, $dir) = fileparse($filelist);
-            system("mkdir -p $dir") &&
-            die "Unable to create directory '$dir'\n";
+            if(!exists $allFileLists{$filelist})
+            {
+                # first time this file list is processed in this run, so remove it if it already exists.
+                if(-e $filelist)
+                {
+                    unlink $filelist or die "Failed to remove previous $filelist\n";
+                }
+                $allFileLists{$filelist} = 1;
+                my ($fileName, $dir) = fileparse($filelist);
+                system("mkdir -p $dir") &&
+                die "Unable to create directory '$dir'\n";
+            }
             open(my $fh, '>>', $filelist)
             or die "Unable to append to $filelist\n$!\n";
             print $fh "$output\n";
@@ -1000,7 +1077,7 @@ sub getStepType
 
     if(hasTmpKey($output, "BAM"))    { $outputtype .= "PerBamPerSample"; }
     elsif(hasTmpKey($output, "SAMPLE")) { $outputtype .= "PerSample"; }
-    if(hasTmpKey($output, "CHR"))    { $outputtype .= "PerChr"; $needbai = 1;}
+    if(hasTmpKey($output, "CHR"))    { $outputtype .= "PerChr";}
     if(hasTmpKey($output, "START"))  { $outputtype .= "PerRegion"; }
 
 # TODO check for any other tmp keys - invalid.
@@ -1382,15 +1459,5 @@ sub setupStepSettings
         # Pull from dependencies - TODO - for now just set to all.
         $allStepInfo{$step}{SAMPLES} = \%samples;
         $allStepInfo{$step}{SAMPLES_ARRAY} = \@samplesArray;
-    }
-
-    # if we are generating a file containing the outputs, remove it if it already exists.
-    if(getStepConf($step, "FILELIST"))
-    {
-        my $filelistName = getStepConf($step, "FILELIST");
-        if(-e $filelistName)
-        {
-            unlink $filelistName or die "Failed to remove previous $filelistName\n";
-        }
     }
 }
