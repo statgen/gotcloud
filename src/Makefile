@@ -64,15 +64,15 @@ bamUtil:
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/bam $@; cd ..
 
-samtools-hybrid samtools tabix: 
+samtools-hybrid samtools: 
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
 
-bgzip: 
-	$(MAKE) -C samtools $(MAKECMDGOALS) $@
+bgzip tabix: 
+	$(MAKE) -C htslib $(MAKECMDGOALS) $@
 	mkdir --p bin/
-	cd bin/; ln -fs ../samtools/$@ $@; cd ..
+	cd bin/; ln -fs ../htslib/$@ $@; cd ..
 
 libsvm-3.1:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
