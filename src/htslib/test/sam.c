@@ -11,7 +11,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notices and this permission notice shall be included in
+The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -66,7 +66,7 @@ uint8_t *check_bam_aux_get(const bam1_t *aln, const char *tag, char type)
 #define str(x) #x
 #define xstr(x) str(x)
 
-static int aux_fields1()
+static int aux_fields1(void)
 {
     static const char sam[] = "data:"
 "@SQ\tSN:one\tLN:1000\n"
@@ -80,6 +80,7 @@ static int aux_fields1()
     bam_hdr_t *header = sam_hdr_read(in);
     bam1_t *aln = bam_init1();
     uint8_t *p;
+    uint32_t n;
     kstring_t ks = { 0, 0, NULL };
 
     if (sam_read1(in, header, aln) >= 0) {
@@ -102,7 +103,7 @@ static int aux_fields1()
             fail("XH field is \"%s\", expected \"%s\"", bam_aux2Z(p), BEEF);
 
         // TODO Invent and use bam_aux2B()
-        if ((p = check_bam_aux_get(aln, "XB", 'B')) && memcmp(p, "Bc\3\0\0\0\xfe\x00\x02", 9) != 0)
+        if ((p = check_bam_aux_get(aln, "XB", 'B')) && ! (memcmp(p, "Bc", 2) == 0 && (memcpy(&n, p+2, 4), n) == 3 && memcmp(p+6, "\xfe\x00\x02", 3) == 0))
             fail("XB field is %c,..., expected c,-2,0,+2", p[1]);
 
         if ((p = check_bam_aux_get(aln, "ZZ", 'I')) && bam_aux2i(p) != 1000000)
@@ -125,11 +126,18 @@ static int aux_fields1()
     return 1;
 }
 
-int main()
+static void iterators1(void)
+{
+    hts_itr_destroy(sam_itr_queryi(NULL, HTS_IDX_REST, 0, 0));
+    hts_itr_destroy(sam_itr_queryi(NULL, HTS_IDX_NONE, 0, 0));
+}
+
+int main(void)
 {
     status = EXIT_SUCCESS;
 
     aux_fields1();
+    iterators1();
 
     return status;
 }

@@ -1,5 +1,6 @@
 *.o
 *.pico
+*-uninstalled.pc
 /version.h
 
 lib*.a
@@ -7,6 +8,8 @@ lib*.dylib
 lib*.so
 lib*.so.*
 
+/bgzip
+/tabix
 /test/fieldarith
 /test/hfile
 /test/sam
