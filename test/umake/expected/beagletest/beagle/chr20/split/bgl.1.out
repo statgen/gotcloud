@@ -1,0 +1,117 @@
+Beagle version 3.3.1 (26 Dec 2010)
+Enter "java -jar beagle.jar" for summary of command line arguments.
+Start time: 08:48 AM EDT on 02 Jul 2014
+
+Command line: java -Xmx3640m -jar beagle.jar
+  seed=993478
+  gprobs=true
+  niterations=50
+  lowmem=true
+  like=/beagle/chr20/like/chr20.PASS.1.gz
+  out=/beagle/chr20/split/bgl.1
+
+number of markers    =    1004
+number of haplotypes =     120 (chr20.PASS.1.gz)
+
+Phasing: iteration 1
+
+Phasing: iteration 2
+
+Phasing: iteration 3
+
+Phasing: iteration 4
+
+Phasing: iteration 5
+
+Phasing: iteration 6
+
+Phasing: iteration 7
+
+Phasing: iteration 8
+
+Phasing: iteration 9
+
+Phasing: iteration 10
+
+Phasing: iteration 11
+
+Phasing: iteration 12
+
+Phasing: iteration 13
+
+Phasing: iteration 14
+
+Phasing: iteration 15
+
+Phasing: iteration 16
+
+Phasing: iteration 17
+
+Phasing: iteration 18
+
+Phasing: iteration 19
+
+Phasing: iteration 20
+
+Phasing: iteration 21
+
+Phasing: iteration 22
+
+Phasing: iteration 23
+
+Phasing: iteration 24
+
+Phasing: iteration 25
+
+Phasing: iteration 26
+
+Phasing: iteration 27
+
+Phasing: iteration 28
+
+Phasing: iteration 29
+
+Phasing: iteration 30
+
+Phasing: iteration 31
+
+Phasing: iteration 32
+
+Phasing: iteration 33
+
+Phasing: iteration 34
+
+Phasing: iteration 35
+
+Phasing: iteration 36
+
+Phasing: iteration 37
+
+Phasing: iteration 38
+
+Phasing: iteration 39
+
+Phasing: iteration 40
+
+Phasing: iteration 41
+
+Phasing: iteration 42
+
+Phasing: iteration 43
+
+Phasing: iteration 44
+
+Phasing: iteration 45
+
+Phasing: iteration 46
+
+Phasing: iteration 47
+
+Phasing: iteration 48
+
+Phasing: iteration 49
+
+Phasing: iteration 50
+
+Running time for phasing: 35 seconds
+Beagle version 3.3.1 (26 Dec 2010) finished

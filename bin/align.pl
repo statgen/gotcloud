@@ -10,7 +10,7 @@
 #       rm -rf ~/outdata
 #       d=/gotcloud/test/align
 #       /gotcloud/bin/align.pl -conf $d/test.conf \
-#          -index_file $d/indexFile.txt -ref $d/../chr20Ref/ \
+#          -index_file $d/indexFile.txt -ref_dir $d/../chr20Ref/ \
 #          -fastq_prefix $d   -out ~/outdata
 #
 #   You can verify the results on the test data are expected using:
@@ -39,6 +39,7 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use IO::Zlib;
 use File::Basename;
 use Cwd;
 use Cwd 'abs_path';
@@ -135,7 +136,6 @@ if($opts{gotcloudroot})
 }
 require GC_Common;
 require Conf;
-require Multi;
 
 my @confSettings;
 push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
@@ -237,7 +237,7 @@ if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
 if ($opts{index_file})   { push(@confSettings, "INDEX_FILE = $opts{index_file}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
-if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchops}"); }
+if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
 
 #############################################################################
 #   Load configuration variables from conf file
@@ -270,6 +270,7 @@ my $out_dir = getConf('OUT_DIR');
 my $missingReqFile = 0;
 #   These files must exist
 my @reqRefs = qw(REF DBSNP_VCF);
+
 # Loop through the defined steps & check for required exes.
 foreach my $step (@perMergeStep)
 {
@@ -306,7 +307,7 @@ my $removeExt = 0;
 setConf('MAP_TYPE', uc(getConf('MAP_TYPE')));
 
 if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') ) {
-    @mapExtensions = qw(.amb .ann .bwt .fai .pac .sa);
+    @mapExtensions = qw(.amb .ann .bwt .pac .sa);
 }
 elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
     @mapExtensions = qw(.dat _15_keys.jmp _15_meta.jmp _15_positions.jmp);
@@ -336,7 +337,78 @@ for my $extension (@mapExtensions) {
     $missingReqFile += CheckFor_REF_File($extension, $removeExt);
 }
 
+# Always require fai file.
+$missingReqFile += CheckFor_REF_File(".fai", 0);
+
 if ($missingReqFile) { die "Exiting alignment pipeline due to required file(s) missing\n"; }
+
+
+#----------------------------------------------------------------------------
+# Check for consistancy in chromosome naming.
+#----------------------------------------------------------------------------
+# Read names from REF.fai file.
+my $faiFile = getConf('REF').".fai";
+open(FAI, $faiFile) || die "ERROR: Cannot open file $faiFile: $!\n";
+my %faiChrs;
+while(<FAI>)
+{
+    my ($chr) = split(/[\t\n]+/);
+    $faiChrs{$chr} = 1;
+}
+close(FAI);
+
+# Check the VCFs for mathcing chromosomes in the .fai file.
+for my $refType (@reqRefs)
+{
+    my $refVcf = getConf($refType);
+    next if($refVcf !~ /\.vcf(\.gz)?$/); # Not a vcf file.
+
+    # Get TBI
+    my $refTbi = "$refVcf.tbi";
+
+    # TBI files are bgziped
+    die "ERROR: Cannot open file $refTbi: $!\n" unless ( -s $refTbi );
+    tie *REFTBI, "IO::Zlib", $refTbi, "rb";
+
+    # Read 4 bytes (magic string)
+    my $buffer;
+    read(REFTBI, $buffer, 4);
+    if($buffer ne "TBI\1")
+    {
+        #use bytes;
+        #printf '%02x ', ord substr $buffer, 3, 1;
+        die "$refTbi is not a proper TBI file, magic != TBI\\1, instead it is ".$buffer."\n";
+    }
+
+    # Read the next 7 int32_t and throw them away.
+    read(REFTBI, $buffer, 28);
+    # Read the length of the sequence names.
+
+    read(REFTBI, $buffer, 4);
+    my $length = unpack("V", $buffer);
+
+    read(REFTBI, $buffer, $length);
+    foreach my $chr (unpack("(Z*)*", $buffer))
+    {
+        if(!exists $faiChrs{$chr})
+        {
+            my $newChr = "chr$chr";
+            if(exists $faiChrs{$newChr})
+            {
+                die "ERROR: $refTbi has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
+            }
+            $newChr = $chr;
+            $newChr =~ s/^chr//;
+            if(exists $faiChrs{$newChr})
+            {
+                die "ERROR: $refTbi has $chr, but $faiFile has $newChr.  Chromosome names must be consistent.\n";
+            }
+            warn "WARNING: $chr found in $refTbi is not in found in $faiFile\n";
+        }
+    }
+    close(REFTBI);
+}
+
 
 #----------------------------------------------------------------------------
 #   Check for required executables
@@ -412,6 +484,31 @@ if($deprecatedFiles)
     die "EXITING: Deprecated configuration.  Please update your configyration and rerun.\n";
 }
 
+#----------------------------------------------------------------------------
+#   Check for valid parameters
+#----------------------------------------------------------------------------
+if (getConf('MAP_TYPE') eq 'BWA')
+{
+    # Validate BWA_THREADS & BWA_QUAL.
+    my $option = "-[oeidlkmMOERqB] +[0-9]+|-[LNIY]|-n +[0-9]*.?[0-9]+";
+    if(getConf("BWA_QUAL") !~ /^((${option}) +)*-q +[0-9]+( +(${option}))*$/)
+    {
+        die "ERROR: BWA_QUAL is invalid.  Be sure you specified '-q #threads', ".getConf("BWA_QUAL")."\n";
+    }
+    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+    {
+        die "ERROR: BWA_THREADS is invalid.  Be sure you specified '-t #threads', ".getConf("BWA_THREADS")."\n";
+    }
+}
+elsif(getConf('MAP_TYPE') eq 'BWA_MEM')
+{
+    # Validate BWA_THREADS
+    my $option = "-[kwdcABOELUvT] +[0-9]+|-[SPpaC]|-r +[0-9]*.?[0-9]+";
+    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+    {
+        die "ERROR: BWA_THREADS is invalid.  Be sure you specified '-t #threads', ".getConf("BWA_THREADS")."\n";
+    }
+}
 
 #----------------------------------------------------------------------------
 #   Perform phone home and check storage requirements.
@@ -455,12 +552,37 @@ open(IN,$index_file) ||
 #   Read the first line and check if it is a header or a reference
 my $line = <IN>;
 chomp($line);
+my $numSubs = 0;
+$numSubs = $line =~ s/^\s+|\s+$//g;
+my $numHdrWarn = 0;
+if(($numSubs > 0) || ($line =~ m/ \t|\t /))
+{
+    print "\nWarning: Removed spaces from the header fields of ${index_file}\n";
+    ++$numHdrWarn;
+}
 
 #   Track positions for each field
 my @fieldnames = qw(MERGE_NAME FASTQ1 FASTQ2 RGID SAMPLE LIBRARY CENTER PLATFORM);
 my %fieldname2index = ();
 foreach my $key (@fieldnames) { $fieldname2index{$key} = undef(); } # Avoid tedious hardcoding
-my @fields = split('\t', $line);
+# There are no spaces in the field names, so split on spaces.
+my @fields = split(/\s+/, $line);
+
+# If spaces were used instead of a tab between header fields, warn.
+if($line =~ m/[^\t ] +[^ \t]/)
+{
+    print "\nWarning: treating spaces as tabs in the header fields of ${index_file}\n";
+    ++$numHdrWarn;
+}
+
+# If there were two consecutive tabs between header fields, warn.
+if($line =~ m/\t\t/)
+{
+    print "\nWarning: ignoring extra tabs in the header fields of ${index_file}\n";
+    ++$numHdrWarn;
+}
+
+my $numHeaderFields = scalar @fields;
 foreach my $index (0..$#fields)
 {
     my $field = uc($fields[$index]);
@@ -468,7 +590,7 @@ foreach my $index (0..$#fields)
     $fieldname2index{$field} = $index;
 }
 foreach my $key (qw(MERGE_NAME FASTQ1)) {       # These are required, other columns could be missing
-    if (! exists($fieldname2index{$key})) { die "Index File, $index_file, is missing required header field, $key\n"; }
+    if (! defined($fieldname2index{$key})) { die "Index File, $index_file, is missing required header field, $key\n"; }
 }
 
 #----------------------------------------------------------------------------
@@ -482,30 +604,62 @@ my %fq1toCn = ();
 my %fq1toPl = ();
 my %mergeToFq1 = ();
 my %smToMerge = ();
+my $numBlanks = 0;
+my $numFieldSubs = 0;
+my $numMultiTab = 0;
 while ($line = <IN>)
 {
     chomp($line);
-    @fields = split('\t', $line);
+    $line =~ s/^\s+|\s+$//g;
+    @fields = split(/\t\s*/, $line);
+
+    if(scalar @fields == 0)
+    {
+        ++$numBlanks;
+        next;
+    }
+    if($line =~ m/\t\s+|\s+\t/)
+    {
+        ++$numFieldSubs;
+    }
+    if($line =~ m/\t\t/)
+    {
+        ++$numMultiTab;
+    }
+
+    # Remove leading/trailing spaces from each field.
+    foreach my $field (@fields)
+    {
+        $field =~ s/^\s+|\s+$//g;
+    }
+    if($numHeaderFields != scalar @fields)
+    {
+        die "\nERROR, incorrect number of fields in $index_file, ".scalar @fields.
+        " fields instead of the $numHeaderFields fields found in the header line:\n\t".
+        join("\n\t",@fields).
+        "\nRemember, tabs are the delimiter and leading/trailing white spaces are trimmed\n\n";
+    }
+
     my $fastq1 = $fields[$fieldname2index{FASTQ1}];
     my $mergeName = $fields[$fieldname2index{MERGE_NAME}];
     push @{$mergeToFq1{$mergeName}}, $fastq1;
 
-    if (exists($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
+    if (defined($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
     else { $fq1toFq2{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{RGID}))     { $fq1toRg{$fastq1} = $fields[$fieldname2index{RGID}]; }
+    if (defined($fieldname2index{RGID}))     { $fq1toRg{$fastq1} = $fields[$fieldname2index{RGID}]; }
     else { $fq1toRg{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{SAMPLE}))   { $fq1toSm{$fastq1} = $fields[$fieldname2index{SAMPLE}]; }
+    if (defined($fieldname2index{SAMPLE}))   { $fq1toSm{$fastq1} = $fields[$fieldname2index{SAMPLE}]; }
     else { $fq1toSm{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{LIBRARY}))  { $fq1toLib{$fastq1} = $fields[$fieldname2index{LIBRARY}]; }
+    if (defined($fieldname2index{LIBRARY}))  { $fq1toLib{$fastq1} = $fields[$fieldname2index{LIBRARY}]; }
     else { $fq1toLib{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{CENTER}))   { $fq1toCn{$fastq1} = $fields[$fieldname2index{CENTER}]; }
+    if (defined($fieldname2index{CENTER}))   { $fq1toCn{$fastq1} = $fields[$fieldname2index{CENTER}]; }
     else { $fq1toCn{$fastq1} = '.'; }
 
-    if (exists($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
+    if (defined($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
     else { $fq1toPl{$fastq1} = '.'; }
 
     # Update the list of per sample bams if this is the first
@@ -525,6 +679,29 @@ while ($line = <IN>)
     }
 }
 close(IN);
+
+if($numBlanks > 0)
+{
+    my $lineString = "line";
+    if($numBlanks > 1)
+    {
+        $lineString .= "s";
+    }
+    warn "\nWarning: skipped $numBlanks blank $lineString in $index_file\n";
+}
+if($numFieldSubs > 0)
+{
+    warn "\nWarning: Removed spaces from begining/end of each field in $index_file.\n";
+}
+if($numFieldSubs > 0)
+{
+    warn "\nWarning: ignoring extra tabs between fields of $index_file.\n";
+}
+
+if(($numHdrWarn > 0) || ($numBlanks > 0) || ($numFieldSubs > 0) || ($numFieldSubs > 0))
+{
+    warn "\n";
+}
 
 
 # Output the bam index to the FINAL_BAM_DIR directory
@@ -550,9 +727,9 @@ if(getConf('BAM_INDEX'))
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
 #############################################################################
-my @mkcmds = ();
+my %mkcmds = ();
 my ($fastq1, $fastq2, $rgCommand, $saiFiles, $allPolish, $allSteps, $alnFiles, $polFiles);
-foreach my $tmpmerge (keys %mergeToFq1) {
+foreach my $tmpmerge (sort (keys %mergeToFq1)) {
     my $mergeName = $tmpmerge;
     #   Reset generic variables
     $allPolish = '';
@@ -694,57 +871,96 @@ foreach my $tmpmerge (keys %mergeToFq1) {
         $s .= " -j ".$opts{numjobspersample};
     }
     $s .= " > $makef.log";
-    push @mkcmds, $s;
+    $mkcmds{$mergeName} = $s;
 }
 
 #--------------------------------------------------------------
-#   Makefile created, commands built in @mkcmds
+#   Makefile created, commands built in %mkcmds
 #   Normal case is to run these, either locally or in batch mode
 #--------------------------------------------------------------
 warn '-' x 69 . "\n";
 
 if ($opts{'dry-run'}) {
     die "#  These commands would have been run:\n" .
-        '  ' . join("\n  ",@mkcmds) . "\n";
+        '  ' . join("\n  ",sort(values %mkcmds)) . "\n";
 }
 
 #   We now have an array of commands to run launch and wait for them
 warn "Waiting while samples are processed...\n";
 my $t = time();
-$_ = $Multi::VERBOSE;               # Avoid Perl warning
-if ($opts{verbose}) { $Multi::VERBOSE = 1; }
 
 my $totaljobs = 1;
-if(defined $opts{numconcurrentsamples}) { $totaljobs = $opts{numconcurrentsamples}; }
+if(defined $opts{numconcurrentsamples}){ $totaljobs = $opts{numconcurrentsamples}; }
+
+
 if(defined $opts{numjobspersample}) { $totaljobs *= $opts{numjobspersample}; }
-if(((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq '') ||
-   (getConf('BATCH_TYPE') eq 'local')) && $totaljobs > $opts{maxlocaljobs})
+if((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq ''))
+{
+    setConf('BATCH_TYPE', 'local');
+}
+
+if((getConf('BATCH_TYPE') eq 'local') && ($totaljobs > $opts{maxlocaljobs}))
 {
     die "ERROR: can't run $totaljobs jobs with 'BATCH_TYPE = local', " .
         "max is $opts{maxlocaljobs}\n" .
         "Rerun with a different 'BATCH_TYPE' or override the local maximum ".
         "using '--maxlocaljobs $totaljobs'\n" .
         "#  These commands would have been run:\n" .
-        '  ' . join("\n  ",@mkcmds) . "\n";
+        '  ' . join("\n  ",sort(values %mkcmds)) . "\n";
 }
 
+#--------------------------------------------------------------
+#   Generate the runcluster commands in a single Makefile
+#--------------------------------------------------------------
+my $allMakef = "$out_dir/Makefiles/alignAll.Makefile";
+open(ALL_MAK,'>' . $allMakef) ||
+die "Unable to open '$allMakef' for writing.  $!\n";
 
-my $errs = Multi::RunCluster(getConf('BATCH_TYPE'), getConf('BATCH_OPTS'), \@mkcmds, $opts{numconcurrentsamples}, "$out_dir/Makefiles/jobfiles");
-if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n" }
+print ALL_MAK ".PHONY : all ".join(" ",sort(keys %mkcmds))."\n\n";
+print ALL_MAK "all: ".join(" ",sort(keys %mkcmds))."\n\n";
+
+#   Build runcluster command to be run, execute it for each command to be run
+my $unsetMakeFlags = 'MAKEFLAGS=$(patsubst --jobserver-fds=%,,$(patsubst -j,,$(MAKEFLAGS)))';
+my $runcmd = $opts{runcluster} . ' -bashdir ' . "$out_dir/Makefiles/jobfiles";
+if (getConf('BATCH_OPTS')) { $runcmd .= " -opts '" . getConf('BATCH_OPTS') . "'"; }
+if ($opts{verbose}) { $runcmd .= ' -verbose'; }
+$runcmd .= ' ' . getConf('BATCH_TYPE');
+my $errs = 0;
+foreach my $tgt (sort(keys %mkcmds))
+{
+    print ALL_MAK "$tgt:\n";
+    print ALL_MAK "\t" . $unsetMakeFlags . ' ' . $runcmd . " '" . $mkcmds{$tgt} . "'\n\n";
+}
+close ALL_MAK;
+my $allMakeCmd = "make -f $allMakef";
+if ($opts{numconcurrentsamples})
+{
+    $allMakeCmd .= " -j ".$opts{numconcurrentsamples};
+}
+$allMakeCmd .= " > $allMakef.log 2> $allMakef.err";
+print STDERR "Running $allMakeCmd...\n\n";
+system($allMakeCmd) && $errs++;
+if ($errs || $opts{verbose}) { warn "###### $errs commands failed ######\n"; }
+
 $t = time() - $t;
 print STDERR "Processing finished in $t secs";
 if ($errs) {
-        print STDERR " WITH ERRORS.  Check the logs\n" .
+        print STDERR " WITH ERRORS.  Check the logs:\n" .
+        "   $allMakef.err\n" .
+        "   $allMakef.log\n".
         "  TYPE=".getConf('BATCH_TYPE')."\n" .
         "  OPTS=".getConf('BATCH_OPTS')."\n" .
-        "  CMDS=" . join("\n    ", @mkcmds) . "\n";
+        "  CMDS=" . join("\n    ", sort(keys %mkcmds)) . "\n";
 }
 else {
     print STDERR " with no errors reported\n";
-    my $href = Multi::EngineDetails(getConf('BATCH_TYPE'));
-    if ($href->{wait} eq 'n') {
-        warn "\nReal tasks were submitted to '".getConf('BATCH_TYPE')."' and probably is not finished\n" .
-            "Use '$href->{status}' to determine when commands completes\n";
+    #   Call runcluster to figure out if this was batch or interactive
+    my $cmd = $opts{runcluster} . ' ' . getConf('BATCH_TYPE') . ' runcluster-show-details';
+    $_ = `$cmd`;
+    if (/Type=(.)/) {
+        if ("$1" eq 'b') {
+            print STDERR "\nReal tasks were submitted to '".getConf('BATCH_TYPE')."' and probably are not finished\n";
+        }
     }
 }
 exit($errs);
@@ -822,7 +1038,16 @@ sub CheckFor_REF_File {
     }
 
     $file .= $ext;
-    if (-r $file) { return 0; }
+    if(-r $file)
+    {
+        if(-s $file)
+        {
+            return 0;
+        }
+        warn "ERROR: Required file derived from REF has size 0: $file\n";
+        warn "See ${GCURL} for information about building this file\n";
+        return 1;
+    }
     warn "ERROR: Could not read required file derived from REF: $file\n";
     warn "See ${GCURL} for information about building this file\n";
     return 1;

@@ -57,6 +57,7 @@ while(<IN>)
         }
         # Open a new chromosome file.
         my $outFile = $out =~ s/$chrKey/$chr/rg;
+        $outFile =~ s/chrchr/chr/g;
         make_path(dirname ($outFile));
         print "$outFile\n";
 

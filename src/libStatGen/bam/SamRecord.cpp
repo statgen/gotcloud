@@ -29,7 +29,7 @@
 
 const char* SamRecord::DEFAULT_READ_NAME = "UNKNOWN";
 const char* SamRecord::FIELD_ABSENT_STRING = "=";
-
+int SamRecord::myNumWarns = 0;
 
 SamRecord::SamRecord()
     : myStatus(),
@@ -152,8 +152,7 @@ void SamRecord::resetRecord()
     myStatus = SamStatus::SUCCESS;
 
     NOT_FOUND_TAG_STRING = "";
-    NOT_FOUND_TAG_INT = -1;
-    NOT_FOUND_TAG_DOUBLE = -1;
+    NOT_FOUND_TAG_INT = -1; // TODO - deprecate
 }
 
 
@@ -660,13 +659,13 @@ bool SamRecord::addIntTag(const char* tag, int32_t value)
     {
         // The int is negative, so it will need to use a signed type.
         // See if it is greater than the min value for a char.
-        if(value > std::numeric_limits<char>::min())
+        if(value > ((std::numeric_limits<char>::min)()))
         {
             // It can be stored in a signed char.
             bamvtype = 'c';
             tagBufferSize += 4;
         }
-        else if(value > std::numeric_limits<short>::min())
+        else if(value > ((std::numeric_limits<short>::min)()))
         {
             // It fits in a signed short.
             bamvtype = 's';
@@ -682,13 +681,13 @@ bool SamRecord::addIntTag(const char* tag, int32_t value)
     else
     {
         // It is positive, so an unsigned type can be used.
-        if(value < std::numeric_limits<unsigned char>::max())
+        if(value < ((std::numeric_limits<unsigned char>::max)()))
         {
             // It is under the max of an unsigned char.
             bamvtype = 'C';
             tagBufferSize += 4;
         }
-        else if(value < std::numeric_limits<unsigned short>::max())
+        else if(value < ((std::numeric_limits<unsigned short>::max)()))
         {
             // It is under the max of an unsigned short.
             bamvtype = 'S';
@@ -709,42 +708,49 @@ bool SamRecord::addIntTag(const char* tag, int32_t value)
     {
         // Tag was already found.
         index = extras[hashIndex];
-
-        // First check to see if the value changed.
-        if((integers[index] == value) && (intType[index] == bamvtype))
+        
+        // Since the tagBufferSize was already updated with the new value,
+        // subtract the size for the previous tag (even if they are the same).
+        switch(intType[index])
         {
-            // The value has not changed, so do nothing.
-            return(true);
-        }
-        else
-        {
-            // Not the same value, so adjust the settings.
-            // Subtract the size of the previous tag from tagBufferSize to get
-            // the adjusted size.
-            switch(intType[index])
-            {
-                case 'c':
-                case 'C':
-                    tagBufferSize -= 4;
-                    break;
-                case 's':
-                case 'S':
-                    tagBufferSize -= 5;
-                    break;
-                case 'i':
-                case 'I':
-                    tagBufferSize -= 7;
-                    break;
-                default:
+            case 'c':
+            case 'C':
+            case 'A':
+                tagBufferSize -= 4;
+                break;
+            case 's':
+            case 'S':
+                tagBufferSize -= 5;
+                break;
+            case 'i':
+            case 'I':
+                tagBufferSize -= 7;
+                break;
+            default:
                 myStatus.setStatus(SamStatus::INVALID, 
                                    "unknown tag inttype type found.\n");
                 return(false);              
-            }
-            
-            // Update the integer value and type.
-            integers[index] = value;
-            intType[index] = bamvtype;
         }
+            
+        // Tag already existed, print message about overwriting.
+        // WARN about dropping duplicate tags.
+        if(myNumWarns++ < myMaxWarns)
+        {
+            String newVal;
+            String origVal;
+            appendIntArrayValue(index, origVal);
+            appendIntArrayValue(bamvtype, value, newVal);
+            fprintf(stderr, "WARNING: Duplicate Tags, overwritting %c%c:%c:%s with %c%c:%c:%s\n",
+                    tag[0], tag[1], intType[index], origVal.c_str(), tag[0], tag[1], bamvtype, newVal.c_str());
+            if(myNumWarns == myMaxWarns)
+            {
+                fprintf(stderr, "Suppressing rest of Duplicate Tag warnings.\n");
+            }
+        }
+
+        // Update the integer value and type.
+        integers[index] = value;
+        intType[index] = bamvtype;
     }
     else
     {
@@ -800,45 +806,37 @@ bool SamRecord::addTag(const char* tag, char vtype, const char* valuePtr)
     // First check to see if the tag is already there.
     key = MAKEKEY(tag[0], tag[1], vtype);
     unsigned int hashIndex = extras.Find(key);
-    if(hashIndex == LH_NOTFOUND)
-    {
-        // The key was not found.  If this is a 'B'/'Z', check for
-        // the key with 'Z'/'B'.
-        if(vtype == 'Z')
-        {
-            int tmpkey = MAKEKEY(tag[0], tag[1], 'B');
-            hashIndex = extras.Find(tmpkey);
-        }
-        else if(vtype == 'B')
-        {
-            int tmpkey = MAKEKEY(tag[0], tag[1], 'Z');
-            hashIndex = extras.Find(tmpkey);
-        }
-    }
     if(hashIndex != LH_NOTFOUND)
     {
         // The key was found in the hash, so get the lookup index.
         index = extras[hashIndex];
+
+        String origTag;
+        char origType = vtype;
 
         // Adjust the currently pointed to value to the new setting.
         switch (vtype)
         {
             case 'A' :
                 // First check to see if the value changed.
-                if(integers[index] == (const int)*(valuePtr))
+                if((integers[index] == (const int)*(valuePtr)) &&
+                   (intType[index] == vtype))
                 {
-                    // The value has not changed, so do nothing.
+                    // The value & type has not changed, so do nothing.
                     return(true);
                 }
                 else
                 {
-                    // Tag buffer size doesn't change between different 'A' entries.
+                    // Tag buffer size changes if type changes, so subtract & add.
+                    origType = intType[index];
+                    appendIntArrayValue(index, origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[index]);
+                    tagBufferSize += getNumericTagTypeSize(vtype);
                     integers[index] = (const int)*(valuePtr);
                     intType[index] = vtype;
                 }
                 break;
             case 'Z' :
-            case 'B' :
                 // First check to see if the value changed.
                 if(strings[index] == valuePtr)
                 {
@@ -848,15 +846,33 @@ bool SamRecord::addTag(const char* tag, char vtype, const char* valuePtr)
                 else
                 {
                     // Adjust the tagBufferSize by removing the size of the old string.
+                    origTag = strings[index];
                     tagBufferSize -= strings[index].Length();
                     strings[index] = valuePtr;
                     // Adjust the tagBufferSize by adding the size of the new string.
                     tagBufferSize += strings[index].Length();
                 }
                 break;
+            case 'B' :
+                // First check to see if the value changed.
+                if(strings[index] == valuePtr)
+                {
+                    // The value has not changed, so do nothing.
+                    return(true);
+                }
+                else
+                {
+                    // Adjust the tagBufferSize by removing the size of the old field.
+                    origTag = strings[index];
+                    tagBufferSize -= getBtagBufferSize(strings[index]);
+                    strings[index] = valuePtr;
+                    // Adjust the tagBufferSize by adding the size of the new field.
+                    tagBufferSize += getBtagBufferSize(strings[index]);
+                }
+                break;
             case 'f' :
                 // First check to see if the value changed.
-                if(doubles[index] == atof(valuePtr))
+                if(floats[index] == (float)atof(valuePtr))
                 {
                     // The value has not changed, so do nothing.
                     return(true);
@@ -864,7 +880,8 @@ bool SamRecord::addTag(const char* tag, char vtype, const char* valuePtr)
                 else
                 {
                     // Tag buffer size doesn't change between different 'f' entries.
-                    doubles[index] = atof(valuePtr);
+                    origTag.appendFullFloat(floats[index]);
+                    floats[index] = (float)atof(valuePtr);
                 }
                 break;
             default :
@@ -875,6 +892,19 @@ bool SamRecord::addTag(const char* tag, char vtype, const char* valuePtr)
                                    "Unknown custom field in a tag");
                 status = false;
                 break;
+        }
+
+        // Duplicate tag in this record.
+        // Tag already existed, print message about overwriting.
+        // WARN about dropping duplicate tags.
+        if(myNumWarns++ < myMaxWarns)
+        {
+            fprintf(stderr, "WARNING: Duplicate Tags, overwritting %c%c:%c:%s with %c%c:%c:%s\n",
+                    tag[0], tag[1], origType, origTag.c_str(), tag[0], tag[1], vtype, valuePtr);
+            if(myNumWarns == myMaxWarns)
+            {
+                fprintf(stderr, "Suppressing rest of Duplicate Tag warnings.\n");
+            }
         }
     }
     else
@@ -889,14 +919,18 @@ bool SamRecord::addTag(const char* tag, char vtype, const char* valuePtr)
                 tagBufferSize += 4;
                 break;
             case 'Z' :
-            case 'B' :
                 index = strings.Length();
                 strings.Push(valuePtr);
                 tagBufferSize += 4 + strings.Last().Length();
                 break;
+            case 'B' :
+                index = strings.Length();
+                strings.Push(valuePtr);
+                tagBufferSize += 3 + getBtagBufferSize(strings[index]);
+                break;
             case 'f' :
-                index = doubles.Length();
-                doubles.Push(atof(valuePtr));
+                index = floats.size();
+                floats.push_back((float)atof(valuePtr));
                 tagBufferSize += 7;
                 break;
             default :
@@ -937,7 +971,7 @@ void SamRecord::clearTags()
     strings.Clear();
     integers.Clear();
     intType.clear();
-    doubles.Clear();
+    floats.clear();
     myTagBufferSize = 0;
     resetTagIter();
 }
@@ -987,7 +1021,7 @@ bool SamRecord::rmTag(const char* tag, char type)
     }
 
     // Offset is set, so recalculate the buffer size without this entry.
-    // Do NOT remove from strings, integers, or doubles because then
+    // Do NOT remove from strings, integers, or floats because then
     // extras would need to be updated for all entries with the new indexes
     // into those variables.
     int rmBuffSize = 0;
@@ -1010,8 +1044,10 @@ bool SamRecord::rmTag(const char* tag, char type)
             rmBuffSize = 7;
             break;
         case 'Z':
-        case 'B':
             rmBuffSize = 4 + getString(offset).Length();
+            break;
+        case 'B':
+            rmBuffSize = 3 + getBtagBufferSize(getString(offset));
             break;
         default:
             myStatus.setStatus(SamStatus::INVALID, 
@@ -1083,7 +1119,7 @@ bool SamRecord::rmTags(const char* tags)
             }
             
             // Offset is set, so recalculate the buffer size without this entry.
-            // Do NOT remove from strings, integers, or doubles because then
+            // Do NOT remove from strings, integers, or floats because then
             // extras would need to be updated for all entries with the new indexes
             // into those variables.
             switch(vtype)
@@ -1105,8 +1141,10 @@ bool SamRecord::rmTags(const char* tags)
                     rmBuffSize += 7;
                     break;
                 case 'Z':
-                case 'B':
                     rmBuffSize += 4 + getString(offset).Length();
+                    break;
+                case 'B':
+                    rmBuffSize += 3 + getBtagBufferSize(getString(offset));
                     break;
                 default:
                     myStatus.setStatus(SamStatus::INVALID, 
@@ -1119,7 +1157,7 @@ bool SamRecord::rmTags(const char* tags)
             extras.Delete(offset);
         }
         // Increment to the next tag.
-        if(currentTagPtr[4] == ';')
+        if((currentTagPtr[4] == ';') || (currentTagPtr[4] == ','))
         {
             // Increment once more.
             currentTagPtr += 5;
@@ -1949,7 +1987,7 @@ bool SamRecord::getNextSamTag(char* tag, char& vtype, void** value)
             switch (vtype)
             {
                 case 'f' :
-                    *value = getDoublePtr(myLastTagIndex);
+                    *value = getFloatPtr(myLastTagIndex);
                     break;
                 case 'i' :
                     *value = getIntegerPtr(myLastTagIndex, vtype);
@@ -1999,7 +2037,7 @@ bool SamRecord::isIntegerType(char vtype)
 }
 
 
-bool SamRecord::isDoubleType(char vtype)
+bool SamRecord::isFloatType(char vtype)
 {
     if(vtype == 'f')
     {
@@ -2090,7 +2128,7 @@ bool SamRecord::getTagsString(const char* tags, String& returnString, char delim
                     returnString += *(int*)getIntegerPtr(offset, vtype);
                     break;
                 case 'f':
-                    returnString += *(double*)getDoublePtr(offset);
+                    returnString += *(float*)getFloatPtr(offset);
                     break;
                 case 'Z':
                 case 'B':
@@ -2104,7 +2142,7 @@ bool SamRecord::getTagsString(const char* tags, String& returnString, char delim
             };
         }
         // Increment to the next tag.
-        if(currentTagPtr[4] == ';')
+        if((currentTagPtr[4] == ';') || (currentTagPtr[4] == ','))
         {
             // Increment once more.
             currentTagPtr += 5;
@@ -2174,7 +2212,7 @@ int* SamRecord::getIntegerTag(const char * tag)
         {
             // Failed to read the tags from the buffer, so cannot
             // get tags.  setTagsFromBuffer set the errors,
-            // so just return null.
+            // so just return NULL.
             return(NULL);
         }
     }
@@ -2195,7 +2233,7 @@ int* SamRecord::getIntegerTag(const char * tag)
 }
 
 
-double* SamRecord::getDoubleTag(const char * tag)
+bool SamRecord::getIntegerTag(const char * tag, int& tagVal)
 {
     // Init to success.
     myStatus = SamStatus::SUCCESS;
@@ -2206,8 +2244,41 @@ double* SamRecord::getDoubleTag(const char * tag)
         {
             // Failed to read the tags from the buffer, so cannot
             // get tags.  setTagsFromBuffer set the errors,
-            // so just return null.
-            return(NULL);
+            // so just return false.
+            return(false);
+        }
+    }
+    
+    int key = MAKEKEY(tag[0], tag[1], 'i');
+    int offset = extras.Find(key);
+
+    int value;
+    if (offset < 0)
+    {
+        // Failed to find the tag.
+        return(false);
+    }
+    else
+        value = extras[offset];
+
+    tagVal = integers[value];
+    return(true);
+}
+
+
+bool SamRecord::getFloatTag(const char * tag, float& tagVal)
+{
+    // Init to success.
+    myStatus = SamStatus::SUCCESS;
+    // Parse the buffer if necessary.
+    if(myNeedToSetTagsFromBuffer)
+    {
+        if(!setTagsFromBuffer())
+        {
+            // Failed to read the tags from the buffer, so cannot
+            // get tags.  setTagsFromBuffer set the errors,
+            // so just return false.
+            return(false);
         }
     }
     
@@ -2218,16 +2289,17 @@ double* SamRecord::getDoubleTag(const char * tag)
     if (offset < 0)
     {
         // Failed to find the tag.
-        return(NULL);
+        return(false);
     }
     else
         value = extras[offset];
 
-    return(&(doubles[value]));
+    tagVal = floats[value];
+    return(true);
 }
 
 
-String & SamRecord::getString(const char * tag)
+const String & SamRecord::getString(const char * tag)
 {
     // Init to success.
     myStatus = SamStatus::SUCCESS;
@@ -2262,6 +2334,7 @@ String & SamRecord::getString(const char * tag)
     return strings[value];
 }
 
+
 int & SamRecord::getInteger(const char * tag)
 {
     // Init to success.
@@ -2279,7 +2352,7 @@ int & SamRecord::getInteger(const char * tag)
     
     int key = MAKEKEY(tag[0], tag[1], 'i');
     int offset = extras.Find(key);
-
+    
     int value;
     if (offset < 0)
     {
@@ -2288,39 +2361,8 @@ int & SamRecord::getInteger(const char * tag)
     }
     else
         value = extras[offset];
-
-    return integers[value];
-}
-
-
-double & SamRecord::getDouble(const char * tag)
-{
-    // Init to success.
-    myStatus = SamStatus::SUCCESS;
-    // Parse the buffer if necessary.
-    if(myNeedToSetTagsFromBuffer)
-    {
-        if(!setTagsFromBuffer())
-        {
-            // Failed to read the tags from the buffer, so cannot
-            // get tags.  setTagsFromBuffer set the error.
-            // TODO - what do we want to do on failure?
-        }
-    }
     
-    int key = MAKEKEY(tag[0], tag[1], 'f');
-    int offset = extras.Find(key);
-
-    int value;
-    if (offset < 0)
-    {
-        // TODO - what do we want to do on failure?
-        return NOT_FOUND_TAG_DOUBLE;
-    }
-    else
-        value = extras[offset];
-
-    return doubles[value];
+    return integers[value];
 }
 
 
@@ -2409,11 +2451,11 @@ void* SamRecord::getIntegerPtr(int offset, char& type)
     return &(integers[value]);
 }
 
-void* SamRecord::getDoublePtr(int offset)
+void* SamRecord::getFloatPtr(int offset)
 {
     int value = extras[offset];
 
-    return &(doubles[value]);
+    return &(floats[value]);
 }
 
 
@@ -2964,20 +3006,22 @@ bool SamRecord::setTagsFromBuffer()
 
         // First check if the tag already exists.
         unsigned int location = extras.Find(key);
+        int origIndex = 0;
         String* duplicate = NULL;
         String* origTag = NULL;
         if(location != LH_NOTFOUND)
         {
             duplicate = new String;
             origTag = new String;
+            origIndex = extras[location];
 
             *duplicate = (char)(extraPtr[0]);
             *duplicate += (char)(extraPtr[1]);
             *duplicate += ':';
-            *duplicate += (char)(extraPtr[2]);
-            *duplicate += ':';
 
             *origTag = *duplicate;
+            *duplicate += (char)(extraPtr[2]);
+            *duplicate += ':';
         }
 
         switch (extraPtr[2])
@@ -2986,7 +3030,13 @@ bool SamRecord::setTagsFromBuffer()
                 if(duplicate != NULL)
                 {
                     *duplicate += (* (char *) content);
-                    *origTag += (char)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(char *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3001,7 +3051,13 @@ bool SamRecord::setTagsFromBuffer()
                 if(duplicate != NULL)
                 {
                     *duplicate += (* (char *) content);
-                    *origTag += (char)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(char *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3016,7 +3072,13 @@ bool SamRecord::setTagsFromBuffer()
                 if(duplicate != NULL)
                 {
                     *duplicate += (* (unsigned char *) content);
-                    *origTag += (unsigned char)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(unsigned char *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3031,7 +3093,13 @@ bool SamRecord::setTagsFromBuffer()
                if(duplicate != NULL)
                 {
                     *duplicate += (* (short *) content);
-                    *origTag += (short)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(short *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3046,7 +3114,13 @@ bool SamRecord::setTagsFromBuffer()
                 if(duplicate != NULL)
                 {
                     *duplicate += (* (unsigned short *) content);
-                    *origTag += (unsigned short)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(unsigned short *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3061,7 +3135,13 @@ bool SamRecord::setTagsFromBuffer()
                 if(duplicate != NULL)
                 {
                     *duplicate += (* (int *) content);
-                    *origTag += (int)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(int *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3076,7 +3156,13 @@ bool SamRecord::setTagsFromBuffer()
                if(duplicate != NULL)
                 {
                     *duplicate += (* (unsigned int *) content);
-                    *origTag += (unsigned int)(integers[extras[location]]);
+                    *origTag += intType[origIndex];
+                    *origTag += ':';
+                    appendIntArrayValue(origIndex, *origTag);
+                    tagBufferSize -= getNumericTagTypeSize(intType[origIndex]);
+                    integers[origIndex] = *(unsigned int *)content;
+                    intType[origIndex] = extraPtr[2];
+                    tagBufferSize += getNumericTagTypeSize(intType[origIndex]);
                 }
                 else
                 {
@@ -3088,31 +3174,65 @@ bool SamRecord::setTagsFromBuffer()
                 extraPtr += 7;
                 break;
             case 'Z' :
-            case 'B' :
                 if(duplicate != NULL)
                 {
                     *duplicate += ((const char *) content);
-                    *origTag += (char*)(strings[extras[location]]);
+                    *origTag += 'Z';
+                    *origTag += ':';
+                    *origTag += (char*)(strings[origIndex]);
+                    tagBufferSize -= strings[origIndex].Length();
+                    strings[origIndex] = (const char *) content;
+                    extraPtr += 4 + strings[origIndex].Length();
+                    tagBufferSize += strings[origIndex].Length();
                 }
                 else
                 {
                     value = strings.Length();
                     strings.Push((const char *) content);
                     tagBufferSize += 4 + strings.Last().Length();
+                    extraPtr += 4 + strings.Last().Length();
                 }
-                extraPtr += 4 + strings.Last().Length();
+                break;
+            case 'B' :
+                if(duplicate != NULL)
+                {
+                    *origTag += 'B';
+                    *origTag += ':';
+                    *origTag += (char*)(strings[origIndex]);
+                    tagBufferSize -= 
+                        getBtagBufferSize(strings[origIndex]);
+                    int bufferSize = 
+                        getStringFromBtagBuffer((unsigned char*)content,
+                                                strings[origIndex]);
+                    *duplicate += (char *)(strings[origIndex]);
+                    tagBufferSize += bufferSize;
+                    extraPtr += 3 + bufferSize;
+                }
+                else
+                {
+                    value = strings.Length();
+                    String tempBTag;
+                    int bufferSize = 
+                        getStringFromBtagBuffer((unsigned char*)content,
+                                                tempBTag);
+                    strings.Push(tempBTag);
+                    tagBufferSize += 3 + bufferSize;
+                    extraPtr += 3 + bufferSize;
+                }
                 break;
             case 'f' :
                 if(duplicate != NULL)
                 {
-                    *duplicate += (* (float *) content);
-                    *origTag += (float)(doubles[extras[location]]);
+                    duplicate->appendFullFloat(* (float *) content);
+                    *origTag += 'f';
+                    *origTag += ':';
+                    origTag->appendFullFloat(floats[origIndex]);
+                    floats[origIndex] = *(float *)content;
                 }
                 else
                 {
-                    value = doubles.Length();
-                    doubles.Push(* (float *) content);
-                    fprintf(stderr, "\n\nFLOAT!!!\n\n");
+                    value = floats.size();
+                    floats.push_back(* (float *) content);
                     tagBufferSize += 7;
                 }
                 extraPtr += 7;
@@ -3121,6 +3241,20 @@ bool SamRecord::setTagsFromBuffer()
                 fprintf(stderr, 
                         "parsing BAM - Unknown custom field of type %c%c:%c\n",
                         extraPtr[0], extraPtr[1], extraPtr[2]);
+                fprintf(stderr, "BAM Tags: \n");
+
+                unsigned char* tagInfo = myPackedQuality + myRecordPtr->myReadLength;
+
+                fprintf(stderr, "\n\n");
+                tagInfo = myPackedQuality + myRecordPtr->myReadLength;
+                while(myRecordPtr->myBlockSize + 4 - 
+                      (tagInfo - (unsigned char *)myRecordPtr) > 0)
+                {
+                        fprintf(stderr, "%02x",tagInfo[0]);
+                        ++tagInfo;
+                }
+                fprintf(stderr, "\n");
+
                 // Failed on read.
                 // Increment extraPtr just by the size of the 3 known fields
                 extraPtr += 3;
@@ -3134,13 +3268,11 @@ bool SamRecord::setTagsFromBuffer()
             // Duplicate tag in this record.
             // Tag already existed, print message about overwriting.
             // WARN about dropping duplicate tags.
-            static int numWarns = 0;
-            int maxWarns = 5;
-            if(numWarns++ < maxWarns)
+            if(myNumWarns++ < myMaxWarns)
             {
                 fprintf(stderr, "WARNING: Duplicate Tags, overwritting %s with %s\n",
                         origTag->c_str(), duplicate->c_str());
-                if(numWarns == maxWarns)
+                if(myNumWarns == myMaxWarns)
                 {
                     fprintf(stderr, "Suppressing rest of Duplicate Tag warnings.\n");
                 }
@@ -3244,13 +3376,17 @@ bool SamRecord::setTagsInBuffer()
                         extraPtr += 4;
                         break;
                     case 'Z' :
-                    case 'B' :
                         sprintf(extraPtr, "%s", getString(i).c_str());
                         extraPtr += getString(i).Length() + 1;
                         break;
+                    case 'B' :
+                        extraPtr += setBtagBuffer(getString(i), extraPtr);
+                        //--TODO-- Set buffer with correct B tag
+                        //sprintf(extraPtr, "%s", getString(i).c_str());
+                        // extraPtr += getBtagBufferSize(getString(i));
+                        break;
                     case 'f' :
-                        // TODO, figure out if %f is good enough.
-                        sprintf(extraPtr, "%f", getDouble(i));
+                        *(float*)extraPtr = getFloat(i);
                         extraPtr += 4;
                         break;
                     default :
@@ -3360,11 +3496,205 @@ const char & SamRecord::getIntegerType(int offset) const
     return intType[value];
 }
 
-double & SamRecord::getDouble(int offset)
+float & SamRecord::getFloat(int offset)
 {
     int value = extras[offset];
 
-    return doubles[value];
+    return floats[value];
+ }
+ 
+
+void SamRecord::appendIntArrayValue(char type, int value, String& strVal) const
+{
+    switch(type)
+    {
+        case 'A':
+            strVal += (char)value;
+            break;
+        case 'c':
+        case 's':
+        case 'i':
+        case 'C':
+        case 'S':
+        case 'I':
+            strVal += value;
+            break;
+        default:
+            // Do nothing.
+            ;
+    }
 }
 
 
+int SamRecord::getBtagBufferSize(String& tagStr)
+{
+    if(tagStr.Length() < 1)
+    {
+        // ERROR, needs at least the type.
+        myStatus.addError(SamStatus::FAIL_PARSE, 
+                          "SamRecord::getBtagBufferSize no tag subtype specified");
+        return(0);
+    }
+    char type = tagStr[0];
+    int elementSize = getNumericTagTypeSize(type);
+    if(elementSize <= 0)
+    {
+        // ERROR, 'B' tag subtype must be numeric, so should be non-zero
+        String errorMsg = "SamRecord::getBtagBufferSize invalid tag subtype, ";
+        errorMsg += type;
+        myStatus.addError(SamStatus::FAIL_PARSE, errorMsg.c_str());
+        return(0);
+    }
+
+    // Separated by ',', so count the number of commas.
+    int numElements = 0;
+    int index = tagStr.FastFindChar(',', 0);
+    while(index > 0)
+    {
+        ++numElements;
+        index = tagStr.FastFindChar(',', index+1);
+    }
+    // Add 5 bytes: type & numElements
+    return(numElements * elementSize + 5);
+}
+
+
+int SamRecord::setBtagBuffer(String& tagStr, char* extraPtr)
+{
+    if(tagStr.Length() < 1)
+    {
+        // ERROR, needs at least the type.
+        myStatus.addError(SamStatus::FAIL_PARSE, 
+                          "SamRecord::getBtagBufferSize no tag subtype specified");
+        return(0);
+    }
+    char type = tagStr[0];
+    int elementSize = getNumericTagTypeSize(type);
+    if(elementSize <= 0)
+    {
+        // ERROR, 'B' tag subtype must be numeric, so should be non-zero
+        String errorMsg = "SamRecord::getBtagBufferSize invalid tag subtype, ";
+        errorMsg += type;
+        myStatus.addError(SamStatus::FAIL_PARSE, errorMsg.c_str());
+        return(0);
+    }
+
+    int totalInc = 0;
+    // Write the type.
+    *(char*)extraPtr = type;
+    ++extraPtr;
+    ++totalInc;
+
+    // Get the number of elements by counting ','s
+    uint32_t numElements = 0;
+    int index = tagStr.FastFindChar(',', 0);
+    while(index > 0)
+    {
+        ++numElements;
+        index = tagStr.FastFindChar(',', index+1);
+    }
+    *(uint32_t*)extraPtr = numElements;
+    extraPtr += 4;
+    totalInc += 4;
+
+    const char* stringPtr = tagStr.c_str();
+    const char* endPtr = stringPtr + tagStr.Length();
+    // increment past the subtype and ','.
+    stringPtr += 2;
+
+    char* newPtr = NULL;
+    while(stringPtr < endPtr)
+    {
+        switch(type)
+        {
+            case 'f':
+                *(float*)extraPtr = (float)(strtod(stringPtr, &newPtr));
+                break;
+            case 'c':
+                *(int8_t*)extraPtr = (int8_t)strtol(stringPtr, &newPtr, 0);
+                break;
+            case 's':
+                *(int16_t*)extraPtr = (int16_t)strtol(stringPtr, &newPtr, 0);
+                break;
+            case 'i':
+                *(int32_t*)extraPtr = (int32_t)strtol(stringPtr, &newPtr, 0);
+                break;
+            case 'C':
+                *(uint8_t*)extraPtr = (uint8_t)strtoul(stringPtr, &newPtr, 0);
+                break;
+            case 'S':
+                *(uint16_t*)extraPtr = (uint16_t)strtoul(stringPtr, &newPtr, 0);
+                break;
+            case 'I':
+                *(uint32_t*)extraPtr = (uint32_t)strtoul(stringPtr, &newPtr, 0);
+                break;
+            default :
+                myStatus.addError(SamStatus::FAIL_PARSE,
+                                  "Unknown 'B' tag subtype.");
+                break;
+        }
+        extraPtr += elementSize;
+        totalInc += elementSize;
+        stringPtr = newPtr + 1; // skip the ','
+    }
+    return(totalInc);
+}
+
+
+int SamRecord::getStringFromBtagBuffer(unsigned char* buffer, 
+                                       String& tagStr)
+{
+    tagStr.Clear();
+
+    int bufferSize = 0;
+
+    // 1st byte is the type.
+    char type = *buffer;
+    ++buffer;
+    ++bufferSize;
+    tagStr = type;
+
+    // 2nd-5th bytes are the size
+    unsigned int numEntries = *(unsigned int *)buffer;
+    buffer += 4;
+    bufferSize += 4;
+    // Num Entries is not included in the string.
+
+    int subtypeSize = getNumericTagTypeSize(type);
+
+    for(unsigned int i = 0; i < numEntries; i++)
+    {
+        tagStr += ',';
+        switch(type)
+        {
+            case 'f':
+                tagStr.appendFullFloat(*(float *)buffer);
+                break;
+            case 'c':
+                tagStr += *(int8_t *)buffer;
+                break;
+            case 's':
+                tagStr += *(int16_t *)buffer;
+                break;
+            case 'i':
+                 tagStr += *(int32_t *)buffer;
+                break;
+            case 'C':
+                tagStr += *(uint8_t *)buffer;
+                break;
+            case 'S':
+                tagStr += *(uint16_t *)buffer;
+                break;
+            case 'I':
+                tagStr += *(uint32_t *)buffer;
+                break;
+            default :
+                myStatus.addError(SamStatus::FAIL_PARSE,
+                                  "Unknown 'B' tag subtype.");
+                break;
+        }
+        buffer += subtypeSize;
+        bufferSize += subtypeSize;
+    }
+    return(bufferSize);
+}

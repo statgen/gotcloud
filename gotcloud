@@ -87,6 +87,19 @@ if ( $fcn eq 'align') {
     exit $rc>>8;
 }
 
+if ( $fcn eq 'indel') {
+    foreach my $p ("$bindir/pipeline.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, "--name", "$fcn", @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc>>8;
+}
+
 if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
 {
     foreach my $p ("$bindir/umake.pl") {
@@ -132,6 +145,29 @@ if ($fcn eq 'ldrefine') {
         {
             warn "Failed the 2nd step of ld genotype refinement: ".($rc>>8)."\n";
             warn "Ensure Beagle has successfully run to completion prior to running thunder\n";
+        }
+    }
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc>>8;
+}
+
+if ($fcn eq 'beagle4') {
+    foreach my $p ("$bindir/umake.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find umake.pl for $fcn\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, '--split4', @ARGV);
+    if ($rc) { warn "Failed the first step of beagle4: ".($rc>>8)."\n"; }
+    else
+    {
+        $rc = system($cmd, '--beagle4', @ARGV);
+        if ($rc)
+        {
+            warn "Failed the 2nd step of beagle4: ".($rc>>8)."\n";
+            warn "Ensure split4 has successfully run to completion prior to running beagle version 4\n";
         }
     }
     if ($opts{perf}) { Perf('stop'); }
@@ -191,7 +227,9 @@ gotcloud [command] [options]
    version         Print the gotcloud version
    align           Run the alignment pipeline
    snpcall         Run the snp calling pipeline
+   indel           Run the indel calling pipeline
    ldrefine        Run the LD-aware genotype refinement pipeline
+   beagle4         Run the Beagle version 4 genotype refinement pipeline
    vc              Run the variant call steps that are configured on in your configuration file
 
  Visit http://genome.sph.umich.edu/wiki/GotCloud for more detailed documentation
@@ -220,6 +258,10 @@ Run the alignment pipeline. Type 'gotcloud align -help' for more detailed inform
 
 Run the snp calling pipeline. Type 'gotcloud snpcall -help' for more detailed information
 
+=item B<indel>
+
+Run the indel calling pipeline. Type 'gotcloud indel -help' for more detailed information
+
 =item B<vc>
 
 Run the variant call steps that are configured on in your configuration file.  Type 'gotcloud vc -help' for more detailed information.
@@ -235,6 +277,10 @@ Run the beagle part of the LD-aware genotype refinement pipeline pipeline. Type 
 =item B<thunder>
 
 Run the thunder part of the LD-aware genotype refinement pipeline pipeline. Type 'gotcloud thunder -help' for more detailed information
+
+=item B<beagle4>
+
+Run the Beagle version 4 genotype refinement pipeline pipeline. Type 'gotcloud beagle4 -help' for more detailed information
 
 =back
 

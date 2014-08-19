@@ -46,7 +46,7 @@ void Revert::description()
 void Revert::usage()
 {
     BamExecutable::usage();
-    std::cerr << "\t./bam revert --in <inputFile> --out <outputFile.sam/bam/ubam (ubam is uncompressed bam)> [--cigar] [--qual] [--keepTags] [--rmBQ] [--rmTags <Tag:Type[;Tag:Type]*>] [--noeof] [--params]" << std::endl;
+    std::cerr << "\t./bam revert --in <inputFile> --out <outputFile.sam/bam/ubam (ubam is uncompressed bam)> [--cigar] [--qual] [--keepTags] [--rmBQ] [--rmTags <Tag:Type[,Tag:Type]*>] [--noeof] [--params]" << std::endl;
     std::cerr << "\tRequired Parameters:" << std::endl;
     std::cerr << "\t\t--in         : the SAM/BAM file to be read" << std::endl;
     std::cerr << "\t\t--out        : the SAM/BAM file to be written" << std::endl;
@@ -55,7 +55,7 @@ void Revert::usage()
     std::cerr << "\t\t--qual       : update the quality based on the OQ tag." << std::endl;
     std::cerr << "\t\t--keepTags   : keep the tags that are used to update the record.  Default is to remove them." << std::endl;
     std::cerr << "\t\t--rmBQ       : Remove the BQ Tag." << std::endl;
-    std::cerr << "\t\t--rmTags     : Remove the specified Tags formatted as Tag:Type;Tag:Type;Tag:Type..." << std::endl;
+    std::cerr << "\t\t--rmTags     : Remove the specified Tags formatted as Tag:Type,Tag:Type,Tag:Type..." << std::endl;
     std::cerr << "\t\t--noeof      : do not expect an EOF block on a bam file." << std::endl;
     std::cerr << "\t\t--params     : print the parameter settings" << std::endl;
     std::cerr << std::endl;
@@ -218,7 +218,6 @@ bool Revert::updateCigar(SamRecord& samRecord)
     // Get the OC tag, which is a string.
     const String* oldCigar = samRecord.getStringTag(SamTags::ORIG_CIGAR_TAG);
     // Get the OP tag, which is an integer.
-    int* oldPos = samRecord.getIntegerTag(SamTags::ORIG_POS_TAG);
 
     bool status = true;
     if(oldCigar != NULL)
@@ -232,10 +231,12 @@ bool Revert::updateCigar(SamRecord& samRecord)
             status &= samRecord.rmTag(SamTags::ORIG_CIGAR_TAG, SamTags::ORIG_CIGAR_TAG_TYPE);
         }
     }
-    if(oldPos != NULL)
+
+    int oldPos = 0;
+    if(samRecord.getIntegerTag(SamTags::ORIG_POS_TAG, oldPos))
     {
         // The old position was found, so set it in the record.
-        status &= samRecord.set1BasedPosition(*oldPos);
+        status &= samRecord.set1BasedPosition(oldPos);
 
         if(!myKeepTags)
         {

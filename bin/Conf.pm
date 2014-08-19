@@ -79,6 +79,7 @@ TODO List:
 =cut
 
 our %CONF_HASH = ();                # Configuration values (hash of hashes)
+our %BASE_SECTION = ();             # Hash of section to its base
 #
 #   VERBOSE settings:
 #       0       nothing shown
@@ -276,7 +277,19 @@ sub getConf {
     my $section = 'global';
     if ($key =~ /^(\w+)\/(.+)/) { ($section, $key) = ($1, $2); }
 
-    if (! defined($CONF_HASH{$section}{$key})) {
+    # Check this section for the key.
+    my $checkSection = $section;
+    my $val;
+    # if it isn't in this seciton, keep checking base sections
+    while(!defined $val && defined $checkSection)
+    {
+        $val = $CONF_HASH{$checkSection}{$key};
+        last if($checkSection eq 'global');
+        $checkSection = $BASE_SECTION{$checkSection};
+    }
+
+    if(!defined $val)
+    {
         if (! $required) { return ''; }
         warn "Failed: Required configuration key '$key' in section '$section' not found in the configuration files\n";
         if ($VERBOSE > 1) { return ''; }        # Sometimes do not die (for testing)
@@ -284,25 +297,59 @@ sub getConf {
     }
 
     #   Resolve sub-variables of the form $(varname)
-    my $val = $CONF_HASH{$section}{$key};
     for (1 .. 50) {             # Avoid any chance of forever looops
         if ($val !~ /^(.*)\$\(([\w\/]+)\)(.*)$/) { last; }
         my ($pre, $var, $post) = ($1, $2, $3);
-        if (exists($CONF_HASH{$section}{$var})) {
-            $val = $pre . $CONF_HASH{$section}{$var} . $post;
-            next;
+        $checkSection = $section;
+        my $found;
+
+        # Check if the sub-variable has a '/' in it.
+        if($var =~ /(\w+)\/(\w+)/)
+        {
+            my ($varSection, $varKey) = ($1, $2);
+            # check if the sub-variable's section is a parent for this section.
+            while((defined $checkSection) && ($checkSection ne 'global') &&
+                  ($checkSection ne $varSection))
+            {
+                $checkSection = $BASE_SECTION{$checkSection};
+            }
+            if($checkSection ne $varSection)
+            {
+                # the section is not a parent, so call to get its value.
+                $val = $pre . getConf($var, $required).$post;
+                next; # go to the next sub-var.
+            }
+            # The checkSection is set to the sub-var's section - which
+            # is a parent to this section, so will use this section's info
+            # in any further substitutions (which is why this isn't recursive)
+            # Now check for this key rather than the original one with the
+            # section in it.
+            $var = $varKey;
         }
-        if (exists($CONF_HASH{global}{$var})) {
-            $val = $pre . $CONF_HASH{global}{$var} . $post;
+
+        # Check the section for the sub-variable.
+        if (exists($CONF_HASH{$checkSection}{$var})) {
+            $val = $pre . $CONF_HASH{$checkSection}{$var} . $post;
             next;
         }
 
-        # Check if the var being substituted has a section
-        if ($var =~ /^(\w+\/.+)/)
+        # Didn't find it in the section, so check the base if not global.
+        while(defined $checkSection && $checkSection ne 'global')
         {
-            $val = $pre . getConf($1, $required).$post;
+            $checkSection = $BASE_SECTION{$checkSection};
+            if(exists($CONF_HASH{$checkSection}{$var}))
+            {
+                $val = $pre . $CONF_HASH{$checkSection}{$var} . $post;
+                $found = 1;
+                last;
+            }
+        }
+        if(defined $found)
+        {
             next;
         }
+
+#print "NOT_FOUND\n";
 
         my $s = "'$section'";
         if ($section ne 'global') { $s .= " or in 'global'"; }
@@ -339,8 +386,16 @@ sub ReadConfig {
         next if (/^\s*$/);              # Ignore blank lines
         s/\s+#.*$//;                    # Remove in-line comments
         #   Sections look like [ name ]
-        if (/^\[\s*(\w+)\s*\]\s*$/ ) {
+        if (/^\[\s*(\w+)\s*\]\s*(?::\s*(\w+)\s*)?$/ ) {
             $section = $1;
+            if(defined $2)
+            {
+                $BASE_SECTION{$section} = $2;
+            }
+            else
+            {
+                $BASE_SECTION{$section} = 'global';
+            }
             next;
         }
         #   Rest looks like  key=value

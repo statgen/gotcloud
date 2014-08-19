@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010  Regents of the University of Michigan
+ *  Copyright (C) 2010-2014  Regents of the University of Michigan
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,14 @@
 #include "SamFile.h"
 #include "Parameters.h"
 #include "BgzfFileType.h"
+
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
+#include <unordered_set>
+typedef std::unordered_set<std::string> ReadNameSet;
+#else
+#include <set>
+typedef std::set<std::string> ReadNameSet;
+#endif
 
 WriteRegion::WriteRegion()
     : BamExecutable(),
@@ -56,7 +64,7 @@ void WriteRegion::usage()
     BamExecutable::usage();
     std::cerr << "\t./bam writeRegion --in <inputFilename>  --out <outputFilename> [--bamIndex <bamIndexFile>] "
               << "[--refName <reference Name> | --refID <reference ID>] [--start <0-based start pos>] "
-              << "[--end <0-based end psoition>] [--bed <bed filename>] [--withinRegion] [--readName <readName>] "
+              << "[--end <0-based end psoition>] [--bed <bed filename>] [--withinRegion] [--readName <readName>] [--rnFile <readNameFileName>] "
               << "[--lshift] [--params] [--noeof]" << std::endl;
     std::cerr << "\tRequired Parameters:" << std::endl;
     std::cerr << "\t\t--in        : the BAM file to be read" << std::endl;
@@ -80,6 +88,8 @@ void WriteRegion::usage()
     std::cerr << "\t\t--bed       : use the specified bed file for regions." << std::endl;
     std::cerr << "\t\t--withinReg : only print reads fully enclosed within the region." << std::endl;
     std::cerr << "\t\t--readName  : only print reads with this read name." << std::endl;
+    std::cerr << "\t\t--rnFile    : only print reads with read names found in the specified file,\n";
+    std::cerr << "\t\t              delimited by comma, space, tab, or new line (',', ' ', '\\t', or '\\n')." << std::endl;
     std::cerr << "\tOptional Parameters For Other Operations:\n";
     std::cerr << "\t\t--lshift        : left shift indels when writing records\n";
     std::cerr << "\t\t--excludeFlags  : Skip any records with any of the specified flags set\n";
@@ -99,7 +109,9 @@ int WriteRegion::execute(int argc, char **argv)
     String outFile = "";
     String indexFile = "";
     String readName = "";
+    String rnFile = "";
     String bed = "";
+    ReadNameSet rnSet;
     myStart = UNSPECIFIED_INT;
     myEnd = UNSPECIFIED_INT;
     myPrevStart = UNSPECIFIED_INT;
@@ -130,6 +142,7 @@ int WriteRegion::execute(int argc, char **argv)
         LONG_STRINGPARAMETER("bed", &bed)
         LONG_PARAMETER("withinReg", &myWithinReg)
         LONG_STRINGPARAMETER("readName", &readName)
+        LONG_STRINGPARAMETER("rnFile", &rnFile)
         LONG_PARAMETER_GROUP("Optional Other Parameters")
         LONG_PARAMETER("lshift", &lshift)
         LONG_STRINGPARAMETER("excludeFlags", &excludeFlags)
@@ -202,6 +215,32 @@ int WriteRegion::execute(int argc, char **argv)
         myBedFile = ifopen(bed, "r");
     }
 
+    if(!rnFile.IsEmpty())
+    {
+        // Open the read name file.
+        IFILE rnFileRdr = ifopen(rnFile, "r");
+        if(rnFileRdr == NULL)
+        {
+            std::cerr << "ERROR: Could not open read name file: " 
+                      << rnFile << std::endl;
+            inputParameters.Status();
+            return(-1);
+        }
+        // Read the read names into a map.
+        std::string rn;
+        while(rnFileRdr->readTilChar(",\n\t ", rn) != -1)
+        {
+            rnSet.insert(rn);
+            rn.clear();
+        }
+        // Check if rn has a value so it works if there is no final new line.
+        if(!rn.empty())
+        {
+            rnSet.insert(rn);
+            rn.clear();
+        }
+    }
+
     if(params)
     {
         inputParameters.Status();
@@ -249,21 +288,29 @@ int WriteRegion::execute(int argc, char **argv)
                     continue;
                 }
             }
-            
+            if(!rnSet.empty())
+            {
+                if(rnSet.count(samRecord.getReadName()) == 0)
+                {
+                    // Not in the read name set, so continue to the next record.
+                    continue;
+                }
+            }
+
             // Check to see if the read has already been processed.
             if(myPrevEnd != UNSPECIFIED_INT)
             {
                 // Because we already know that the bed was sorted, 
                 // we know that the previous section started before
                 // this one, so if the previous end is greater than
-                // this record's end position we know that it
+                // this record's start position we know that it
                 // was already written in the previous section.
                 // Note: can't be equal to the previous end since
                 // the end range was exclusive, while
-                // get0BasedAlignmentEnd is inclusive.
+                // get0BasedPosition is inclusive.
                 // myPrevEnd is reset by getNextSection when a new
                 // chromosome is hit.
-                if(samRecord.get0BasedAlignmentEnd() < myPrevEnd)
+                if(samRecord.get0BasedPosition() < myPrevEnd)
                 {
                     // This record was already written.
                     continue;

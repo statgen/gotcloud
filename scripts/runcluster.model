@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+#  Lines beginning with #%keyword will be replaced by runcluster to create batch shell script
+
+#%OPTIONS    Batch engine options like ~/pbs.options here
+
+sep="##################################################"
+eko='/bin/echo -e'
+
+#%JOBNAME                           # Override previous line
+#%VERBOSE
+
+#%BASETOUCHFILE                     # basefile=path which is used to touch OK/err files
+
+okfile=${basefile:-/tmp/unset.value}.ok
+errfile=${basefile:-/tmp/unset.value}.err
+rm -f $okfile $errfile
+
+#   Just run the command
+set -o pipefail
+
+#%LOGSTART
+
+#%COMMAND                           # Here is command to execute
+rc=$?
+if [ "$rc" != "0" ]; then
+  $eko "$sep\n#  ERROR rc=$rc\n$sep\n"
+  touch $errfile                    # This can be detected by the submitter to know success
+else
+  echo "#  SUCCESS rc=$rc"
+  touch $okfile                     # This can be detected by the submitter to know failure
+fi
+
+#%LOGEND
+
+exit $rc

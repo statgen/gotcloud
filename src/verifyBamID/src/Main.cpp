@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <values.h>
 #include <math.h>
 #include <string>
 

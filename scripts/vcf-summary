@@ -97,7 +97,7 @@ if ( $dbSNPf ) {
 	while(<DBSNP>) {
 	    next if ( /^#/ );
 	    my ($chr,$bp) = split;
-	    next if ( ($auto) && ( ! ( $chr =~ /^\d+$/ ) ) );
+	    next if ( ($auto) && ( ! ( $chr =~ /^\d+$|^chr\d+$/ ) ) );
 	    $hdbsnps{"$chr:$bp"} = 1;
 	    ++$ndbsnp;
 	}
@@ -108,7 +108,7 @@ if ( $dbSNPf ) {
 	open(DBSNP,$dbSNPf) || die "Cannot open file\n";
 	while(<DBSNP>) {
 	    my ($chr,$rs,$bp) = split;
-	    next if ( ($auto) && ( ! ( $chr =~ /^\d+$/ ) ) );
+	    next if ( ($auto) && ( ! ( $chr =~ /^\d+$|^chr\d+$/ ) ) );
 	    if ( $bp ) {
 		$hdbsnps{"$chr:".($bp+1)} = 1;
 		++$ndbsnp;
@@ -174,7 +174,7 @@ elsif ( $FNRvcf ) {
     while(<IN>) {
 	next if ( /^#/ );
 	my ($chrom,$pos,$id,$ref,$alt,$qual,$filter,$info) = split(/[\t\r\n]/);
-	next if ( ($auto) && ( ! ( $chrom =~ /^\d+$/ ) ) );
+	next if ( ($auto) && ( ! ( $chrom =~ /^\d+$|^chr\d+$/ ) ) );
 	my $maf = 0;
 	if ( $info =~ /AC=(\d+);/ ) {
 	    my $AC = $1;
@@ -241,7 +241,7 @@ while(<IN>) {
         ++$numMultiAllele;
         next;
     }
-    if ( ($auto) && ( ! ( $chrom =~ /^\d+$/ ) ) )
+    if ( ($auto) && ( ! ( $chrom =~ /^\d+$|^chr\d+$/ ) ) )
     {
         ++$numNonAuto;
         next;
@@ -459,8 +459,12 @@ sub readFasta {
 
     &initRef($ref);
 
-    $chr =~ s/^chr//;
+    if(!exists $hszchrs{$chr})
+    {
+        $chr =~ s/^chr//;
+    }
     my ($startbyte,$basesperline,$bytesperline) = @{$hszchrs{$chr}};
+
     my $byteoffset = ($startbyte + int($beg/$basesperline)*$bytesperline + ( $beg % $basesperline ) - 1 );
     seek(FASTA,$byteoffset,0);
     my $pos = 0;
