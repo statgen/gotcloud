@@ -484,6 +484,27 @@ if($deprecatedFiles)
     die "EXITING: Deprecated configuration.  Please update your configyration and rerun.\n";
 }
 
+# Just warn about these deprecated values.
+my %deprecatedWarn = (
+    BAM_INDEX => "BAM_LIST",
+    FASTQ => "FASTQ_PREFIX",
+    BWA_MAX_MEM => "SORT_MAX_MEM",
+    VERIFY_BAM_ID_OPTIONS => "verifyBamID_USER_PARAMS",
+    MORE_RECAB_PARAMS => "recab_USER_PARAMS",
+    ALT_RECAB => "recab_CMD",
+    ALT_DEDUP => "dedup_CMD",
+    RUN_QPLOT => "PER_MERGE_STEPS",
+    RUN_VERIFY_BAM_ID => "PER_MERGE_STEPS",
+);
+
+foreach my $key (keys %deprecatedWarn)
+{
+    if(getConf("$key"))
+    {
+        warn "WARNING: '$key' is deprecated and has been replaced by '$deprecatedWarn{$key}'\n";
+    }
+}
+
 #----------------------------------------------------------------------------
 #   Check for valid parameters
 #----------------------------------------------------------------------------
@@ -707,14 +728,18 @@ if(($numHdrWarn > 0) || ($numBlanks > 0) || ($numFieldSubs > 0) || ($numFieldSub
 # Output the bam index to the FINAL_BAM_DIR directory
 
 # If the bam index file name is specified, write to it.
-if(getConf('BAM_INDEX'))
+if(getConf('BAM_INDEX') || getConf('BAM_LIST'))
 {
     my $bamIndex = getConf("BAM_INDEX");
+    if(!$bamIndex)
+    {
+        $bamIndex = getConf("BAM_LIST");
+    }
     open(BAM_IDX,">$bamIndex") || die "Cannot open $bamIndex for writing.  $!\n";
     # Loop through %smToMerge and print the bam index
     foreach my $key (keys %smToMerge )
     {
-        print BAM_IDX "$key\tALL";
+        print BAM_IDX "$key";
         foreach (@{$smToMerge{$key}})
         {
             print BAM_IDX "\t".&getConf("FINAL_BAM_DIR")."/".$_.".recal.bam";

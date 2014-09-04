@@ -97,7 +97,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^\s*Pedigree File : --ped \[.*vcfs/chr20/20000001.25000000/glfIndex\.ped\]$' \
     -I '^\s*Input Options : --anchor \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf\],$' \
     -I '^\s*--prefix \[.*pvcfs/chr20/20000001.25000000/\],$' \
-    -I '^\s*--index \[.*umake_test\.index\]$' \
+    -I '^\s*--list \[.*umake_test\.index\]$' \
     -I '^\s*Output Options : --outvcf \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.stats\.vcf\],$' \
     -I '^\s*Base Call File : .*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf (-bname)$' \
     -I '^Opening /.*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \

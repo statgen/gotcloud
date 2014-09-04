@@ -51,6 +51,7 @@ my %opts = (
     conf => '',
     verbose => 0,
     maxlocaljobs => 10,
+    ignoreSmCheck => '',
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
@@ -61,7 +62,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     test=s
     out_dir|outdir=s
     conf=s
-    bam_index|bamindex=s
+    bam_list|bamlist|bam_index|bamindex=s
     ref_dir|refdir=s
     ref_prefix|refprefix=s
     bam_prefix|bamprefix=s
@@ -69,6 +70,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     chrs|chroms=s
     keeptmp
     keeplog
+    ignoreSmCheck
     verbose=i
     numjobs|numjobs=i
     maxlocaljobs=i
@@ -217,7 +219,7 @@ if ($opts{bam_prefix})   { push(@confSettings, "BAM_PREFIX = $opts{bam_prefix}")
 if ($opts{base_prefix})  { push(@confSettings, "BASE_PREFIX = $opts{base_prefix}"); }
 if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
-if ($opts{bam_index})    { push(@confSettings, "BAM_INDEX = $opts{bam_index}"); }
+if ($opts{bam_list})     { push(@confSettings, "BAM_LIST = $opts{bam_list}"); }
 if ($opts{chrs})         { $opts{chrs} =~ s/,/ /g; push(@confSettings, "CHRS = $opts{chrs}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
 if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
@@ -247,6 +249,14 @@ if ((!defined $opts{batchtype}) || ($opts{batchtype} eq ""))
 if ($opts{batchtype} eq 'flux') { $opts{batchtype} = 'pbs'; }
 
 #--------------------------------------------------------------
+#   Set variables from configuration settings
+#--------------------------------------------------------------
+if(!$opts{ignoreSmCheck})
+{
+    $opts{ignoreSmCheck} = getConf("IGNORE_SM_CHECK");
+}
+
+#--------------------------------------------------------------
 #   Check required settings
 #--------------------------------------------------------------
 
@@ -256,10 +266,29 @@ if((!defined $opts{name}) || ($opts{name} eq ""))
 }
 
 my $failReqFile = "0";
-if(!getConf("BAM_INDEX"))
+my %deprecatedWarn = (
+    BAM_INDEX => "BAM_LIST",
+);
+
+foreach my $key (keys %deprecatedWarn)
 {
-    warn "ERROR: 'BAM_INDEX' required, but not set.\n";
-    $failReqFile = "1";
+    if(getConf("$key"))
+    {
+        warn "WARNING: '$key' is deprecated and has been replaced by '$deprecatedWarn{$key}'\n";
+    }
+}
+
+if(!getConf("BAM_LIST"))
+{
+    if(getConf("BAM_INDEX"))
+    {
+        setConf("BAM_LIST", getConf("BAM_INDEX"));
+    }
+    else
+    {
+        warn "ERROR: 'BAM_LIST' required, but not set.\n";
+        $failReqFile = "1";
+    }
 }
 
 if($failReqFile eq "1")
@@ -274,9 +303,9 @@ setConf("REF", $newpath);
 # determine what references it needs.
 
 #############################################################################
-## STEP  : Parse BAM INDEX FILE
+## STEP  : Parse BAM LIST FILE
 ############################################################################
-my $bamIndex = getAbsPath(getConf("BAM_INDEX"));
+my $bamList = getAbsPath(getConf("BAM_LIST"));
 my %sample2bams = ();  # hash mapping sample IDs to bams
 my %sample2SingleBam = ();  # hash mapping sample IDs to a single per sample bam
 my %bam2sample = ();  # hash mapping bams to sample IDs
@@ -288,9 +317,10 @@ my %singleBamSamples = ();
 my %multiBamSamples = ();
 my @singleBamSamplesArray = ();
 my @multiBamSamplesArray = ();
+my $noPop = 0; # number of lines with no populations, should end up 0 or equal to $numSamples.
 
-open(INDEX,$bamIndex) || die "Cannot open $bamIndex file\n";
-while (<INDEX>)
+open(LIST,$bamList) || die "Cannot open $bamList file\n";
+while (<LIST>)
 {
     chomp;
     if(!/^#/)
@@ -300,28 +330,37 @@ while (<INDEX>)
         # fail if there is no population or are no BAMs specified.
         if(!defined $pop)
         {
-            die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 1 column.\n";
+            die "ERROR: Check the format of $bamList.  It should be at least 2 columns (sample, bams or sample, population, bams), but it is only 1 column.\n";
         }
 
-        if(scalar @bams == 0)
+        # Population is optional, so check pop to see if it looks like a BAM/CRAM.
+        if($pop =~ /(bam|BAM|cram|CRAM)$/)
         {
-            die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 2 columns.\n";
+            # No population, just a BAM/CRAM, add it to the list of bams, and 
+            # set population to ALL.
+            unshift(@bams,$pop);
+            $pop = "ALL";
+            ++$noPop;
+        }
+        elsif(scalar @bams == 0)
+        {
+            die "ERROR: Check the format of $bamList.  It should be at least 3 columns (sample, population, bams), or if population is skipped, the bams/crams in the 2nd column should end in 'bam', 'BAM', 'cram', or 'CRAM'.\n";
         }
 
         # Make sure the sample id & population don't look like bam file names.
-        if($sampleID =~ /\.bam$/)
+        if($sampleID =~ /(bam|BAM|cram|CRAM)$/)
         {
-            die "ERROR: Check the format of $bamIndex.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $sampleID\n";
+            die "ERROR: Check the format of $bamList.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $sampleID\n";
         }
         if($pop =~ /\.bam$/)
         {
-            die "ERROR: Check the format of $bamIndex.\nSecond column should be the population, but it looks like a bam file.\n\tExample: $pop\n";
+            die "ERROR: Check the format of $bamList.\nSecond column should be the population, but it looks like a bam file.\n\tExample: $pop\n";
         }
 
         # Check if the sample already exists.
         if(defined $sample2bams{$sampleID})
         {
-            die "ERROR: Duplicate SampleID $sampleID in $bamIndex\n".
+            die "ERROR: Duplicate SampleID $sampleID in $bamList\n".
             "All BAMs for a SampleID should be on one line\n";
         }
 
@@ -341,6 +380,10 @@ while (<INDEX>)
             {
                 # It is relative, so make it absolute.
                 $bam = getAbsPath($bam, "BAM");
+            }
+            if(exists ($bam2sample{$bam}))
+            {
+                die "ERROR: A BAM can only appear once in the BAM_LIST, but $bam appears multiple times in $bamList\n";
             }
             $bam2sample{$bam} = $sampleID;
         }
@@ -362,13 +405,19 @@ while (<INDEX>)
         push(@samplesArray, $sampleID);
     }
 }
-close(INDEX);
+close(LIST);
 
 if(scalar keys %bam2sample == 0)
 {
-    die "ERROR: no BAMs to process, check your bam index.\n";
+    die "ERROR: no BAMs to process, check your bam list.\n";
 }
 
+my $numSamples = scalar @samplesArray;
+
+if(($noPop ne 0) && ($noPop ne $numSamples))
+{
+    die "ERROR: All entries in BAM_LIST, $bamList, must consistently either have a population column or not have a population column.  It cannot be mixed.\n";
+}
 
 #############################################################################
 ## STEP 4 : Read FASTA INDEX file to determine chromosome size
@@ -551,8 +600,33 @@ for my $bam (sort keys %bam2sample)
     # Read the length of the header text.
     read(BAM, $buffer, 4);
     my $hdrLen = unpack("V", $buffer);
-    # Read & throw away the header.
+    # Read the header.
     read(BAM, $buffer, $hdrLen);
+    my $hdr = unpack("Z*", $buffer);
+
+    # Parse the header looking for RG fields to check samples.
+    my @hdrSMs = ($hdr =~ m/SM:([^\n\t\r]*)/g);
+    my $numSMs = scalar @hdrSMs;
+    if($numSMs > 0)
+    {
+        if($numSMs > 1)
+        {
+            for(my $i = 1; $i < $numSMs; ++$i)
+            {
+                if($hdrSMs[$i] ne $hdrSMs[0])
+                {
+                    die "ERROR: GotCloud only supports BAMs with a single sample, but $bam has multiple samples, '$hdrSMs[0]' and '$hdrSMs[$i]'\n";
+                }
+            }
+        }
+
+        # Validate the Sample name matches the one in the BAM_LIST.
+        if(!$opts{ignoreSmCheck} && ($bam2sample{$bam} ne $hdrSMs[0]))
+        {
+            die "ERROR: Sample name, '$hdrSMs[0]' found in $bam does not match the one in $bamList, '$bam2sample{$bam}'\n";
+        }
+    }
+
     # Read the number of reference sequences
     read(BAM, $buffer, 4);
     my $numRef = unpack("V", $buffer);

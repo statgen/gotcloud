@@ -67,6 +67,7 @@ my $refprefix = '';
 my $batchtype = '';
 my $batchopts = '';
 my $gcroot = '';
+my $ignoreSmCheck = '';
 my $noPhoneHome = '';
 
 my $optResult = GetOptions("help",\$help,
@@ -100,6 +101,7 @@ my $optResult = GetOptions("help",\$help,
                            "verbose", \$verbose,
                            "copyglf=s", \$copyglf,
                            "chrs|chroms=s", \$chroms,
+                           "ignoresmcheck", \$ignoreSmCheck,
                            "gotcloudroot|gcroot=s", \$gcroot,
                            "noPhoneHome", \$noPhoneHome
     );
@@ -284,7 +286,10 @@ if (loadConf(\@confSettings, \@configs, $verbose)) {
 #   Set variables from configuration settings
 #--------------------------------------------------------------
 $copyglf = getConf("COPY_GLF");
-
+if(!$ignoreSmCheck)
+{
+    $ignoreSmCheck = getConf("IGNORE_SM_CHECK");
+}
 
 #-------------
 # Handle cluster setup.
@@ -441,7 +446,7 @@ foreach my $v (@validOrders) {
 print STDERR "Key configurations:\n";
 print STDERR "GOTCLOUD_ROOT: ".getConf("GOTCLOUD_ROOT")."\n";
 print STDERR "OUT_DIR:       ".getConf("OUT_DIR")."\n";
-print STDERR "BAM_INDEX:     ".getConf("BAM_INDEX")."\n";
+print STDERR "BAM_LIST:      ".getConf("BAM_LIST")."\n";
 print STDERR "REF:           ".getConf("REF")."\n";
 print STDERR "CHRS:          ".getConf("CHRS")."\n";
 print STDERR "BATCH_TYPE:    $batchtype\n";
@@ -471,36 +476,22 @@ if ( $numSteps == 0 ) {
 #--------------------------------------------------------------
 #   Check required settings
 #--------------------------------------------------------------
-my $failReqFile = "0";
 # Check to see if the old REF is set instead of the new one.
-if( getConf("FA_REF") )
+my %deprecatedDie = (
+    FA_REF => "REF",
+    DBSNP_PREFIX => "DBSNP_VCF",
+    HM3_PREFIX => "HM3_VCF",
+    OUTPUT_DIR => "OUT_DIR",
+    OUT_PREFIX => "MAKE_BASE_NAME",
+);
+my $failReqFile = "0";
+foreach my $key (keys %deprecatedDie)
 {
-    warn "ERROR: FA_REF is deprecated and has been replaced by REF, please update your configuration file and rerun\n";
-    $failReqFile = "1";
-}
-
-if( getConf("DBSNP_PREFIX") )
-{
-    warn "ERROR: DBSNP_PREFIX is deprecated and has been replaced by DBSNP_VCF, please update your configuration file and rerun\n";
-    $failReqFile = "1";
-}
-
-if( getConf("HM3_PREFIX") )
-{
-    warn "ERROR: HM3_PREFIX is deprecated and has been replaced by HM3_VCF, please update your configuration file and rerun\n";
-    $failReqFile = "1";
-}
-
-if( getConf("OUTPUT_DIR") )
-{
-    warn "ERROR: OUTPUT_DIR is deprecated and has been replaced by OUT_DIR, please update your configuration file and rerun\n";
-    $failReqFile = "1";
-}
-
-if( getConf("OUT_PREFIX") )
-{
-    warn "ERROR: OUT_PREFIX is deprecated and has been replaced by MAKE_BASE_NAME, please update your configuration file and rerun\n";
-    $failReqFile = "1";
+    if(getConf("$key"))
+    {
+        warn "ERROR: '$key' is deprecated and has been replaced by '$deprecatedDie{$key}', please update your configuration file and rerun\n";
+        $failReqFile = "1";
+    }
 }
 
 if($failReqFile eq "1")
@@ -508,11 +499,30 @@ if($failReqFile eq "1")
     die "Exiting pipeline due to deprecated settings, please fix & rerun\n";
 }
 
+my %deprecatedWarn = (
+    BAM_INDEX => "BAM_LIST",
+);
 
-if(!getConf("BAM_INDEX"))
+foreach my $key (keys %deprecatedWarn)
 {
-    warn "ERROR: 'BAM_INDEX' required, but not set.\n";
-    $failReqFile = "1";
+    if(getConf("$key"))
+    {
+        warn "WARNING: '$key' is deprecated and has been replaced by '$deprecatedWarn{$key}'\n";
+    }
+}
+
+
+if(!getConf("BAM_LIST"))
+{
+    if(getConf("BAM_INDEX"))
+    {
+        setConf("BAM_LIST", getConf("BAM_INDEX"));
+    }
+    else
+    {
+        warn "ERROR: 'BAM_LIST' required, but not set.\n";
+        $failReqFile = "1";
+    }
 }
 
 #   These files must exist
@@ -744,7 +754,7 @@ dumpConf("$outdir/".getConf("MAKE_BASE_NAME").".$makeext.conf");
 #############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
 ############################################################################
-my $bamIndex = getAbsPath(getConf("BAM_INDEX"));
+my $bamList = getAbsPath(getConf("BAM_LIST"));
 my $pedIndex = getConf("PED_INDEX");
 my %hSM2bams = ();  # hash mapping sample IDs to bams
 my %hSM2pops = ();  # hash mapping sample IDs to bams
@@ -752,10 +762,12 @@ my %hSM2sexs = ();  # hash mapping sample IDs to bams
 my @allbams = ();   # list of all bamss
 my @allbamSMs = (); # list of all samples corresponding to each BAM
 my @allSMs = ();    # list of all unique sample IDs
+my %bams2Sm = ();    # Maps bam to sample id
 my %hPops = ();
 my $numSamples = 0;
+my $noPop = 0; # number of lines with no populations, should end up 0 or equal to $numSamples.
 
-open(IN,$bamIndex) || die "Cannot open $bamIndex file\n";
+open(IN,$bamList) || die "Cannot open $bamList file\n";
 while(<IN>) {
     my ($smID,$pop,@bams) = split;
     next if(!defined $smID); # Skip empty line
@@ -763,28 +775,33 @@ while(<IN>) {
     # fail if there is no population or are no BAMs specified.
     if(!defined $pop)
     {
-        die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 1 column.\n";
+        die "ERROR: Check the format of $bamList.  It should be at least 2 columns (sample, bams or sample, population, bams), but it is only 1 column.\n";
     }
 
-    if(scalar @bams == 0)
+    # Population is optional, so check pop to see if it looks like a BAM/CRAM.
+    if($pop =~ /(bam|BAM|cram|CRAM)$/)
     {
-        die "ERROR: Check the format of $bamIndex.  It should be at least 3 columns (sample, population, bams), but it is only 2 columns.\n";
+        # No population, just a BAM/CRAM, add it to the list of bams, and 
+        # set population to ALL.
+        unshift(@bams,$pop);
+        $pop = "ALL";
+        ++$noPop;
+    }
+    elsif(scalar @bams == 0)
+    {
+        die "ERROR: Check the format of $bamList.  It should be at least 3 columns (sample, population, bams), or if population is skipped, the bams/crams in the 2nd column should end in 'bam', 'BAM', 'cram', or 'CRAM'.\n";
     }
 
-    # Make sure the sample id & population don't look like bam file names.
-    if($smID =~ /\.bam$/)
+    # Make sure the sample id doesn't look like bam/cram file names.
+    if($smID =~ /(bam|BAM|cram|CRAM)$/)
     {
-        die "ERROR: Check the format of $bamIndex.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $smID\n";
-    }
-    if($pop =~ /\.bam$/)
-    {
-        die "ERROR: Check the format of $bamIndex.\nSecond column should be the population, but it looks like a bam file.\n\tExample: $pop\n";
+        die "ERROR: Check the format of $bamList.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $smID\n";
     }
 
     my @mpops = split(/,/,$pop);
 
     if ( defined($hSM2pops{$smID}) || defined($hSM2bams{$smID}) ) {
-        die "ERROR: Duplicated sample ID $smID in $bamIndex\n".
+        die "ERROR: Duplicated sample ID $smID in $bamList\n".
         "All BAMs for a SampleID should be on one line\n";
     }
 
@@ -812,7 +829,13 @@ while(<IN>) {
         }
         push(@allbamSMs,$smID);
 
-        # If a step that requires the BAMs is beign used, check
+        if(exists ($bams2Sm{$bam}))
+        {
+            die "ERROR: A BAM can only appear once in the BAM_LIST, but $bam appears multiple times in $bamList\n";
+        }
+        $bams2Sm{$bam} = $smID;
+
+        # If a step that requires the BAMs is being used, check
         # that the BAMs can be read.
         if ( (getConf("RUN_INDEX") eq "TRUE") ||
              (getConf("RUN_PILEUP") eq "TRUE") ||
@@ -841,12 +864,23 @@ while(<IN>) {
 
 if(scalar @allbams == 0)
 {
-    die "ERROR: no BAMs to process, check your bam index.\n";
+    die "ERROR: no BAMs to process, check your bam list.\n";
 }
 
 close IN;
 
 $numSamples = @allSMs;
+
+if(($noPop ne 0) && ($noPop ne $numSamples))
+{
+    die "ERROR: All entries in BAM_LIST, $bamList, must consistently either have a population column or not have a population column.  It cannot be mixed.\n";
+}
+my $infoCollectorSkipList = "--skipList 2";
+if($noPop eq $numSamples)
+{
+    # No population column to be skipped, so just skip the sample name column.
+    $infoCollectorSkipList = "--skipList 1";
+}
 
 if ( $pedIndex ne "" ) {
     # Convert to absolute path.
@@ -878,7 +912,7 @@ my @pops = sort keys %hPops;
 # Beagle & Thunder cannot run on single samples.
 if(($numSamples < 2) && ((getConf("RUN_BEAGLE") eq "TRUE") || (getConf("RUN_BEAGLE4") eq "TRUE") || (getConf("RUN_THUNDER") eq "TRUE")))
 {
-    die "\nERROR: ldrefine, beagle, thunder, and beagle4 require at least 2 samples, but there is only $numSamples sample in $bamIndex.\n\n";
+    die "\nERROR: ldrefine, beagle, thunder, and beagle4 require at least 2 samples, but there is only $numSamples sample in $bamList.\n\n";
 }
 
 
@@ -943,8 +977,33 @@ for my $bam (@allbams)
     # Read the length of the header text.
     read(BAM, $buffer, 4);
     my $hdrLen = unpack("V", $buffer);
-    # Read & throw away the header.
+    # Read the header.
     read(BAM, $buffer, $hdrLen);
+    my $hdr = unpack("Z*", $buffer);
+
+    # Parse the header looking for RG fields to check samples.
+    my @hdrSMs = ($hdr =~ m/SM:([^\n\t\r]*)/g);
+    my $numSMs = scalar @hdrSMs;
+    if($numSMs > 0)
+    {
+        if($numSMs > 1)
+        {
+            for(my $i = 1; $i < $numSMs; ++$i)
+            {
+                if($hdrSMs[$i] ne $hdrSMs[0])
+                {
+                    die "ERROR: GotCloud only supports BAMs with a single sample, but $bam has multiple samples, '$hdrSMs[0]' and '$hdrSMs[$i]'\n";
+                }
+            }
+        }
+
+        # Validate the Sample name matches the one in the BAM_LIST.
+        if(!$ignoreSmCheck && ($bams2Sm{$bam} ne $hdrSMs[0]))
+        {
+            die "ERROR: Sample name, '$hdrSMs[0]' found in $bam does not match the one in $bamList, '$bams2Sm{$bam}'\n";
+        }
+    }
+
     # Read the number of reference sequences
     read(BAM, $buffer, 4);
     my $numRef = unpack("V", $buffer);
@@ -1047,7 +1106,7 @@ my $thunderDir = "\$(OUT_DIR)/".getConf("THUNDER_DIR");
 my $thunderDirReal = "$outdir/".getConf("THUNDER_DIR");
 my $remotePrefix = getConf("REMOTE_PREFIX");
 
-my $bamIndexRemote = ($bamIndex =~ /^\//) ? "$remotePrefix$bamIndex" : ($remotePrefix.getcwd()."/".$bamIndex);
+my $bamListRemote = ($bamList =~ /^\//) ? "$remotePrefix$bamList" : ($remotePrefix.getcwd()."/".$bamList);
 
 my $sleepMultiplier = getConf("SLEEP_MULT");
 if($sleepMultiplier eq "")
@@ -1326,7 +1385,7 @@ foreach my $chr (@chrs) {
         }
         my $beaglePrefix = "$beagleDir/$chrchr/$chrchr.filtered.PASS.beagled";
         if ( $#pops > 0 ) {
-            my $cmd = getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamIndexRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
+            my $cmd = getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamListRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$beagleDir/$chrchr/subset")."\n";
             print MAK "\n";
@@ -1682,7 +1741,7 @@ foreach my $chr (@chrs) {
 
             my $expandFlag = ( getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
             my @cmds = ();
-            my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/ --suffix .$chr.vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
+            my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/ --suffix .$chr.vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 
             my $mvcfPrefix = "$remotePrefix$vcfDir/$chrchr/$chrchr";
@@ -1792,12 +1851,12 @@ foreach my $chr (@chrs) {
                         push(@pvcfs,$pvcf);
                     }
 
-                    my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
+                    my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
                 }
                 else {
-                    my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --index $bamIndexRemote 2> $gvcf.err";
+                    my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
                 }
@@ -2140,7 +2199,7 @@ exit($rc >> 8);
 #
 #   Create the glf index file for the specified region if:
 #      * it does not exist
-#      * it is older than the bam index file
+#      * it is older than the bam list file
 #--------------------------------------------------------------
 sub handleGlfIndexFile
 {
@@ -2165,8 +2224,8 @@ sub handleGlfIndexFile
             my $expectedLine = "$allSMs[0]\t$allSMs[0]\t0\t0\t$hSM2sexs{$allSMs[0]}\t$smGlf\n";
             # don't write the glfIndex file if:
             #    1) the first line is identical to the expected line (checks for copyGlf changes)
-            #    2) the glfIndexFile is newer than the bamIndex
-            if( ($expectedLine eq $firstLine) && ( -M "$bamIndex" >= -M "$glfIndexFile" ) )
+            #    2) the glfIndexFile is newer than the bamList
+            if( ($expectedLine eq $firstLine) && ( -M "$bamList" >= -M "$glfIndexFile" ) )
             {
                 $writeGlf = 0;
             }
@@ -2607,7 +2666,7 @@ These variables can be referenced in the values of other lines.
 This short example will give you an idea of a configuration file:
 
   CHRS = 20
-  BAM_INDEX = indexFile.txt
+  BAM_LIST = listFile.txt
   # References
   REF_ROOT = $(TEST_ROOT)/ref
   REF = $(REF_ROOT)/karma.ref/human.g1k.v37.chr20.fa
@@ -2615,7 +2674,7 @@ This short example will give you an idea of a configuration file:
   DBSNP_VCF =  $(REF_ROOT)/dbSNP/dbsnp135_chr20.vcf.gz
   HM3_VCF =  $(REF_ROOT)/HapMap3/hapmap_3.3.b37.sites.chr20.vcf.gz
 
-The B<bam index> file specifies information about individuals and paths to
+The B<bam list> file specifies information about individuals and paths to
 bam data. The data is tab delimited.
 
 =head1 OPTIONS
@@ -2725,7 +2784,7 @@ This specifies a directory prefix which should be added to relative reference fi
 
 =item B<--bam_prefix dir>
 
-This specifies a directory prefix which should be added to relative paths in the bam index file.
+This specifies a directory prefix which should be added to relative paths in the bam list file.
 
 =item B<--base_prefix dir>
 
