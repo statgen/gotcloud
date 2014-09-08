@@ -85,7 +85,7 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ $SKIP_FILES \
     -I '^\[bwa_sai2sam_pe_core\] refine gapped alignments\.\.\. ' \
     -I '^\[bwa_sai2sam_pe_core\] print alignments\.\.\. ' \
     -I '^pdf(file=".*QCFiles/Sample[1-3].qplot.pdf", height=12, width=12);$' \
-    -I $'^SampleID[312]\t.*bams/Sample[123]\.recal\.bam$' \
+    -I $'^Sample[ID]*[312]\t.*bams/Sample[123]\.recal\.bam$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
@@ -137,7 +137,7 @@ if [ "$?" != "0" ]; then
 fi
 
 for file in $QEMPS; do
-    sort $RESULTS_DIR/$QEMP_SUBDIR/$file | diff - $EXPECTED_DIR/$QEMP_SUBDIR/$file >> $DIFFRESULTS
+    diff <(sort $RESULTS_DIR/$QEMP_SUBDIR/$file) <(sort $EXPECTED_DIR/$QEMP_SUBDIR/$file) >> $DIFFRESULTS
     if [ "$?" != "0" ]; then
         echo "$RESULTS_DIR/$QEMP_SUBDIR/$file does not match $EXPECTED_DIR/$QEMP_SUBDIR/$file. See mismatches in $DIFFRESULTS"
         exit 2

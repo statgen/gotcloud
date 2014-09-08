@@ -73,7 +73,7 @@ do
 done
 
 SKIP_LOGS=""
-for file in umake_test.snpcall umake_test.beagle umake_test.thunder umake_test.split4 umake_test.beagle4
+for file in umake_test.snpcall umake_test.beagle umake_test.thunder umake_test.split4 umake_test.beagle4 umake.snpcall umake.beagle umake.thunder umake.split4 umake.beagle4
 do
   SKIP_LOGS+="-x $file.conf -x $file.Makefile.log -x $file.Makefile.cluster "
 done
@@ -94,21 +94,21 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I "^##filedate=" \
     -I '^Writing to VCF file .*vcfs/chr20/chr20.*filtered\.sites\.vcf$' \
     -I '^INDEL5 : INDEL >= 5 bp with .*chr20Ref/1kg\.pilot_release\.merged\.indels\.sites\.hg19\.chr20\.vcf$'\
-    -I '^\s*Pedigree File : --ped \[.*vcfs/chr20/20000001.25000000/glfIndex\.ped\]$' \
-    -I '^\s*Input Options : --anchor \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf\],$' \
-    -I '^\s*--prefix \[.*pvcfs/chr20/20000001.25000000/\],$' \
-    -I '^\s*--list \[.*umake_test\.index\]$' \
-    -I '^\s*Output Options : --outvcf \[.*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.stats\.vcf\],$' \
-    -I '^\s*Base Call File : .*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.vcf (-bname)$' \
+    -I '^\s*Pedigree File : --ped \[.*vcfs/chr20/[0-9]*\.[0-9]*/glfIndex\.ped\]$' \
+    -I '^\s*Input Options : --anchor \[.*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.vcf\],$' \
+    -I '^\s*--prefix \[.*pvcfs/chr20/[0-9]*\.[0-9]*/\],$' \
+    -I '^\s*--list \[[^][:space:]]*\]$' \
+    -I '^\s*Output Options : --outvcf \[.*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.stats\.vcf\],$' \
+    -I '^\s*Base Call File : .*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.vcf (-bname)$' \
     -I '^Opening /.*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \
     -I '^[^[:space:]]*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.gz$' \
-    -I '^[^[:space:]]*pvcfs/chr20/20000001.25000000/NA[0-9]*\.mapped.*\.bam\.20\.20000001.25000000\.vcf\.gz$' \
-    -I '^[^[:space:]]*glfs/samples/chr20/20000001.25000000/NA[0-9]*\.20\.20000001.25000000\.glf$' \
-    -I '^bam file\s* : .*bams/NA[0-9]*\.mapped.*\.bam$' \
-    -I '^input VCF file\s*: .*vcfs/chr20/20000001.25000000/chr20\.20000001.25000000\.sites\.vcf$' \
-    -I '^bam index file\s*: .*bams/NA[0-9]*\.mapped.*\.bam\.bai$' \
-    -I '^output VCF file\s*: .*pvcfs/chr20/20000001.25000000/NA[0-9]*\.mapped.*\.bam\.20\.20000001.25000000\.vcf\.gz (gzip)$' \
-    -I '^NA[0-9]*\s*NA[0-9]*\s*0\s*0\s*2\s*.*glfs/samples/chr20/20000001.25000000/NA[0-9]*\.20\.20000001.25000000\.glf$' \
+    -I '^[^[:space:]]*pvcfs/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.bam\.20\.[0-9]*\.[0-9]*\.vcf\.gz$' \
+    -I '^[^[:space:]]*glfs/samples/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.20\.[0-9]*\.[0-9]*\.glf$' \
+    -I '^bam file\s* : .*bams/[^/ \n\t]*\.bam$' \
+    -I '^input VCF file\s*: .*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.sites\.vcf$' \
+    -I '^bam index file\s*: .*bams/[^/ \n\t]*\.bam\.bai$' \
+    -I '^output VCF file\s*: .*pvcfs/chr20/[0-9]*.[0-9]*/[^/ \n\t]*\.bam\.20\.[0-9]*.[0-9]*\.vcf\.gz (gzip)$' \
+    -I '^[^/ \n\t]*\s*[^/ \n\t]*\s*0\s*0\s*2\s*.*glfs/samples/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.20\.[0-9]*\.[0-9]*\.glf$' \
     -I '^OUT_DIR=.*$' \
     -I '^GOTCLOUD_ROOT=.*$' \
     -I '^Reading Input File .*chr20.filtered.sites.vcf.raw$' \

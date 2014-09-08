@@ -1869,6 +1869,7 @@ foreach my $chr (@chrs) {
             print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
             if ( $#uniqBeds < 0 ) {
                 my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf\n";
+                $cmd =~ s/$outdir/\$(OUT_DIR)/g;
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 print MAK "$cmd";
             }
@@ -1973,6 +1974,7 @@ foreach my $chr (@chrs) {
         print MAK ".OK\n";
         if ( $#uniqBeds < 0 ) {
             my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @vcfs > $out.vcf\n";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
         }

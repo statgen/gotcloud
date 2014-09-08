@@ -610,9 +610,24 @@ foreach my $index (0..$#fields)
     if (! exists($fieldname2index{$field})) { warn "Warning, ignoring unknown header field, $field\n"; next; }
     $fieldname2index{$field} = $index;
 }
-foreach my $key (qw(MERGE_NAME FASTQ1)) {       # These are required, other columns could be missing
+foreach my $key (qw(FASTQ1)) {       # These are required, other columns could be missing
     if (! defined($fieldname2index{$key})) { die "Index File, $index_file, is missing required header field, $key\n"; }
 }
+
+# Either MERGE_NAME or SAMPLE are required.
+if(! defined($fieldname2index{MERGE_NAME}))
+{
+    if(! defined($fieldname2index{SAMPLE}))
+    {
+        die "Index File, $index_file, is missing required header field.  Either 'MERGE_NAME' or 'SAMPLE' is required.\n";
+    }
+    else
+    {
+        $fieldname2index{MERGE_NAME} = $fieldname2index{SAMPLE};
+    }
+}
+
+
 
 #----------------------------------------------------------------------------
 #   Read the rest of the file
@@ -663,6 +678,18 @@ while ($line = <IN>)
 
     my $fastq1 = $fields[$fieldname2index{FASTQ1}];
     my $mergeName = $fields[$fieldname2index{MERGE_NAME}];
+    if($mergeName eq '.')
+    {
+        # If merge name is not set, check the sample.
+        if (defined($fieldname2index{SAMPLE}))
+        {
+            $mergeName = $fields[$fieldname2index{SAMPLE}];
+        }
+        if($mergeName eq '.')
+        {
+            die "\nERROR: It is invalid to have a '.' in both the 'MERGE_NAME' and 'SAMPLE' fields of $index_file.\n";
+        }
+    }
     push @{$mergeToFq1{$mergeName}}, $fastq1;
 
     if (defined($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
@@ -697,6 +724,10 @@ while ($line = <IN>)
         {
             push(@{$smToMerge{$fq1toSm{$fastq1}}}, $mergeName);
         }
+    }
+    if($fq1toSm{$fastq1} eq '.')
+    {
+        $fq1toSm{$fastq1} = $mergeName;
     }
 }
 close(IN);
@@ -827,8 +858,8 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
                 if (getConf('MAP_TYPE') eq 'BWA') { $rgCommand = "-r"; }
                 else { $rgCommand = "-R"; }
                 $rgCommand .= " \"\@RG\tID:$rgid";
-                #   Only add the rg fields if they are specified
-                if ($sample ne ".")   { $rgCommand .= "\tSM:$sample"; }
+                $rgCommand .= "\tSM:$sample";
+                #   Only add the optional rg fields if they are specified
                 if ($library ne ".")  { $rgCommand .= "\tLB:$library"; }
                 if ($center ne '.')   { $rgCommand .= "\tCN:$center"; }
                 if ($platform ne '.') { $rgCommand .= "\tPL:$platform"; }
@@ -839,8 +870,8 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
         elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
             if ($rgid ne ".") {
                 $rgCommand = "-id $rgid";
+                $rgCommand .= " -sam $sample";
                 # only add the rg fields if they are specified.
-                if ($sample ne ".")   { $rgCommand .= " -sam $sample"; }
                 if ($library ne ".")  { $rgCommand .= " -ln $library"; }
                 if ($center ne '.')   { $rgCommand .= " -cn $center"; }
                 if ($platform ne '.') { $rgCommand .= " -st $platform"; }
