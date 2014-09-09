@@ -1171,7 +1171,13 @@ elsif ( $multiTargetMap ne "" ) {
 }
 
 foreach my $bed (@uniqBeds) {
-    my $r = parseTarget($bed,getConf("OFFSET_OFF_TARGET"));
+    my $offTarget = getIntConf("OFFSET_OFF_TARGET");
+    # If OFFSET_OFF_TARGET is not set, default to 0.
+    if(!$offTarget)
+    {
+        $offTarget = 0;
+    }
+    my $r = parseTarget($bed, $offTarget);
     push(@targetIntervals,$r);
 }
 
@@ -1242,21 +1248,32 @@ foreach my $chr (@chrs) {
     #############################################################################
     ## STEP 9 : WRITE .loci file IF NECESSARY
     #############################################################################
-    if ( ( ( getConf("WRITE_TARGET_LOCI") eq "TRUE" ) ||
-           ( getConf("WRITE_TARGET_LOCI") eq "ALWAYS" ) ) &&
-         ( getConf("RUN_PILEUP") eq "TRUE" ) )
+    if ( ($#uniqBeds >= 0) && (getConf("RUN_PILEUP") eq "TRUE") )
     {
-        die "No target file is given but WRITE_TARGET_LOCI is TRUE\n" if ( $#uniqBeds < 0 );
-
         ## Generate target loci information
         for(my $i=0; $i < @uniqBeds; ++$i) {
             my $printBedName = 0;
             my $outDir = "$targetDirReal/$uniqBedFns[$i]/$chrchr";
             make_path($outDir);
             for(my $j=0; $j < @unitStarts; ++$j) {
-                if( ( getConf("WRITE_TARGET_LOCI") eq "ALWAYS" ) ||
-                    (! -r "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") ||
-                    ( -M "$uniqBeds[$i]" < -M "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci" ) )
+                # Write the loci file if:
+                #   1) it does not exist
+                #   2) the bed file is newer than the loci file
+                #   3) the bed file is not the same one used to create the previous loci file
+                my $bedNameFile = "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].txt";
+                my $bedName = "";
+                if(-r $bedNameFile)
+                {
+                    # Check: 3) the bed file is not the same one used to create the previous loci file
+                    open(FILE, $bedNameFile) or die "Can't read file '$bedNameFile' [$!]\n";  
+                    $bedName = <FILE>;  # bed name on first line.
+                    chomp $bedName;
+                    close (FILE);
+                }
+
+                if( (! -r "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci") ||
+                    ( -M "$uniqBeds[$i]" < -M "$outDir/$chr.$unitStarts[$j].$unitEnds[$j].loci" ) ||
+                    ( $bedName ne $uniqBeds[$i] ) )
                 {
                     if($printBedName == 0)
                     {
@@ -1277,6 +1294,9 @@ foreach my $chr (@chrs) {
                         }
                     }
                     close LOCI;
+                    open(my $bedfh, '>', $bedNameFile) or die "Could not open file '$bedNameFile' $!";
+                    print $bedfh "$uniqBeds[$i]\n";
+                    close $bedfh;
                 }
             }
         }

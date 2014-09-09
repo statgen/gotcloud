@@ -87,7 +87,7 @@ status=0
 echo "Results from DIFF will be in $DIFFRESULTS"
 
 diff -r $RESULTS_DIR $EXPECTED_DIR \
-    $SKIP_GZS $SKIP_TBIS -x $DIFF_FILE $SKIP_LOGS -x jobfiles $DIR_EXCLUDE\
+    $SKIP_GZS $SKIP_TBIS -x $DIFF_FILE $SKIP_LOGS -x jobfiles -x 20.20000001.25000000.txt $DIR_EXCLUDE\
     -I "^Analysis completed on " \
     -I "^Analysis finished on " \
     -I "^Analysis started on " \
