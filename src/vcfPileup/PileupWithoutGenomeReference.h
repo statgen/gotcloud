@@ -245,6 +245,7 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
                         newRegion.start = currentRegion.start;
                         newRegion.end = currentRegion.end;
                         newRegion.positions = currentRegion.positions;
+                        newRegion.currentPosition = 0;
                         regions.push_back(newRegion);
                         
                         //create new current region
@@ -265,22 +266,20 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
 	}
     }
 
-    // add the last region
-    if(currentRegion.end-currentRegion.start > 0) 
-    {
-        Region newRegion;
-        newRegion.chrom = currentRegion.chrom;
-        newRegion.chromID = currentRegion.chromID;
-        newRegion.start = currentRegion.start;
-        newRegion.end = currentRegion.end;
-        newRegion.positions = currentRegion.positions;
-        regions.push_back(newRegion);
-    }
-
+    // Always add the last region
+    Region newRegion;
+    newRegion.chrom = currentRegion.chrom;
+    newRegion.chromID = currentRegion.chromID;
+    newRegion.start = currentRegion.start;
+    newRegion.end = currentRegion.end;
+    newRegion.positions = currentRegion.positions;
+    newRegion.currentPosition = 0;
+    regions.push_back(newRegion);
 
     if(!samIn.IsStream())
     {
         // Iterate over selected regions
+        // Start at position 1 - skip 0 since it is a dummy record.
         for (uint i=1; i<regions.size(); ++i)
         {
             int lastReadAlignmentStart = 0;
