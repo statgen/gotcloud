@@ -321,7 +321,8 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
             if(regionIter == regions.end())
             {
                 // No more regions, so end loop.
-                break;
+                // Keep continuing to consume the entire file across the pipe.
+                continue;
             }
             if(regionIter->chromID > record.getReferenceID())
             {
