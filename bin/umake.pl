@@ -1049,6 +1049,48 @@ foreach my $chr (@chrs)
 
 
 #############################################################################
+## Check MD5 files for CRAM.
+############################################################################
+# If there are any CRAM files, set REF_PATH.
+if(scalar keys %isCram > 0)
+{
+    # There is at least one CRAM file, so check the MD5 files.
+    genMD5Files();
+
+    # Check each CRAM and see if it's MD5 file exists.
+    my %refM5s = ();
+    foreach my $cram (sort(keys %isCram))
+    {
+        open my $input, "-|", getConf("SAMTOOLS_FOR_OTHERS")." view -H $cram | grep -o \"M5:[0-9a-fA-F]*\""
+        or die "samtools failed to read header from $cram: $!";
+        while(my $line = <$input>)
+        {
+            chomp $line;
+            $line =~ s/M5://;
+            $refM5s{$line} = 1;
+        }
+    }
+    # Look for the ref file.
+    foreach my $refM5 (sort (keys %refM5s))
+    {
+        my $refPath = getConf("MD5_DIR");
+        while($refPath =~ /([^%]*)%([0-9]*)s(.*)/)
+        {
+            my $sub = $refM5;
+            if($2)
+            {
+               $sub = substr($refM5, 0, $2);
+               $sub = substr($refM5, 0, $2, "");
+            }
+            $refPath = $1.$sub.$3;
+        }
+        if(! -e $refPath)
+        {
+            die "ERROR: unable to find MD5 file at $refPath expected for a CRAM file, ensure 'REF' matches the one used to generate the CRAMs.\n";
+        }
+    }
+}
+#############################################################################
 ## STEP 5 : CONFIGURE PARAMETERS
 ############################################################################
 my $unitChunk = getConf("UNIT_CHUNK");
@@ -1674,7 +1716,7 @@ foreach my $chr (@chrs) {
                 if(exists $isCram{$bam})
                 {
                     # Cram has to be converted to bam and streamed to vcfPileup
-                    $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr | ";
+                    $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr | ";
                     $vcfInBam = "-.ubam";
                 }
                 $cmd .= getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
@@ -1782,8 +1824,8 @@ foreach my $chr (@chrs) {
                     if(exists $isCram{$bam})
                     {
                         # Cram has to be converted to bam and streamed to vcfPileup
-                        $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam | ";
-#                        $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+#                        $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam | ";
+                        $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                         $vcfInBam = "-.ubam";
                     }
                     $cmd .= getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
@@ -2418,7 +2460,13 @@ sub runPileup
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
     }
 
-    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.uubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
+    my $md5Dir = "";
+    if(exists $isCram{$bamIn})
+    {
+        $md5Dir = "REF_PATH=".getConf("MD5_DIR")." ";
+    }
+
+    my $cmd = getMosixCmd("($md5Dir".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.uubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);
