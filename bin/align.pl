@@ -884,8 +884,10 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
         }
 
         my $bam = $fastq1;
-        $bam =~ s/fastq.gz$/bam/;
-        $bam =~ s/fastq$/bam/;
+        if(($bam !~ s/fastq.gz$/bam/) && ($bam !~ s/fastq$/bam/))
+        {
+            $bam .= ".bam";
+        }
 
         # Add the polish step for each fastq/pair.
         print MAK getConf('POL_TMP') . "/$bam.done: $alnOutFile\n";
@@ -1125,8 +1127,10 @@ sub mapBwa {
     # BWA_MEM is a 1 step process, while the other is a 2 step process.
 
     my $bam = $fastq1;
-    $bam =~ s/fastq.gz$/bam/;
-    $bam =~ s/fastq$/bam/;
+    if(($bam !~ s/fastq.gz$/bam/) && ($bam !~ s/fastq$/bam/))
+    {
+        $bam .= ".bam";
+    }
     my $absFastq1 = getAbsPath($fastq1, 'FASTQ');
     my $absFastq2 = '';
     if($fastq2 ne '.')
@@ -1158,8 +1162,10 @@ sub mapBwa {
         # Regular BWA with 2 steps and sai files.
         # Dependent on the SAI files.
         my $sai1 = $fastq1;
-        $sai1 =~ s/fastq.gz$/sai/;
-        $sai1 =~ s/fastq$/sai/;
+        if(($sai1 !~ s/fastq.gz$/sai/) && ($sai1 !~ s/fastq$/sai/))
+        {
+            $sai1 .= ".sai";
+        }
 
         $saiFiles .=  getConf('SAI_TMP') . "/$sai1 ";
         $allSteps .= ' ' . getConf('SAI_TMP') . "/$sai1.done";
@@ -1169,8 +1175,10 @@ sub mapBwa {
         my $sai2 = "";
         if ($fastq2 ne ".") {
             $sai2 = $fastq2;
-            $sai2 =~ s/fastq.gz$/sai/;
-            $sai2 =~ s/fastq$/sai/;
+            if(($sai2 !~ s/fastq.gz$/sai/) && ($sai2 !~ s/fastq$/sai/))
+            {
+                $sai2 .= ".sai";
+            }
             $saiFiles .=  getConf('SAI_TMP')."/$sai2 ";
             $allSteps .= ' ' . getConf('SAI_TMP') . "/$sai2.done";
             $samsesampe = "sampe";
@@ -1213,8 +1221,10 @@ sub mapMosaik {
     if($fastq2 ne '.') { $absFastq2 = getAbsPath($fastq2, 'FASTQ'); }
 
     my $mkb = $fastq1;
-    $mkb =~ s/fastq.gz$/mkb/;
-    $mkb =~ s/fastq$/mkb/;
+    if(($mkb !~ s/fastq.gz$/mkb/) && ($mkb !~ s/fastq$/mkb/))
+    {
+        $mkb .= ".mkb";
+    }
     my $mkbFiles .= getConf('MKB_TMP') . "/$mkb ";
     my $mosaikBuildDone = getConf('MKB_TMP') . "/$mkb.done";
 
