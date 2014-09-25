@@ -719,7 +719,7 @@ while ($line = <IN>)
         my $fqline = FQ1->getline();
 
         # Check if first line of fastq1 matches expected default format:
-        if($fqline =~ m/^@([^:]:[^:]:[^:]:[^:])/)
+        if($fqline =~ m/^@([^:]*:[^:]*:[^:]*:[^:]*)/)
         {
             if(!exists $warn{RGID1})
             {
