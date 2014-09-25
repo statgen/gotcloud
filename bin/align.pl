@@ -82,7 +82,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     test=s
     out_dir|outdir=s
     conf=s
-    index_file|indexfile=s
+    fastq_list|fastqlist|index_file|indexfile=s
     ref_dir|refdir=s
     ref_prefix|refprefix=s
     fastq_prefix|fastqprefix=s
@@ -235,7 +235,7 @@ if ($opts{fastq_prefix}) { push(@confSettings, "FASTQ_PREFIX = $opts{fastq_prefi
 if ($opts{base_prefix})  { push(@confSettings, "BASE_PREFIX = $opts{base_prefix}"); }
 if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
-if ($opts{index_file})   { push(@confSettings, "INDEX_FILE = $opts{index_file}"); }
+if ($opts{fastq_list})   { push(@confSettings, "FASTQ_LIST = $opts{fastq_list}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
 if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
 
@@ -250,10 +250,19 @@ if (loadConf(\@confSettings, \@configs, $opts{verbose})) {
 
 my @perMergeStep = split(' ', getConf("PER_MERGE_STEPS"));
 
+
+if(!getConf("FASTQ_LIST"))
+{
+    if(getConf("INDEX_FILE"))
+    {
+        setConf("FASTQ_LIST", getConf("INDEX_FILE"));
+    }
+}
+
 #############################################################################
 #   Make sure paths for variables are fully qualified
 #############################################################################
-foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
+foreach my $key (qw(REF_DIR FASTQ_LIST OUT_DIR)) {
     my $f = getConf($key);
     if (! $f) { die "Required field -$key was not specified\n"; }
     #   Extract up to the first '_' from the key to get the prefix type option.
@@ -261,7 +270,7 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     #   Replace the already stored value with the absolute path
     setConf($key, getAbsPath($f, $type));
 }
-my $index_file = getConf('INDEX_FILE');
+my $index_file = getConf('FASTQ_LIST');
 my $out_dir = getConf('OUT_DIR');
 
 #----------------------------------------------------------------------------
@@ -487,6 +496,7 @@ if($deprecatedFiles)
 # Just warn about these deprecated values.
 my %deprecatedWarn = (
     BAM_INDEX => "BAM_LIST",
+    INDEX_FILE => "FASTQ_LIST",
     FASTQ => "FASTQ_PREFIX",
     BWA_MAX_MEM => "SORT_MAX_MEM",
     VERIFY_BAM_ID_OPTIONS => "verifyBamID_USER_PARAMS",
@@ -553,7 +563,7 @@ if (! $opts{'dry-run'}) {
         setConf("BAMUTIL_THINNING", "--phoneHomeThinning 0");
     }
     #   Last warning to user about storage requirements
-    system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
+    system($opts{calcstorage} . ' ' . getConf('FASTQ_LIST') . ' ' . $fastqpref);
 }
 
 
@@ -643,6 +653,9 @@ my %smToMerge = ();
 my $numBlanks = 0;
 my $numFieldSubs = 0;
 my $numMultiTab = 0;
+my $numInfer = 0;
+my $rgNum = 0;
+my %warn = ();
 while ($line = <IN>)
 {
     chomp($line);
@@ -696,19 +709,77 @@ while ($line = <IN>)
     else { $fq1toFq2{$fastq1} = '.'; }
 
     if (defined($fieldname2index{RGID}))     { $fq1toRg{$fastq1} = $fields[$fieldname2index{RGID}]; }
-    else { $fq1toRg{$fastq1} = '.'; }
+    else
+    {
+        # RG not in header.
+        # Read the first line of the FASTQ to try to determine the RG
+        my $fullPathFQ1 = getAbsPath($fastq1, 'FASTQ');
+        die "ERROR: Cannot open file $fastq1: $!\n" unless ( -s $fullPathFQ1 );
+        tie *FQ1, "IO::Zlib", $fullPathFQ1, "rb";
+        my $fqline = FQ1->getline();
+
+        # Check if first line of fastq1 matches expected default format:
+        if($fqline =~ m/^@([^:]:[^:]:[^:]:[^:])/)
+        {
+            if(!exists $warn{RGID1})
+            {
+                ++$numInfer;
+                warn "WARNING: RGID was not specified, so defaulting to the first 4 fields (':' delimited) of the first FASTQ1 sequence identifier.\n";
+                $warn{RGID1} = 1;
+            }
+            $fq1toRg{$fastq1} = $1;
+        }
+        else
+        {
+            # Unable to determine readgroup, default to fastq name.
+            if(!exists $warn{RGID2})
+            {
+                ++$numInfer;
+                warn "WARNING: RGID was not specified, so defaulting to incrementing numbers.\n";
+                $warn{RGID2} = 1;
+            }
+            $fq1toRg{$fastq1} = $rgNum++;
+        }
+    }
 
     if (defined($fieldname2index{SAMPLE}))   { $fq1toSm{$fastq1} = $fields[$fieldname2index{SAMPLE}]; }
-    else { $fq1toSm{$fastq1} = '.'; }
+    else { $fq1toSm{$fastq1} = $mergeName; }
 
     if (defined($fieldname2index{LIBRARY}))  { $fq1toLib{$fastq1} = $fields[$fieldname2index{LIBRARY}]; }
-    else { $fq1toLib{$fastq1} = '.'; }
+    else
+    {
+        if(!exists $warn{LIBRARY})
+        {
+            ++$numInfer;
+            warn "WARNING: LIBRARY was not specified, so defaulting to the value of SAMPLE.\n";
+            $warn{LIBRARY} = 1;
+        }
+        $fq1toLib{$fastq1} = $fq1toSm{$fastq1};
+    }
 
     if (defined($fieldname2index{CENTER}))   { $fq1toCn{$fastq1} = $fields[$fieldname2index{CENTER}]; }
-    else { $fq1toCn{$fastq1} = '.'; }
+    else
+    {
+        if(!exists $warn{CENTER})
+        {
+            ++$numInfer;
+            warn "WARNING: CENTER was not specified, so defaulting to 'unknown'.\n";
+            $warn{CENTER} = 1;
+        }
+        $fq1toCn{$fastq1} = 'unknown';
+    }
 
     if (defined($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
-    else { $fq1toPl{$fastq1} = '.'; }
+    else
+    {
+        if(!exists $warn{PLATFORM})
+        {
+            ++$numInfer;
+            warn "WARNING: PLATFORM was not specified, so defaulting to 'ILLUMINA'.\n";
+            $warn{PLATFORM} = 1;
+        }
+        $fq1toPl{$fastq1} = 'ILLUMINA';
+    }
 
     # Update the list of per sample bams if this is the first
     # appearance of the merge name (mergeToFQ1 has length 1)
@@ -724,10 +795,6 @@ while ($line = <IN>)
         {
             push(@{$smToMerge{$fq1toSm{$fastq1}}}, $mergeName);
         }
-    }
-    if($fq1toSm{$fastq1} eq '.')
-    {
-        $fq1toSm{$fastq1} = $mergeName;
     }
 }
 close(IN);
@@ -755,6 +822,63 @@ if(($numHdrWarn > 0) || ($numBlanks > 0) || ($numFieldSubs > 0) || ($numFieldSub
     warn "\n";
 }
 
+
+if($numInfer > 0)
+{
+    # Inferred some values, so output the index used.
+    my $outFastqList = "$out_dir/Makefiles/fastq.list";
+    open(OUT,"> ".($outFastqList || '-')) || die "Cannot open $outFastqList for writing.  $!\n";
+    print OUT join("\t",@fieldnames);
+    foreach my $mergeName (sort (keys %mergeToFq1))
+    {
+        foreach my $fastq1 (@{$mergeToFq1{$mergeName}})
+        {
+            my $sep = "\n";
+            foreach my $field (@fieldnames)
+            {
+                my $val;
+                if($field eq "MERGE_NAME")
+                {
+                    $val = $mergeName;
+                }
+                elsif($field eq "FASTQ1")
+                {
+                    $val = $fastq1;
+                }
+                elsif($field eq "FASTQ2")
+                {
+                    $val = $fq1toFq2{$fastq1};
+                }
+                elsif($field eq "RGID")
+                {
+                    $val = $fq1toRg{$fastq1};
+                }
+                elsif($field eq "SAMPLE")
+                {
+                    $val = $fq1toSm{$fastq1};
+                }
+                elsif($field eq "LIBRARY")
+                {
+                    $val = $fq1toLib{$fastq1};
+                }
+                elsif($field eq "CENTER")
+                {
+                    $val = $fq1toCn{$fastq1};
+                }
+                elsif($field eq "PLATFORM")
+                {
+                    $val = $fq1toPl{$fastq1};
+                }
+                else
+                {
+                    $val = ".";
+                }
+                print OUT "$sep$val";
+                $sep = "\t";
+            }
+        }
+    }
+}
 
 # Output the bam index to the FINAL_BAM_DIR directory
 
@@ -1376,7 +1500,7 @@ The B<configuration file> consists of a set of keyword = value lines which defin
 These variables can be referenced in the values of other lines.
 This short example will give you an idea of a configuration file:
 
-  INDEX_FILE = indexFile.txt
+  FASTQ_LIST = fastqList.txt
   # References
   REF_DIR = /gotcloud/test/align/chr20Ref
   AS = NCBI37

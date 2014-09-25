@@ -120,26 +120,46 @@ sub AlignStorage {
             $prefix = $1;
             $_ = <IN>;
         }
-        if (! /MERGE_NAME/) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
+
+        # Determine the columns for fastq1 & fastq2.
+        my @fields = split(/\t\s*/);
+        my $fq1Index = -1;
+        my $fq2Index = -1;
+        foreach my $index (0..$#fields)
+        {
+            if(uc($fields[$index]) eq "FASTQ1")
+            {
+                $fq1Index = $index;
+            }
+            elsif(uc($fields[$index]) eq "FASTQ2")
+            {
+                $fq2Index = $index;
+            }
+        }
+
+        if ($fq1Index == -1) { die "Index file '$indexfile' did not look correct\n  Line=$_"; }
         while (<IN>) {
             my @c = split(' ',$_);
             next if(scalar @c == 0);
-            my $f = "$c[1]";
+            my $f = "$c[$fq1Index]";
             # Check if the path is not absolute and needs the prefix.
-            if ($f !~ /^\//) { $f = "$prefix$c[1]"; }
+            if ($f !~ /^\//) { $f = "$prefix$c[$fq1Index]"; }
 
             my @stats = stat($f);
             if (! @stats) { die "Unable to find details on '$f': $!\n"; }
             $totsize += $stats[7];
             $k++;
-            $f = "$c[2]";
-            # Check if the path is not absolute and needs the prefix.
-            if ($f !~ /^\//) { $f = "$prefix$c[2]"; }
-            if ($f ne '.') {
-                @stats = stat($f);
-                if (! @stats) { die "Unable to find details on '$f': $!\n"; }
-                $totsize += $stats[7];
-                $k++;
+            if($fq2Index != -1)
+            {
+                $f = "$c[$fq2Index]";
+                # Check if the path is not absolute and needs the prefix.
+                if ($f !~ /^\//) { $f = "$prefix$c[$fq2Index]"; }
+                if ($f ne '.') {
+                    @stats = stat($f);
+                    if (! @stats) { die "Unable to find details on '$f': $!\n"; }
+                    $totsize += $stats[7];
+                    $k++;
+                }
             }
         }
         close(IN);
