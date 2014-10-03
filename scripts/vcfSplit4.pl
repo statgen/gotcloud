@@ -62,6 +62,8 @@ while(<IN>) {
     push(@chrs,$_);
 }
 close IN;
+my $exit = $? >> 8;
+die "ERROR: vcfSplit4.pl, failed to run tabix on $vcf, exit code: $exit\n" if $exit;
 
 open(OUT,">$out.list") || die "Cannot open file\n";
 my $num = 1;
