@@ -70,10 +70,14 @@ my $gcroot = '';
 my $ignoreSmCheck = '';
 my $noPhoneHome = '';
 
+my $bamList = '';
+my $refdir = '';
+
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
                            "outdir|out_dir=s",\$outdir,
                            "conf=s",\$conf,
+                           "list|bam_list|bamlist=s",\$bamList,
                            "numjobs=i",\$numjobs,
                            "maxlocaljobs=i",\$maxlocaljobs,
                            "snpcall",\$snpcallOpt,
@@ -101,6 +105,7 @@ my $optResult = GetOptions("help",\$help,
                            "verbose", \$verbose,
                            "copyglf=s", \$copyglf,
                            "chrs|chroms=s", \$chroms,
+                           "refdir|ref_dir=s", \$refdir,
                            "ignoresmcheck", \$ignoreSmCheck,
                            "gotcloudroot|gcroot=s", \$gcroot,
                            "noPhoneHome", \$noPhoneHome
@@ -110,7 +115,7 @@ my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
 "\tgotcloud ldrefine --conf [conf.file]\n".
 "\tgotcloud vc --conf [conf.file]\n".
 "Specify --help to get more usage infromation";
-die "Error in parsing options\n$usage\n" unless ( ($optResult) && (($conf) || ($help) || ($testdir)) );
+die "Error in parsing options\n$usage\n" unless ( ($optResult) && (($conf) || ($bamList) || ($help) || ($testdir)) );
 
 # check if help.
 if ($help) {
@@ -265,12 +270,14 @@ if($testdir ne "") {
 #   Convert command line options to conf settings
 #--------------------------------------------------------------
 #   Set the configuration values for applicable command-line options.
+if ($bamList)    { push(@confSettings, "BAM_LIST = $bamList"); }
 if ($bamprefix)  { push(@confSettings, "BAM_PREFIX = $bamprefix"); }
 if ($refprefix)  { push(@confSettings, "REF_PREFIX = $refprefix"); }
 if ($baseprefix) { push(@confSettings, "BASE_PREFIX = $baseprefix"); }
 if ($makebasename)   { push(@confSettings, "MAKE_BASE_NAME = $makebasename"); }
 if ($outdir)     { push(@confSettings, "OUT_DIR = $outdir"); }
 if ($copyglf)    { push(@confSettings, "COPY_GLF = $copyglf"); }
+if ($refdir)     { push(@confSettings, "REF_DIR = $refdir"); }
 if ($chroms)     { $chroms =~ s/,/ /g; push(@confSettings, "CHRS = $chroms"); }
 
 #--------------------------------------------------------------
@@ -754,7 +761,7 @@ dumpConf("$outdir/".getConf("MAKE_BASE_NAME").".$makeext.conf");
 #############################################################################
 ## STEP 2 : Parse BAM INDEX FILE
 ############################################################################
-my $bamList = getAbsPath(getConf("BAM_LIST"));
+$bamList = getAbsPath(getConf("BAM_LIST"));
 my $pedIndex = getConf("PED_INDEX");
 my %hSM2bams = ();  # hash mapping sample IDs to bams
 my %hSM2pops = ();  # hash mapping sample IDs to bams
@@ -2710,6 +2717,11 @@ The default configuration is B<gotcloudDefaults.conf> found in the same director
 where this program resides.
 If this file is not found, you must specify this option on the command line.
 
+=item B<--list str>
+
+Specifies the name of the file containing the table of bams to process.
+This value must be set in the configuration file or specified by this option.
+
 =item B<--help>
 
 Generates this output.
@@ -2799,6 +2811,11 @@ Specifies the batch system to be used when executing the commands.
 These determine exactly how B<runcluster> will run the command.
 the type 'flux' is an alias for 'pbs'.
 The default is B<local>.
+
+=item B<--ref_dir dir>
+
+Specifies the location of the reference files, overriding the configuration
+value of REF_DIR.
 
 =item B<--ref_prefix dir>
 

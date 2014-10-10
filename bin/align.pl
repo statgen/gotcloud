@@ -82,7 +82,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     test=s
     out_dir|outdir=s
     conf=s
-    fastq_list|fastqlist|index_file|indexfile=s
+    list|fastq_list|fastqlist|index|index_file|indexfile=s
     ref_dir|refdir=s
     ref_prefix|refprefix=s
     fastq_prefix|fastqprefix=s
@@ -91,11 +91,17 @@ Getopt::Long::GetOptions( \%opts,qw(
     keeplog
     noPhoneHome
     verbose=i
-    numjobspersample|numjobs=i
-    numconcurrentsamples|numcs=i
+    threads=i
+    numjobs=i
+    numcs=i
     maxlocaljobs=i
     gotcloudroot|gcroot=s
 )) || die "Failed to parse options\n";
+
+if ($opts{numcs})
+{
+    die "ERROR: The '--numcs' option has been removed, please use:\n\t--numjobs : number of samples to run concurrently (previously '--numcs').\n\t--threads : number of jobs per sample (previously '--numjobs').\n";
+}
 
 #   Simple help if requested, sanity check input options
 if ($opts{help}) {
@@ -198,17 +204,11 @@ if(!$opts{calcstorage})
 }
 
 
-if ((! $opts{conf}) || (! -r $opts{conf})) {
-    my $usage;
-    if($opts{conf})
-    {
-        $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
-    }
-    $usage .= "Usage:\tgotcloud align --conf [conf.file]\n".
-    "Specify --help to get more usage infromation\n";
-    die "$usage";
+# Conf file no longer required.
+if ($opts{conf})
+{
+    $opts{conf} = abs_path($opts{conf});
 }
-$opts{conf} = abs_path($opts{conf});
 
 #############################################################################
 #   Set configuration variables from comand line options
@@ -235,7 +235,7 @@ if ($opts{fastq_prefix}) { push(@confSettings, "FASTQ_PREFIX = $opts{fastq_prefi
 if ($opts{base_prefix})  { push(@confSettings, "BASE_PREFIX = $opts{base_prefix}"); }
 if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
-if ($opts{fastq_list})   { push(@confSettings, "FASTQ_LIST = $opts{fastq_list}"); }
+if ($opts{list})         { push(@confSettings, "FASTQ_LIST = $opts{list}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
 if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
 
@@ -262,13 +262,23 @@ if(!getConf("FASTQ_LIST"))
 #############################################################################
 #   Make sure paths for variables are fully qualified
 #############################################################################
-foreach my $key (qw(REF_DIR FASTQ_LIST OUT_DIR)) {
+# Do not add FASTQ_PREFIX to FASTQ_LIST. FASTQ_PREFIX is the prefix to add
+# to the fastq file names.
+foreach my $key (qw(REF_DIR OUT_DIR)) {
     my $f = getConf($key);
     if (! $f) { die "Required field -$key was not specified\n"; }
     #   Extract up to the first '_' from the key to get the prefix type option.
     my $type = substr($key, 0, index($key, '_'));
     #   Replace the already stored value with the absolute path
     setConf($key, getAbsPath($f, $type));
+}
+
+# paths to add base prefix, but not specific type.
+foreach my $key (qw(FASTQ_LIST)) {
+    my $f = getConf($key);
+    if (! $f) { die "Required field -$key was not specified\n"; }
+    #   Replace the already stored value with the absolute path
+    setConf($key, getAbsPath($f));
 }
 my $index_file = getConf('FASTQ_LIST');
 my $out_dir = getConf('OUT_DIR');
@@ -904,6 +914,13 @@ if(getConf('BAM_INDEX') || getConf('BAM_LIST'))
     close(BAM_IDX);
 }
 
+# Check that numjobs is not > than the number of merge files
+if ($opts{numjobs} > (scalar keys(%smToMerge)))
+{
+    die "ERROR: More jobs ($opts{numjobs}) specified than samples (".scalar keys(%smToMerge).").\n\t--numjobs : number of samples to run concurrently (previously '--numcs').\n\t--threads : number of jobs per sample (previously '--numjobs').\n";
+}
+
+
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
 #############################################################################
@@ -1049,8 +1066,8 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
     warn "Created $makef\n";
 
     my $s = "make -f $makef " . getConf("MAKE_OPTS");
-    if ($opts{numjobspersample}) {
-        $s .= " -j ".$opts{numjobspersample};
+    if ($opts{threads}) {
+        $s .= " -j ".$opts{threads};
     }
     $s .= " > $makef.log";
     $mkcmds{$mergeName} = $s;
@@ -1072,10 +1089,10 @@ warn "Waiting while samples are processed...\n";
 my $t = time();
 
 my $totaljobs = 1;
-if(defined $opts{numconcurrentsamples}){ $totaljobs = $opts{numconcurrentsamples}; }
+if(defined $opts{numjobs}){ $totaljobs = $opts{numjobs}; }
 
 
-if(defined $opts{numjobspersample}) { $totaljobs *= $opts{numjobspersample}; }
+if(defined $opts{threads}) { $totaljobs *= $opts{threads}; }
 if((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq ''))
 {
     setConf('BATCH_TYPE', 'local');
@@ -1115,9 +1132,9 @@ foreach my $tgt (sort(keys %mkcmds))
 }
 close ALL_MAK;
 my $allMakeCmd = "make -f $allMakef";
-if ($opts{numconcurrentsamples})
+if ($opts{numjobs})
 {
-    $allMakeCmd .= " -j ".$opts{numconcurrentsamples};
+    $allMakeCmd .= " -j ".$opts{numjobs};
 }
 $allMakeCmd .= " > $allMakef.log 2> $allMakef.err";
 print STDERR "Running $allMakeCmd...\n\n";
@@ -1518,7 +1535,7 @@ This short example will give you an idea of a configuration file:
   DBSNP_VCF =  $(REF_DIR)/dbsnp.b130.ncbi37.chr20.vcf.gz
   HM3_VCF = $(REF_DIR)/hapmap_3.3.b37.sites.vcf.gz
 
-The B<index file> file specifies information about individuals and paths to
+The B<list> file specifies information about individuals and paths to
 fastq data for a SNP. The data is tab delimited.
 The first line (#FASTQ_PREFIX=) is optional and will specify a path which is added to the path
 for each FASTQ to provide the complete absolute path to the FASTQ
@@ -1563,7 +1580,7 @@ the commands that would be run.
 
 =item B<--fastq_prefix dir>
 
-This specifies a directory prefix which should be added to relative paths in the fastq index file.
+This specifies a directory prefix which should be added to relative paths in the fastq list file.
 
 =item B<--ref_prefix dir>
 
@@ -1577,9 +1594,9 @@ This specifies a directory prefix which should be added to all relative paths if
 
 Generates this output.
 
-=item B<--index_file str>
+=item B<--list str>
 
-Specifies the name of the index file containing the table of fastqs to process.
+Specifies the name of the file containing the table of fastqs to process.
 This value must be set in the configuration file or specified by this option.
 
 =item B<--keeplog>
@@ -1592,21 +1609,21 @@ The default is to remove the log files.
 If specified, the temporary files used in this process will not be deleted.
 The default is to remove the temporary files.
 
-=item B<--numconcurrentsamples N>
+=item B<--numjobs N>
 
 Specifies the number of samples to be processed concurrently.
 This effectively defaults to '2'.
 The number of processesors to be used at the same time on the local machine
-or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
+or on the cluster is I<-numjobs> times I<-threads>.
 
-=item B<--numjobspersample N>
+=item B<--threads N>
 
 Specifies the number of jobs to run per sample. In practice this is
 the value of the B<-j> flag for the make command.
 This effectively defaults to '1'.
 If not specified, the flag is not set on the make command to be executed.
 The number of processesors to be used at the same time on the local machine
-or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
+or on the cluster is I<-numjobs> times I<-threads>.
 
 =item B<--out_dir dir>
 
@@ -1614,10 +1631,8 @@ Specifies the toplevel directory where the output is created.
 
 =item B<--ref_dir dir>
 
-Specifies the location of the reference files.
-The default is B</usr/local/gotcloud.ref> but will depend completely
-on where you got the reference files and where they were installed.
-This value must be set in the configuration file or specified by this option.
+Specifies the location of the reference files, overriding the configuration
+value of REF_DIR.
 
 =item B<--runcluster path>
 

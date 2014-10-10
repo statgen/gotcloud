@@ -62,7 +62,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     test=s
     out_dir|outdir=s
     conf=s
-    bam_list|bamlist|bam_index|bamindex=s
+    bam_list|list|bamlist|bam_index|bamindex=s
     ref_dir|refdir=s
     ref_prefix|refprefix=s
     bam_prefix|bamprefix=s
@@ -181,18 +181,16 @@ if(!$opts{calcstorage})
     $opts{calcstorage} = "$gotcloudRoot/scripts/gccalcstorage.pl $me";
 }
 
-
-if ((! $opts{conf}) || (! -r $opts{conf})) {
-    my $usage;
-    if($opts{conf})
+# Conf file no longer required.
+if($opts{conf})
+{
+    if (! -r $opts{conf})
     {
+        my $usage;
         $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
     }
-    $usage .= "Usage:\tgotcloud --name $opts{name} --conf [conf.file]\n".
-    "Specify --help to get more usage infromation\n";
-    die "$usage";
+    $opts{conf} = abs_path($opts{conf});
 }
-$opts{conf} = abs_path($opts{conf});
 
 #############################################################################
 #   Set configuration variables from comand line options
