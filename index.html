@@ -31,36 +31,161 @@
       </header>
       <section>
         <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+<a name="welcome-to-gotcloud" class="anchor" href="#welcome-to-gotcloud"><span class="octicon octicon-link"></span></a>Welcome to GotCloud.</h3>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>Genomes on the Cloud (GotCloud) is our set of sequence analysis software pipelines that we developed to handle the increasing volume of next generation sequencing and genotyping data.</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<ul>
+<li>Integrative - Alignment, QC, Variant Calling, Phasing</li>
+<li>Seamless - Requires only simple configuration files
+
+<ul>
+<li>Fully automated and parallelized</li>
+</ul>
+</li>
+<li>Robust against unexpected failures &amp; stops</li>
+<li>Scalable from a few to many thousands of genomes
+
+<ul>
+<li>Deep Genomes, Shallow Genomes, Targeted Exomes</li>
+</ul>
+</li>
+</ul>
+
+<p>Also included within GotCloud</p>
+
+<ul>
+<li>Set of many useful software tools</li>
+<li>Software C++ library for developing additional sequence analysis tools</li>
+</ul>
+
+<p>See (<a href="http://gotcloud.org">http://gotcloud.org</a>) for full GotCloud documentation.</p>
+
+<h3>
+<a name="obtain-gotcloud" class="anchor" href="#obtain-gotcloud"><span class="octicon octicon-link"></span></a>Obtain GotCloud</h3>
+
+<p>First download GotCloud either using git or by using one of the download buttons to the left. 
+See (<a href="http://genome.sph.umich.edu/wiki/GotCloud:_Source_Releases">http://genome.sph.umich.edu/wiki/GotCloud:_Source_Releases</a>) for more information</p>
+
+<h3>
+<a name="build-gotcloud" class="anchor" href="#build-gotcloud"><span class="octicon octicon-link"></span></a>Build GotCloud</h3>
+
+<p>Before running GotCloud, you need to compile the source:</p>
+
+<pre><code>$ cd your_downloaded_gotcloud_dir/src; make; cd ..
 </code></pre>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<h3>
+<a name="test-gotcloud" class="anchor" href="#test-gotcloud"><span class="octicon octicon-link"></span></a>Test GotCloud</h3>
+
+<p>To test GotCloud align, run:</p>
+
+<pre><code>$ ./gotcloud align --test ~/testalign
+</code></pre>
+
+<p>This will create/clear the output directory ~/testalign (alternatively, you can choose a different directory).
+Test results and a log file are put into that directory.
+Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+
+<p>To test  GotCloud snpcall, run:</p>
+
+<pre><code>$ ./gotcloud snpcall --test ~/testsnp
+</code></pre>
+
+<p>This will create/clear the output directory ~/testsnp (alternatively, you can choose a different directory).
+Test results and a log file are put into that directory.
+Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+
+<p>To test  GotCloud ldrefine, run:</p>
+
+<pre><code>$ ./gotcloud ldrefine --test ~/testsnp
+</code></pre>
+
+<p>The ldrefine test can only be run after the snpcall test, and must use the same directory used for the snpcall test.
+Test results and a log file are put into that directory.
+Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+
+<p>To test  GotCloud indel, run:</p>
+
+<pre><code>$ ./gotcloud indel --test ~/testindel
+</code></pre>
+
+<p>This will create/clear the output directory ~/testindel (alternatively, you can choose a different directory).
+Test results and a log file are put into that directory.
+Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
 
 <h3>
-<a name="designer-templates" class="anchor" href="#designer-templates"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
+<a name="general-help-for-variant-calling" class="anchor" href="#general-help-for-variant-calling"><span class="octicon octicon-link"></span></a>General Help for Variant Calling</h3>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<p>Variant Calling requires three types of input files:
+  (1) a set of BAM files
+      For high quality SNP calls BAM files should already be:
+      * duplicate-marked 
+      * base-quality recalibrated
+  (2) index file
+      Each line contains at least 3 space-separated columns representing a single individual:
+      [SAMPLE_ID] [COMMA SEPARATED POPULATION LABELS] [BAM_FILE1] [BAM_FILE2] ...
+      1 or more BAMs are allowed per individual
+  (3) configuration file
+      Contains run-time options &amp; command line arguments.<br>
+      A default configuration is provided.
+      User must specify:
+      * BAM_INDEX =   # the path/name of the index file
+      * OUT_DIR</p>
 
-<h3>
-<a name="rather-drive-stick" class="anchor" href="#rather-drive-stick"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
+<pre><code>  Optional specifications...
+  * CHRS = #space separated list of chromosomes - defaults to 1-22 &amp; X
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+  Refer to the default configuration &amp; the wiki page for more information on other settings.
+     * http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File
+</code></pre>
+
+<p>Optional input files:</p>
+
+<ul>
+<li>Pedigree files (PED format) (to specify gender information in chrX calling)</li>
+<li>Target information (UCSC's BED format) in targeted or whole exome capture sequencing</li>
+</ul>
+
+<p>Once these files are configured, to run snp calling and process the data:
+   {path}gotcloud snpcall --conf {conf_file} \
+      --outdir {output_directory} --numjobs {# of threads to use for processing}</p>
 
 <h3>
 <a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<p>GotCloud has been developed and maintained by within the Center of Statistical Genetics at the University of Michigan.  The following people have worked on and contributed to GotCloud:</p>
+
+<ul>
+<li>Goncalo Abecasis</li>
+<li>Hyun Min Kang</li>
+<li>Goo Jun</li>
+<li>Mary Kate Wing</li>
+<li>Terry Gliedt</li>
+<li>Chris Scheller</li>
+<li>Adrian Tan</li>
+<li>Alan Kwong</li>
+<li>Tom Blackwell
+The Group's github account is <a href="https://github.com/statgen" class="user-mention">@statgen</a>.</li>
+</ul>
 
 <h3>
 <a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
 
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+<p>Having trouble with GotCloud?  </p>
+
+<ul>
+<li>Check out the documentation at gotcloud.org </li>
+<li>See <a href="http://genome.sph.umich.edu/wiki/GotCloud:_FAQs">GotCloud: FAQs</a>
+</li>
+<li>See <a href="http://groups.google.com/group/GotCloud">GotCloud Google Group</a> to view past questions/comments or to ask your question
+
+<ul>
+<li>Join the GotCloud Google Group to post a question or to be notified of new releases</li>
+</ul>
+</li>
+<li>E-mail Mary Kate Wing (<a href="mailto:mktrost@umich.edu">mktrost@umich.edu</a>).</li>
+</ul>
       </section>
       <footer>
         <p><small>Hosted on <a href="http://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
