@@ -1,35 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
+
   <head>
-    <meta charset="utf-8">
+    <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Gotcloud by statgen</title>
+    <meta name="description" content="Gotcloud : Genomes on the Cloud, Mapping &amp; Variant Calling Pipelines">
 
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <script src="javascripts/scale.fix.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Gotcloud</title>
   </head>
+
   <body>
-    <div class="wrapper">
-      <header>
-        <h1 class="header">Gotcloud</h1>
-        <p class="header">Genomes on the Cloud, Mapping &amp; Variant Calling Pipelines</p>
 
-        <ul>
-          <li class="download"><a class="buttons" href="https://github.com/statgen/gotcloud/zipball/master">Download ZIP</a></li>
-          <li class="download"><a class="buttons" href="https://github.com/statgen/gotcloud/tarball/master">Download TAR</a></li>
-          <li><a class="buttons github" href="https://github.com/statgen/gotcloud">View On GitHub</a></li>
-        </ul>
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/statgen/gotcloud">View on GitHub</a>
 
-        <p class="header">This project is maintained by <a class="header name" href="https://github.com/statgen">statgen</a></p>
+          <h1 id="project_title">Gotcloud</h1>
+          <h2 id="project_tagline">Genomes on the Cloud, Mapping &amp; Variant Calling Pipelines</h2>
 
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/statgen/gotcloud/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/statgen/gotcloud/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
 
-      </header>
-      <section>
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
         <h3>
 <a name="welcome-to-gotcloud" class="anchor" href="#welcome-to-gotcloud"><span class="octicon octicon-link"></span></a>Welcome to GotCloud.</h3>
 
@@ -118,27 +119,50 @@ Results are self-checked, and if any errors should occur, GotCloud will print an
 <a name="general-help-for-variant-calling" class="anchor" href="#general-help-for-variant-calling"><span class="octicon octicon-link"></span></a>General Help for Variant Calling</h3>
 
 <p>Variant Calling requires three types of input files:
-  (1) a set of BAM files
-      For high quality SNP calls BAM files should already be:
-      * duplicate-marked 
-      * base-quality recalibrated
-  (2) index file
-      Each line contains at least 3 space-separated columns representing a single individual:
-      [SAMPLE_ID] [COMMA SEPARATED POPULATION LABELS] [BAM_FILE1] [BAM_FILE2] ...
-      1 or more BAMs are allowed per individual
-  (3) configuration file
-      Contains run-time options &amp; command line arguments.<br>
-      A default configuration is provided.
-      User must specify:
-      * BAM_INDEX =   # the path/name of the index file
-      * OUT_DIR</p>
+1. a set of BAM files</p>
 
-<pre><code>  Optional specifications...
-  * CHRS = #space separated list of chromosomes - defaults to 1-22 &amp; X
+<ul>
+<li>For high quality SNP calls BAM files should already be:
 
-  Refer to the default configuration &amp; the wiki page for more information on other settings.
-     * http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File
-</code></pre>
+<ul>
+<li>duplicate-marked </li>
+<li>base-quality recalibrated</li>
+<li>BAM list file</li>
+</ul>
+</li>
+<li>Each line contains at least 2-3 space-separated columns representing a single individual:
+'''
+  [SAMPLE_ID] [COMMA SEPARATED POPULATION LABELS] [BAM_FILE1] [BAM_FILE2] ...
+'''
+
+<ul>
+<li>1 or more BAMs are allowed per individual</li>
+<li>Population column is optional and can be skipped</li>
+<li>configuration file</li>
+</ul>
+</li>
+<li>Contains run-time options &amp; command line arguments</li>
+<li>A default configuration is provided</li>
+<li>User must specify (KEY = VALUE pairs):
+
+<ul>
+<li>BAM_LIST    # the path/name of the bam list file</li>
+<li>OUT_DIR</li>
+</ul>
+</li>
+<li>Optional specifications...
+
+<ul>
+<li>CHRS = #space separated list of chromosomes - defaults to 1-22 &amp; X</li>
+</ul>
+</li>
+<li>Refer to the default configuration &amp; the wiki page for more information on other settings.
+
+<ul>
+<li><a href="http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File">http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File</a></li>
+</ul>
+</li>
+</ul>
 
 <p>Optional input files:</p>
 
@@ -147,9 +171,11 @@ Results are self-checked, and if any errors should occur, GotCloud will print an
 <li>Target information (UCSC's BED format) in targeted or whole exome capture sequencing</li>
 </ul>
 
-<p>Once these files are configured, to run snp calling and process the data:
-   {path}gotcloud snpcall --conf {conf_file} \
-      --outdir {output_directory} --numjobs {# of threads to use for processing}</p>
+<p>Once these files are configured, to run snp calling and process the data:</p>
+
+<pre><code>   {path}gotcloud snpcall --conf {conf_file} \
+      --outdir {output_directory} --numjobs {# of threads to use for processing}
+</code></pre>
 
 <h3>
 <a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
@@ -165,9 +191,10 @@ Results are self-checked, and if any errors should occur, GotCloud will print an
 <li>Chris Scheller</li>
 <li>Adrian Tan</li>
 <li>Alan Kwong</li>
-<li>Tom Blackwell
-The Group's github account is <a href="https://github.com/statgen" class="user-mention">@statgen</a>.</li>
+<li>Tom Blackwell</li>
 </ul>
+
+<p>The Group's github account is <a href="https://github.com/statgen" class="user-mention">@statgen</a>.</p>
 
 <h3>
 <a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
@@ -187,11 +214,17 @@ The Group's github account is <a href="https://github.com/statgen" class="user-m
 <li>E-mail Mary Kate Wing (<a href="mailto:mktrost@umich.edu">mktrost@umich.edu</a>).</li>
 </ul>
       </section>
-      <footer>
-        <p><small>Hosted on <a href="http://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Gotcloud maintained by <a href="https://github.com/statgen">statgen</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
-    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
-		
+
+    
+
   </body>
 </html>
