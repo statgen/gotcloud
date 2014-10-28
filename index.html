@@ -1,36 +1,35 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
   <head>
-    <meta charset='utf-8'>
+    <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="Gotcloud : Genomes on the Cloud, Mapping &amp; Variant Calling Pipelines">
+    <title>Gotcloud by statgen</title>
 
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
-
-    <title>Gotcloud</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
   </head>
-
   <body>
+    <div class="wrapper">
+      <header>
+        <h1 class="header">Gotcloud</h1>
+        <p class="header">Genomes on the Cloud, Mapping &amp; Variant Calling Pipelines</p>
 
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/statgen/gotcloud">View on GitHub</a>
+        <ul>
+          <li class="download"><a class="buttons" href="https://github.com/statgen/gotcloud/zipball/master">Download ZIP</a></li>
+          <li class="download"><a class="buttons" href="https://github.com/statgen/gotcloud/tarball/master">Download TAR</a></li>
+          <li><a class="buttons github" href="https://github.com/statgen/gotcloud">View On GitHub</a></li>
+        </ul>
 
-          <h1 id="project_title">Gotcloud</h1>
-          <h2 id="project_tagline">Genomes on the Cloud, Mapping &amp; Variant Calling Pipelines</h2>
+        <p class="header">This project is maintained by <a class="header name" href="https://github.com/statgen">statgen</a></p>
 
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/statgen/gotcloud/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/statgen/gotcloud/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
-    </div>
 
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
+      </header>
+      <section>
         <h3>
 <a name="welcome-to-gotcloud" class="anchor" href="#welcome-to-gotcloud"><span class="octicon octicon-link"></span></a>Welcome to GotCloud.</h3>
 
@@ -60,13 +59,14 @@
 <li>Software C++ library for developing additional sequence analysis tools</li>
 </ul>
 
-<p>See (<a href="http://gotcloud.org">http://gotcloud.org</a>) for full GotCloud documentation.</p>
+<p>See <a href="http://gotcloud.org">http://gotcloud.org</a> for full GotCloud documentation.</p>
 
 <h3>
 <a name="obtain-gotcloud" class="anchor" href="#obtain-gotcloud"><span class="octicon octicon-link"></span></a>Obtain GotCloud</h3>
 
-<p>First download GotCloud either using git or by using one of the download buttons to the left. 
-See (<a href="http://genome.sph.umich.edu/wiki/GotCloud:_Source_Releases">http://genome.sph.umich.edu/wiki/GotCloud:_Source_Releases</a>) for more information</p>
+<p>First download GotCloud either using git or by using one of the download buttons to the left. </p>
+
+<p>See <a href="http://genome.sph.umich.edu/wiki/GotCloud:_Source_Releases">GotCloud: Source Releases</a> for more information</p>
 
 <h3>
 <a name="build-gotcloud" class="anchor" href="#build-gotcloud"><span class="octicon octicon-link"></span></a>Build GotCloud</h3>
@@ -79,47 +79,57 @@ See (<a href="http://genome.sph.umich.edu/wiki/GotCloud:_Source_Releases">http:/
 <h3>
 <a name="test-gotcloud" class="anchor" href="#test-gotcloud"><span class="octicon octicon-link"></span></a>Test GotCloud</h3>
 
-<p>To test GotCloud align, run:</p>
+<p><strong>To test GotCloud align, run:</strong></p>
 
 <pre><code>$ ./gotcloud align --test ~/testalign
 </code></pre>
 
-<p>This will create/clear the output directory ~/testalign (alternatively, you can choose a different directory).
-Test results and a log file are put into that directory.
-Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+<p>This will create/clear the output directory ~/testalign (alternatively, you can choose a different directory).</p>
 
-<p>To test  GotCloud snpcall, run:</p>
+<p>Test results and a log file are put into that directory.</p>
+
+<p>Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+
+<p><strong>To test  GotCloud snpcall, run:</strong></p>
 
 <pre><code>$ ./gotcloud snpcall --test ~/testsnp
 </code></pre>
 
-<p>This will create/clear the output directory ~/testsnp (alternatively, you can choose a different directory).
-Test results and a log file are put into that directory.
-Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+<p>This will create/clear the output directory ~/testsnp (alternatively, you can choose a different directory).</p>
 
-<p>To test  GotCloud ldrefine, run:</p>
+<p>Test results and a log file are put into that directory.</p>
+
+<p>Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+
+<p><strong>To test  GotCloud ldrefine, run:</strong></p>
 
 <pre><code>$ ./gotcloud ldrefine --test ~/testsnp
 </code></pre>
 
-<p>The ldrefine test can only be run after the snpcall test, and must use the same directory used for the snpcall test.
-Test results and a log file are put into that directory.
-Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+<p>The ldrefine test can only be run after the snpcall test, and must use the same directory used for the snpcall test.</p>
 
-<p>To test  GotCloud indel, run:</p>
+<p>Test results and a log file are put into that directory.</p>
+
+<p>Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+
+<p><strong>To test  GotCloud indel, run:</strong></p>
 
 <pre><code>$ ./gotcloud indel --test ~/testindel
 </code></pre>
 
-<p>This will create/clear the output directory ~/testindel (alternatively, you can choose a different directory).
-Test results and a log file are put into that directory.
-Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
+<p>This will create/clear the output directory ~/testindel (alternatively, you can choose a different directory).</p>
+
+<p>Test results and a log file are put into that directory.</p>
+
+<p>Results are self-checked, and if any errors should occur, GotCloud will print an error message.</p>
 
 <h3>
 <a name="general-help-for-variant-calling" class="anchor" href="#general-help-for-variant-calling"><span class="octicon octicon-link"></span></a>General Help for Variant Calling</h3>
 
-<p>Variant Calling requires three types of input files:
-1. a set of BAM files</p>
+<p>Variant Calling requires three types of input files:</p>
+
+<ol>
+<li>a set of BAM files
 
 <ul>
 <li>For high quality SNP calls BAM files should already be:
@@ -127,42 +137,51 @@ Results are self-checked, and if any errors should occur, GotCloud will print an
 <ul>
 <li>duplicate-marked </li>
 <li>base-quality recalibrated</li>
-<li>BAM list file</li>
 </ul>
 </li>
-<li>Each line contains at least 2-3 space-separated columns representing a single individual:
-'''
-  [SAMPLE_ID] [COMMA SEPARATED POPULATION LABELS] [BAM_FILE1] [BAM_FILE2] ...
-'''
+</ul>
+</li>
+<li>BAM list file
+
+<ul>
+<li>Each line contains at least 2-3 space-separated columns representing a single individual:</li>
+</ul>
+
+<pre><code>    [SAMPLE_ID] [COMMA SEPARATED POPULATION LABELS] [BAM_FILE1] [BAM_FILE2] ...
+</code></pre>
 
 <ul>
 <li>1 or more BAMs are allowed per individual</li>
 <li>Population column is optional and can be skipped</li>
-<li>configuration file</li>
 </ul>
 </li>
+<li>configuration file
+
+<ul>
 <li>Contains run-time options &amp; command line arguments</li>
 <li>A default configuration is provided</li>
 <li>User must specify (KEY = VALUE pairs):
 
 <ul>
-<li>BAM_LIST    # the path/name of the bam list file</li>
-<li>OUT_DIR</li>
+<li>BAM_LIST =   # the path/name of the bam list file</li>
+<li>OUT_DIR =   # output directory</li>
 </ul>
 </li>
 <li>Optional specifications...
 
 <ul>
-<li>CHRS = #space separated list of chromosomes - defaults to 1-22 &amp; X</li>
+<li>CHRS = # space separated list of chromosomes - defaults to 1-22 &amp; X</li>
 </ul>
 </li>
 <li>Refer to the default configuration &amp; the wiki page for more information on other settings.
 
 <ul>
-<li><a href="http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File">http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File</a></li>
+<li><a href="http://genome.sph.umich.edu/wiki/GotCloud:_Variant_Calling_Pipeline#Configuration_File">GotCloud: Variant Calling Pipeline</a></li>
 </ul>
 </li>
 </ul>
+</li>
+</ol>
 
 <p>Optional input files:</p>
 
@@ -214,17 +233,11 @@ Results are self-checked, and if any errors should occur, GotCloud will print an
 <li>E-mail Mary Kate Wing (<a href="mailto:mktrost@umich.edu">mktrost@umich.edu</a>).</li>
 </ul>
       </section>
-    </div>
-
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">Gotcloud maintained by <a href="https://github.com/statgen">statgen</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      <footer>
+        <p><small>Hosted on <a href="http://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
       </footer>
     </div>
-
-    
-
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+		
   </body>
 </html>
