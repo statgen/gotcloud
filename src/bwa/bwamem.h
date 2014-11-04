@@ -16,17 +16,27 @@ typedef struct __smem_i smem_i;
 #define MEM_F_ALL       0x8
 #define MEM_F_NO_MULTI  0x10
 #define MEM_F_NO_RESCUE 0x20
+#define MEM_F_SELF_OVLP 0x40
+#define MEM_F_ALN_REG   0x80
+#define MEM_F_REF_HDR	0x100
+#define MEM_F_SOFTCLIP  0x200
 
 typedef struct {
-	int a, b, q, r;         // match score, mismatch penalty and gap open/extension penalty. A gap of size k costs q+k*r
+	int a, b;               // match score and mismatch penalty
+	int o_del, e_del;
+	int o_ins, e_ins;
 	int pen_unpaired;       // phred-scaled penalty for unpaired reads
-	int pen_clip;           // clipping penalty. This score is not deducted from the DP score.
+	int pen_clip5,pen_clip3;// clipping penalty. This score is not deducted from the DP score.
 	int w;                  // band width
 	int zdrop;              // Z-dropoff
+
+	uint64_t max_mem_intv;
 
 	int T;                  // output score threshold; only affecting output
 	int flag;               // see MEM_F_* macros
 	int min_seed_len;       // minimum seed length
+	int min_chain_weight;
+	int max_chain_extend;
 	float split_factor;     // split into a seed if MEM is longer than min_seed_len*split_factor
 	int split_width;        // split into a seed if its occurence is smaller than this value
 	int max_occ;            // skip a seed if its occurence is larger than this value
@@ -34,23 +44,35 @@ typedef struct {
 	int n_threads;          // number of threads
 	int chunk_size;         // process chunk_size-bp sequences in a batch
 	float mask_level;       // regard a hit as redundant if the overlap with another better hit is over mask_level times the min length of the two hits
-	float chain_drop_ratio; // drop a chain if its seed coverage is below chain_drop_ratio times the seed coverage of a better chain overlapping with the small chain
+	float drop_ratio;       // drop a chain if its seed coverage is below drop_ratio times the seed coverage of a better chain overlapping with the small chain
+	float XA_drop_ratio;    // when counting hits for the XA tag, ignore alignments with score < XA_drop_ratio * max_score; only effective for the XA tag
+	float mask_level_redun;
+	float mapQ_coef_len;
+	int mapQ_coef_fac;
 	int max_ins;            // when estimating insert size distribution, skip pairs with insert longer than this value
 	int max_matesw;         // perform maximally max_matesw rounds of mate-SW for each end
+	int max_XA_hits, max_XA_hits_alt; // if there are max_hits or fewer, output them all
 	int8_t mat[25];         // scoring matrix; mat[0] == 0 if unset
 } mem_opt_t;
 
 typedef struct {
 	int64_t rb, re; // [rb,re): reference sequence in the alignment
 	int qb, qe;     // [qb,qe): query sequence in the alignment
+	int rid;        // reference seq ID
 	int score;      // best local SW score
 	int truesc;     // actual score corresponding to the aligned region; possibly smaller than $score
 	int sub;        // 2nd best SW score
+	int alt_sc;
 	int csub;       // SW score of a tandem hit
 	int sub_n;      // approximate number of suboptimal hits
 	int w;          // actual band width used in extension
 	int seedcov;    // length of regions coverged by seeds
 	int secondary;  // index of the parent hit shadowing the current hit; <0 if primary
+	int secondary_all;
+	int seedlen0;   // length of the starting seed
+	int n_comp:30, is_alt:2; // number of sub-alignments chained together
+	float frac_rep;
+	uint64_t hash;
 } mem_alnreg_t;
 
 typedef struct { size_t n, m; mem_alnreg_t *a; } mem_alnreg_v;
@@ -65,11 +87,12 @@ typedef struct { // This struct is only used for the convenience of API.
 	int64_t pos;     // forward strand 5'-end mapping position
 	int rid;         // reference sequence index in bntseq_t; <0 for unmapped
 	int flag;        // extra flag
-	uint32_t is_rev:1, mapq:8, NM:23; // is_rev: whether on the reverse strand; mapq: mapping quality; NM: edit distance
+	uint32_t is_rev:1, is_alt:1, mapq:8, NM:22; // is_rev: whether on the reverse strand; mapq: mapping quality; NM: edit distance
 	int n_cigar;     // number of CIGAR operations
 	uint32_t *cigar; // CIGAR in the BAM encoding: opLen<<4|op; op to integer mapping: MIDSH=>01234
+	char *XA;        // alternative mappings
 
-	int score, sub;
+	int score, sub, alt_sc;
 } mem_aln_t;
 
 #ifdef __cplusplus
@@ -79,7 +102,8 @@ extern "C" {
 	smem_i *smem_itr_init(const bwt_t *bwt);
 	void smem_itr_destroy(smem_i *itr);
 	void smem_set_query(smem_i *itr, int len, const uint8_t *query);
-	const bwtintv_v *smem_next(smem_i *itr, int split_len, int split_width);
+	void smem_config(smem_i *itr, int min_intv, int max_len, uint64_t max_intv);
+	const bwtintv_v *smem_next(smem_i *itr);
 
 	mem_opt_t *mem_opt_init(void);
 	void mem_fill_scmat(int a, int b, int8_t mat[25]);
@@ -106,7 +130,7 @@ extern "C" {
 	 * @param pes0   insert-size info; if NULL, infer from data; if not NULL, it should be an array with 4 elements,
 	 *               corresponding to each FF, FR, RF and RR orientation. See mem_pestat() for more info.
 	 */
-	void mem_process_seqs(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int n, bseq1_t *seqs, const mem_pestat_t *pes0);
+	void mem_process_seqs(const mem_opt_t *opt, const bwt_t *bwt, const bntseq_t *bns, const uint8_t *pac, int64_t n_processed, int n, bseq1_t *seqs, const mem_pestat_t *pes0);
 
 	/**
 	 * Find the aligned regions for one query sequence
@@ -138,6 +162,7 @@ extern "C" {
 	 * @return       CIGAR, strand, mapping quality and forward-strand position
 	 */
 	mem_aln_t mem_reg2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_seq, const char *seq, const mem_alnreg_t *ar);
+	mem_aln_t mem_reg2aln2(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, int l_seq, const char *seq, const mem_alnreg_t *ar, const char *name);
 
 	/**
 	 * Infer the insert size distribution from interleaved alignment regions

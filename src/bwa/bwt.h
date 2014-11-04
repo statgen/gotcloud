@@ -92,18 +92,19 @@ extern "C" {
 	void bwt_destroy(bwt_t *bwt);
 
 	void bwt_bwtgen(const char *fn_pac, const char *fn_bwt); // from BWT-SW
+	void bwt_bwtgen2(const char *fn_pac, const char *fn_bwt, int block_size); // from BWT-SW
 	void bwt_cal_sa(bwt_t *bwt, int intv);
 
 	void bwt_bwtupdate_core(bwt_t *bwt);
 
-	inline bwtint_t bwt_occ(const bwt_t *bwt, bwtint_t k, ubyte_t c);
-	inline void bwt_occ4(const bwt_t *bwt, bwtint_t k, bwtint_t cnt[4]);
+	bwtint_t bwt_occ(const bwt_t *bwt, bwtint_t k, ubyte_t c);
+	void bwt_occ4(const bwt_t *bwt, bwtint_t k, bwtint_t cnt[4]);
 	bwtint_t bwt_sa(const bwt_t *bwt, bwtint_t k);
 
 	// more efficient version of bwt_occ/bwt_occ4 for retrieving two close Occ values
 	void bwt_gen_cnt_table(bwt_t *bwt);
-	inline void bwt_2occ(const bwt_t *bwt, bwtint_t k, bwtint_t l, ubyte_t c, bwtint_t *ok, bwtint_t *ol);
-	inline void bwt_2occ4(const bwt_t *bwt, bwtint_t k, bwtint_t l, bwtint_t cntk[4], bwtint_t cntl[4]);
+	void bwt_2occ(const bwt_t *bwt, bwtint_t k, bwtint_t l, ubyte_t c, bwtint_t *ok, bwtint_t *ol);
+	void bwt_2occ4(const bwt_t *bwt, bwtint_t k, bwtint_t l, bwtint_t cntk[4], bwtint_t cntl[4]);
 
 	int bwt_match_exact(const bwt_t *bwt, int len, const ubyte_t *str, bwtint_t *sa_begin, bwtint_t *sa_end);
 	int bwt_match_exact_alt(const bwt_t *bwt, int len, const ubyte_t *str, bwtint_t *k0, bwtint_t *l0);
@@ -118,8 +119,9 @@ extern "C" {
 	 * Return the end of the longest exact match starting from _x_.
 	 */
 	int bwt_smem1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2]);
+	int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, uint64_t max_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2]);
 
-	// SMEM iterator interface
+	int bwt_seed_strategy1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_len, int max_intv, bwtintv_t *mem);
 
 #ifdef __cplusplus
 }
