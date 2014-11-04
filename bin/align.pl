@@ -998,12 +998,12 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
             if ($rgid ne ".") {
                 if (getConf('MAP_TYPE') eq 'BWA') { $rgCommand = "-r"; }
                 else { $rgCommand = "-R"; }
-                $rgCommand .= " \"\@RG\tID:$rgid";
-                $rgCommand .= "\tSM:$sample";
+                $rgCommand .= " \"\@RG\\tID:$rgid";
+                $rgCommand .= "\\tSM:$sample";
                 #   Only add the optional rg fields if they are specified
-                if ($library ne ".")  { $rgCommand .= "\tLB:$library"; }
-                if ($center ne '.')   { $rgCommand .= "\tCN:$center"; }
-                if ($platform ne '.') { $rgCommand .= "\tPL:$platform"; }
+                if ($library ne ".")  { $rgCommand .= "\\tLB:$library"; }
+                if ($center ne '.')   { $rgCommand .= "\\tCN:$center"; }
+                if ($platform ne '.') { $rgCommand .= "\\tPL:$platform"; }
                 $rgCommand .= '"';
             }
             $alnOutFile = mapBwa($fastq1, $fastq2, $rgCommand);
