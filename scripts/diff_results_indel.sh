@@ -28,7 +28,7 @@ if [ -d $EXPECTED_DIR/indeltest ]; then
 fi
 
 DISCOVER_LIST=candidate_vcf_files.txt
-GENOTYPE_LISTS=`find -L $EXPECTED_DIR/ -name "merge.*.*.*.vcf.list.txt"`
+GENOTYPE_LISTS=`find -L $EXPECTED_DIR/ -name "merge.*.vcf.list.txt"`
 
 SKIP_FILES="-x gotcloud.indel.conf -x gotcloud.indel.Makefile -x gotcloud.indel.Makefile.log -x "$DISCOVER_LIST
 for file in $GENOTYPE_LISTS
@@ -46,7 +46,10 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $DIFF_FILE $SKIP_FILES \
     -I '^options: \[L\] input VCF file list *.*aux/candidate_vcf_files\.txt ([0-9]* files)$' \
     -I '^options: *input VCF file *.*aux/all\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*aux/all\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
+    -I '^options: *input VCF file *.*aux/all\.sites\.[0-9]*\.bcf$' \
+    -I '^ *\[o\] output VCF file *.*aux/all\.sites\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*aux/probes\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
+    -I '^ *\[o\] output VCF file *.*final/merge/all\.genotypes\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*final/merge/all\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*indelvcf/\S*/\S*\.sites\.bcf$' \
     -I '^ *\[r\] reference FASTA [fF]ile *.*test/chr[0-9]*Ref/human_g1k_v37_chr[0-9]*\.fa$' \
@@ -60,6 +63,7 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $DIFF_FILE $SKIP_FILES \
     -I '^ *Output BAM file : .*mergedBams/\S*\.bam$' \
     -I '^ *Output log file : .*mergedBams/\S*\.bam\.log$' \
     -I '^Time elapsed: .*$' \
+    -I '^processing .*final/merge/all\.genotypes\.[0-9]*\.bcf$' \
     -I '^processing .*final/merge/all\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
