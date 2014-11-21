@@ -122,6 +122,7 @@ sub AlignStorage {
         }
 
         # Determine the columns for fastq1 & fastq2.
+        chomp;
         my @fields = split(/\t\s*/);
         my $fq1Index = -1;
         my $fq2Index = -1;
