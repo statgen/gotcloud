@@ -526,7 +526,13 @@ double FullLikelihood::OptimizeFrequency(int priorAN, int* priorACs) {
 	bestGenotypes[i] = j;
     }
     if ( ploidies[i] > 0 )
-      qualGenotypes[i] = (int)(-10 * log(1.0 - GPs[10*i + bestGenotypes[i]] * ploidies[i]/ sumPs[i])/log(10.) + 0.5);
+    {
+      qualGenotypes[i] = (int)(-10 * log(1.0 - GPs[10*i + bestGenotypes[i]] * ploidies[i]/ sumPs[i] + 1e-30)/log(10.) + 0.5);
+      if(qualGenotypes[i] > 255)
+      {
+          qualGenotypes[i] = 255;
+      }
+    }
   }
 
   return min;
