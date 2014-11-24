@@ -989,7 +989,7 @@ for my $bam (@allbams)
     my $hdr = unpack("Z*", $buffer);
 
     # Parse the header looking for RG fields to check samples.
-    my @hdrSMs = ($hdr =~ m/SM:([^\n\t\r]*)/g);
+    my @hdrSMs = ($hdr =~ m/^\@RG\t.*SM:([^\n\t\r]*)/g);
     my $numSMs = scalar @hdrSMs;
     if($numSMs > 0)
     {
