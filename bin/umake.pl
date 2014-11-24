@@ -1966,7 +1966,7 @@ foreach my $chr (@chrs) {
             $glfAlias =~ s/$outdir/\$(OUT_DIR)/g;
             push(@vcfs,$vcf);
             my $sleepSecs = ($j % 10)*$sleepMultiplier;
-            my $cmd = getConf("GLFFLEX")." --ped $glfAlias -b $vcf ".($invcf ? "--positionfile $invcf " : "")."$glfsingle $skipDetect $afPrior > $vcf.log 2> $vcf.err";
+            my $cmd = getConf("GLFFLEX")." --ped $glfAlias -b $vcf ".($invcf ? "--positionfile $invcf --region $chr:$unitStarts[$j]-$unitEnds[$j] " : "")."$glfsingle $skipDetect $afPrior > $vcf.log 2> $vcf.err";
             if ( $copyglf ) {
                 $cmd = "mkdir --p $copyglf/$chrchr && rsync -arv $smGlfParent $copyglf/$chrchr && $cmd && rm -rf $smGlfParentCopy";
             }
