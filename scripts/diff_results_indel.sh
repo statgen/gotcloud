@@ -28,7 +28,7 @@ if [ -d $EXPECTED_DIR/indeltest ]; then
 fi
 
 DISCOVER_LIST=candidate_vcf_files.txt
-GENOTYPE_LISTS=`find -L $EXPECTED_DIR/ -name "merge.*.vcf.list.txt"`
+GENOTYPE_LISTS=`find -L $EXPECTED_DIR/ -name "*.list.txt"`
 
 SKIP_FILES="-x gotcloud.indel.conf -x gotcloud.indel.Makefile -x gotcloud.indel.Makefile.log -x "$DISCOVER_LIST
 for file in $GENOTYPE_LISTS
@@ -65,6 +65,7 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $DIFF_FILE $SKIP_FILES \
     -I '^Time elapsed: .*$' \
     -I '^processing .*final/merge/all\.genotypes\.[0-9]*\.bcf$' \
     -I '^processing .*final/merge/all\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
+    -I '^processing .*/.*\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
@@ -86,7 +87,7 @@ do
   diff <(sed "$SED_REGEX" ${file/$EXPECTED_DIR/$RESULTS_DIR}) <(sed "$SED_REGEX" $file) \
     >> $DIFFRESULTS
   if [ "$?" != "0" ]; then
-      echo "Failed results validation of $RESULTS_DIR/aux/$file. See mismatches in $DIFFRESULTS"
+      echo "Failed results validation of ${file/$EXPECTED_DIR/$RESULTS_DIR} & $file. See mismatches in $DIFFRESULTS"
       status=3
   fi
 done
