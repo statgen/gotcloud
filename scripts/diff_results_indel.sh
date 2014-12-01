@@ -75,7 +75,7 @@ fi
 
 SED_REGEX="s/tmpNoLibCtrPltfm/tmp/g;s/tmpNoSM/tmp/g;s/tmpOrig/tmp/g;s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
 
-diff <(sed "$SED_REGEX" $RESULTS_DIR/aux/$DISCOVER_LIST) <(sed "$SED_REGEX" $EXPECTED_DIR/aux/$DISCOVER_LIST) \
+diff <(sed "$SED_REGEX" $RESULTS_DIR/indel/aux/$DISCOVER_LIST) <(sed "$SED_REGEX" $EXPECTED_DIR/indel/aux/$DISCOVER_LIST) \
     >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation of $RESULTS_DIR/aux/$DISCOVER_LIST. See mismatches in $DIFFRESULTS"
