@@ -75,14 +75,27 @@ unless ( ( $result ) && ( ( $drawFlag ) || ( $diffFlag ) ) ) {
     gcpod2usage(2);
 }
 
+unless ( $out ) {
+    print STDERR "--out needs to be specified\n";
+    gcpod2usage(2);
+}
+
 if ( $diffFlag ) {
+    # Determine the output directory
+    my $outdir = "./";
+    if($out =~ /(.*\/)/)
+    {
+        $outdir = "$1/tmp/";
+        system("mkdir -p $outdir") &&
+        die "Unable to create directory '$outdir'\n";
+    }
     unless ( $bfile1 ) {
 	unless ( $vcf1 ) {
 	    print STDERR "--vcf1 or --bfile1 needs to be specified\n";
 	    gcpod2usage(2);
 	}
 	$bfile1 = $vcf1;
-	$bfile1 =~ s/.*\///g;
+	$bfile1 =~ s/.*\//$outdir/g;
 	my $cmd = "$gotcloudRoot/bin/vcfCooker --write-bed --in-vcf $vcf1 --out $bfile1";
 	&forkExecWait($cmd);
     }
@@ -93,16 +106,10 @@ if ( $diffFlag ) {
 	    gcpod2usage(2);
 	}
 	$bfile2 = $vcf2;
-	$bfile2 =~ s/.*\///g;
+	$bfile2 =~ s/.*\//$outdir/g;
 	my $cmd = "$gotcloudRoot/bin/vcfCooker --write-bed --in-vcf $vcf2 --out $bfile2";
 	&forkExecWait($cmd);
     }
-}
-
-
-unless ( $out ) {
-    print STDERR "--out needs to be specified\n";
-    gcpod2usage(2);
 }
 
 # if diffFlag is set, try to find out differences in overlapping markers
