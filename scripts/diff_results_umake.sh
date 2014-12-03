@@ -124,7 +124,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^Outputing VCF file [^[:space:]]*/thunder/chr20/ALL/thunder/chr20\.filtered\.PASS\.beagled\.ALL\.thunder\.1\.vcf\.gz$' \
     -I '^Opening /[^[:space:]]*thunder/chr20/ALL/thunder/chr20\.filtered\.PASS\.beagled\.ALL\.thunder\.1\.vcf\.gz\.\.$' \
     -I $'^1\t20\t20000121\t20299968\t[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf.gz$' \
-    -I $'^*** Redundant: 2\t20\t20000121\t20299968\t[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.2.vcf.gz$' \
+    -I $'^*** Redundant: 2\t20\t20001591\t20299968\t[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.2.vcf.gz$' \
     -I '^all: [^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf.gz$' \
     -I '^[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf.gz: [^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf$' \
     -I $'^\t[^[:space:]]*scripts/../bin/bgzip [^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf$' \
@@ -135,6 +135,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^Total time for building model:[[:space:]]*[0-9]* seconds$' \
     -I '^Total time for sampling:[[:space:]]*[0-9]* seconds$' \
     -I '^Total run time:[[:space:]]*[0-9]* seconds$' \
+    -I '^Command line: java -Xmx364[01]m -jar beagle.jar$' \
     -I '^End time: ' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
