@@ -112,6 +112,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^OUT_DIR=.*$' \
     -I '^GOTCLOUD_ROOT=.*$' \
     -I '^Reading Input File .*chr20.filtered.sites.vcf.raw$' \
+    -I '^Reading Input File .*/vcfs/filtered.sites.vcf.raw$' \
     -I '^Opening /.*beagle/chr20/split/bgl\.1\.chr20\.PASS\.1\.vcf\.gz\.\.$' \
     -I '^Start time: ' \
     -I '^  like=/.*beagle/chr20/like/chr20\.PASS\.1\.gz$' \
