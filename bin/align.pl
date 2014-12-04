@@ -915,7 +915,7 @@ if(getConf('BAM_INDEX') || getConf('BAM_LIST'))
 }
 
 # Check that numjobs is not > than the number of merge files
-if ($opts{numjobs} > (scalar keys(%smToMerge)))
+if ($opts{numjobs} && ($opts{numjobs} > (scalar keys(%smToMerge))))
 {
     die "ERROR: More jobs ($opts{numjobs}) specified than samples (".scalar keys(%smToMerge).").\n\t--numjobs : number of samples to run concurrently (previously '--numcs').\n\t--threads : number of jobs per sample (previously '--numjobs').\n";
 }
