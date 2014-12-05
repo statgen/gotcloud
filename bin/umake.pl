@@ -1129,7 +1129,14 @@ my $filterPrefix = "";
 if ( getConf("RUN_SVM") eq "TRUE") {
     $filterPrefix = "hard";
 }
-
+# add prefix to SVM if doing single sample
+my $svmPrefix = "";
+my $extfilt = "FALSE";
+if(getConf("EXT"))
+{
+    $extfilt = "TRUE";
+    $svmPrefix = "SVM";
+}
 #############################################################################
 ## STEP 6 : PARSE TARGET INFORMATION
 ############################################################################
@@ -1319,6 +1326,7 @@ foreach my $chr (@chrs) {
     print MAK " beagle4_$chr" if ( getConf("RUN_BEAGLE4") eq "TRUE" );
     print MAK " split$chr" if ( getConf("RUN_SPLIT") eq "TRUE" );
     print MAK " split4_$chr" if ( getConf("RUN_SPLIT4") eq "TRUE" );
+    print MAK " extFilt$chr" if ( $extfilt eq "TRUE" );
     print MAK " svm$chr" if ( getConf("RUN_SVM") eq "TRUE" );
     print MAK " filt$chr" if ( getConf("RUN_FILTER") eq "TRUE" );
     print MAK " pvcf$chr" if ( getConf("RUN_VCFPILEUP") eq "TRUE" );
@@ -1652,54 +1660,95 @@ foreach my $chr (@chrs) {
     }
 
 
+
     #############################################################################
     ## STEP 10.5 : RUN SVM FILTERING
     #############################################################################
     if ( getConf("RUN_SVM") eq "TRUE") {
         my $vcfParent = "$remotePrefix$vcfDir/$chrchr";
-        my $svcf = "$vcfParent/$chrchr.${filterPrefix}filtered.sites.vcf";
-        my $vcf = "$vcfParent/$chrchr.merged.vcf";
+        my $vcfPrefix = "$vcfParent/$chrchr";
+
+        my $svmvcf = "$vcfPrefix.${svmPrefix}filtered.vcf.gz";
+        my $svmsitesvcf = "$vcfPrefix.${svmPrefix}filtered.sites.vcf";
+        #############################################################################
+        ## STEP 10.5a : RUN single FILTERING after SVM
+        #############################################################################
+        if ( $extfilt eq "TRUE") {
+            my $outvcf = "$vcfPrefix.filtered.vcf.gz";
+
+            print MAK "extFilt$chr: $outvcf.OK\n\n";
+
+            print MAK "$outvcf.OK: $svmvcf.OK\n";
+
+            my @exts = split(/\s+/, getConf("EXT", 1));
+            my $extStr = "";
+            my $chrSub = getConf("EXT_CHR_SUB");
+            foreach my $ext (@exts)
+            {
+                chomp $ext;
+                if($chrSub)
+                {
+                    $ext =~ s/$chrSub/$chr/g;
+                    if(! -r $ext)
+                    {
+                        die "ERROR, EXT file, '$ext', does not exist\nReminder, EXT is space delimited.\n";
+                    }
+                }
+                $extStr .= " --ext $ext";
+            }
+
+            my $cmd = getConf("EXT_FILT")." --ref ".getConf("REF")." --in $svmvcf ${extStr} --out $outvcf 2> $outvcf.err";
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+            print MAK "\t".getMosixCmd($cmd, "$outvcf")."\n\n";
+            $cmd = getConf("TABIX")." -f -pvcf $outvcf\n";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+            writeLocalCmd($cmd);
+            writeTouch("$outvcf");
+            print MAK "\n";
+        }
+
+        my $hardfiltsitesvcf = "$vcfPrefix.${filterPrefix}filtered.sites.vcf";
+        my $hardfiltvcf = "$vcfPrefix.${filterPrefix}filtered.vcf.gz";
+        my $mergedvcf = "$vcfPrefix.merged.vcf";
 
         my $expandFlag = ( getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
 
         my @cmds = ();
 
-        my $mvcfPrefix = "$remotePrefix$vcfDir/$chrchr/$chrchr";
-
-        print MAK "svm$chr: $mvcfPrefix.filtered.vcf.gz.OK\n\n";
+        print MAK "svm$chr: $svmvcf.OK\n\n";
 
         my $cmd = "";
 
         if ( getConf("WGS_SVM") eq "TRUE")
         {
-            print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $remotePrefix$vcfDir/filtered.vcf.gz.OK\n";
-            push(@wgsFilterDepSites, "$mvcfPrefix.${filterPrefix}filtered.sites.vcf");
-            $wgsFilterDepVcfs .= " $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK";
+            print MAK "$svmvcf.OK: $remotePrefix$vcfDir/${svmPrefix}filtered.vcf.gz.OK\n";
+            push(@wgsFilterDepSites, "$hardfiltsitesvcf");
+            $wgsFilterDepVcfs .= " $hardfiltvcf.OK";
         }
         else
         {
             if ( $expandFlag == 1 ) {
-                print MAK "$mvcfPrefix.filtered.vcf.gz.OK: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n";
+                print MAK "$svmvcf.OK: $hardfiltvcf.OK\n";
             }
             else
             {
-                print MAK "$mvcfPrefix.filtered.vcf.gz.OK: \n";
+                print MAK "$svmvcf.OK: \n";
             }
 
-            runSVM($svcf, "$mvcfPrefix.filtered.sites.vcf");
+            runSVM($hardfiltsitesvcf, "$vcfPrefix.${svmPrefix}filtered.sites.vcf");
         }
 
         # The following is always done per chr
 
-        $cmd = getConf("VCFPASTE")." $mvcfPrefix.filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.filtered.vcf.gz";
+        $cmd = getConf("VCFPASTE")." $svmsitesvcf $mergedvcf | ".getConf("BGZIP")." -c > $svmvcf";
         writeLocalCmd($cmd);
-        $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
+        $cmd = "\t".getConf("TABIX")." -f -pvcf $svmvcf\n";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
-        $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
+        $cmd = "\t".getConf("VCFSUMMARY")." --vcf $svmsitesvcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $svmsitesvcf.summary\n";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
-        writeTouch("$mvcfPrefix.filtered.vcf.gz");
+        writeTouch("$svmvcf");
         print MAK join("\n",@cmds);
         print MAK "\n";
     }
@@ -2136,19 +2185,19 @@ if ( getConf("WGS_SVM") eq "TRUE")
 {
     if( (scalar @wgsFilterDepSites) > 0 )
     {
-        print MAK "$remotePrefix$vcfDir/filtered.vcf.gz.OK:$wgsFilterDepVcfs\n";
+        print MAK "$remotePrefix$vcfDir/${svmPrefix}filtered.vcf.gz.OK:$wgsFilterDepVcfs\n";
 
         my $mergedSites = "$remotePrefix$vcfDir/${filterPrefix}filtered.sites.vcf";
-        my $outMergedVcf = "$remotePrefix$vcfDir/filtered.sites.vcf";
+        my $outMergedVcf = "$remotePrefix$vcfDir/${svmPrefix}filtered.sites.vcf";
 
         # Add the vcf header.
-        print MAK "\t".getConf("VCFCAT")." @wgsFilterDepSites > $mergedSites\n";
+        writeLocalCmd(getConf("VCFCAT")." @wgsFilterDepSites > $mergedSites");
 
         # Run SVM on the merged file.
         runSVM($mergedSites, $outMergedVcf);
 
         # split svm file by chromosome.
-        print MAK "\t".getConf("VCF_SPLIT_CHROM")." --in $outMergedVcf --out $remotePrefix$vcfDir/chrCHR/chrCHR.filtered.sites.vcf --chrKey CHR\n";
+        writeLocalCmd(getConf("VCF_SPLIT_CHROM")." --in $outMergedVcf --out $remotePrefix$vcfDir/chrCHR/chrCHR.${svmPrefix}filtered.sites.vcf --chrKey CHR");
     }
 }
 
