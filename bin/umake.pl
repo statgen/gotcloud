@@ -1675,6 +1675,7 @@ foreach my $chr (@chrs) {
         #############################################################################
         if ( $extfilt eq "TRUE") {
             my $outvcf = "$vcfPrefix.filtered.vcf.gz";
+            my $outsitesvcf = "$vcfPrefix.filtered.sites.vcf";
 
             print MAK "extFilt$chr: $outvcf.OK\n\n";
 
@@ -1703,10 +1704,16 @@ foreach my $chr (@chrs) {
             $cmd = getConf("TABIX")." -f -pvcf $outvcf\n";
             $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             writeLocalCmd($cmd);
+            # Write just the sites, then do the summary.
+            print MAK "\tzcat $outvcf | cut -f 1-8 > $outsitesvcf\n";
+            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $outsitesvcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $outsitesvcf.summary 2> $outsitesvcf.summary.log\n";
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+            print MAK "$cmd";
             writeTouch("$outvcf");
             print MAK "\n";
         }
 
+        # Regular SVM
         my $hardfiltsitesvcf = "$vcfPrefix.${filterPrefix}filtered.sites.vcf";
         my $hardfiltvcf = "$vcfPrefix.${filterPrefix}filtered.vcf.gz";
         my $mergedvcf = "$vcfPrefix.merged.vcf";
