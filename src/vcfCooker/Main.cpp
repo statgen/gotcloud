@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////// 
 // vcfCooker/Main.cpp 
-// (c) 2010 Hyun Min Kang, Matthew Flickenger, Matthew Snyder, Paul Anderson
-//          Tom Blackwell, Mary Kate Trost, and Goncalo Abecasis
+// (c) 2010-2014 Hyun Min Kang, Matthew Flickenger, Matthew Snyder, Paul Anderson
+//          Tom Blackwell, Mary Kate Wing, and Goncalo Abecasis
 // 
 // This file is distributed as part of the vcfCooker source code package   
 // and may not be redistributed in any form, without prior written    
@@ -31,7 +31,7 @@ Logger* Logger::gLogger = NULL;
 int main(int argc, char ** argv)
 {
    printf("vcfCooker 1.1.1 -- Manipulate VCF files\n"
-          "(c) 2010 Hyun Min Kang, Matthew Flickinger, Matthew Snyder, Paul Anderson, Tom Blackwell, Mary Kate Trost, and Goncalo Abecasis\n\n");
+          "(c) 2010-2014 Hyun Min Kang, Matthew Flickinger, Matthew Snyder, Paul Anderson, Tom Blackwell, Mary Kate Wing, and Goncalo Abecasis\n\n");
 
    bool bRecipesWriteBed = false;
    bool bRecipesWriteVcf = false;
@@ -110,7 +110,7 @@ int main(int argc, char ** argv)
 
    String sIndelVcf;
 
-   bool bVerbose = true;
+   bool bVerbose = false;
    bool bOutPlain = true;
    bool bOutBgzf = false;
    bool bOutGzip = false;

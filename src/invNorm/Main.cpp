@@ -272,7 +272,7 @@ int main(int argc, char ** argv)
   String sInput;
   String sOut("./invNorm");
   int nDigits = 3;
-  bool bVerbose = true;
+  bool bVerbose = false;
   bool bOutPlain = true;
   bool bOutBgzf = false;
   bool bOutGzip = false;
