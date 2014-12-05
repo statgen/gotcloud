@@ -1412,7 +1412,7 @@ foreach my $chr (@chrs) {
         }
         my $beaglePrefix = "$beagleDir/$chrchr/$chrchr.filtered.PASS.beagled";
         if ( $#pops > 0 ) {
-            my $cmd = getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamListRemote --bgzf 2> $remotePrefix$beaglePrefix.subset.err";
+            my $cmd = getConf("VCFCOOKER")." --in-vcf $remotePrefix$beaglePrefix.vcf.gz --out $remotePrefix$beaglePrefix --subset --in-subset $bamListRemote --bgzf > $remotePrefix$beaglePrefix.subset.out 2>&1";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "\t".getMosixCmd($cmd, "$beagleDir/$chrchr/subset")."\n";
             print MAK "\n";
@@ -1696,7 +1696,7 @@ foreach my $chr (@chrs) {
         $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.vcf.gz\n";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
-        $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary\n";
+        $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.filtered.sites.vcf.summary 2> $mvcfPrefix.filtered.sites.vcf.summary.log\n";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
         writeTouch("$mvcfPrefix.filtered.vcf.gz");
@@ -1785,7 +1785,7 @@ foreach my $chr (@chrs) {
                 $indelVCF = getConf("INDEL_VCF");
             }
 
-            $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf\n";
+            $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.out 2>&1\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
             $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
@@ -1793,7 +1793,7 @@ foreach my $chr (@chrs) {
             $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
+            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary 2> $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary.log\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
             writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
@@ -1911,7 +1911,7 @@ foreach my $chr (@chrs) {
                 $indelVCF = getConf("INDEL_VCF");
             }
 
-            my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf\n";
+            my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.out 2>&1\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
             $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
@@ -1919,7 +1919,7 @@ foreach my $chr (@chrs) {
             $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
-            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary\n";
+            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary 2> $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary.log\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
             writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
@@ -2108,7 +2108,7 @@ foreach my $chr (@chrs) {
                         $maxDepths .= ",1000";
                     }
                     # Merge the multiple GLFs for this sample.
-                    $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs", "$smGlf");
+                    $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs > $smGlf.out 2>&1", "$smGlf");
                     $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     $sampleCmd .= "\n";
                 }
@@ -2431,11 +2431,11 @@ sub runSVM
     my $cmd = "";
     if (getConf("USE_SVMMODEL") eq "TRUE")
     {
-        $cmd = "\t".getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --model ".getConf("SVMMODEL")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA \n";
+        $cmd = "\t".getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --model ".getConf("SVMMODEL")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA > $outVcf.out 2>&1\n";
     }
     else
     {
-        $cmd = "\t".getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --pos ".getConf("POS_SAMPLE")." --neg ".getConf("NEG_SAMPLE")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA \n";
+        $cmd = "\t".getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --pos ".getConf("POS_SAMPLE")." --neg ".getConf("NEG_SAMPLE")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA > $outVcf.out 2>&1\n";
     }
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
