@@ -1951,7 +1951,7 @@ foreach my $chr (@chrs) {
             print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
             print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
             if ( $#uniqBeds < 0 ) {
-                my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf\n";
+                my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf 2> $mvcfPrefix.merged.stats.vcf.log\n";
                 $cmd =~ s/$outdir/\$(OUT_DIR)/g;
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 print MAK "$cmd";
@@ -2056,7 +2056,7 @@ foreach my $chr (@chrs) {
         print MAK $dep;
         print MAK ".OK\n";
         if ( $#uniqBeds < 0 ) {
-            my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @vcfs > $out.vcf\n";
+            my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @vcfs > $out.vcf 2> $out.log\n";
             $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
