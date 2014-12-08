@@ -14,8 +14,8 @@ our @EXPORT = qw(%hszchrs @achrs);
 our @EXPORT_OK = qw(loadGTF writeGTF readFasta getCpGs initRef getDegeneracies readCDS loadIlluBpm loadIlluIdat forkExecWait autoPod zopen wopen tofpos fromfpos reverseComplement reverseComplementIUPAC iupacCompatible batchCmd sortedBedInsert sortedBedPush sortedBedMerge sortedBedInvert sortedBedSize sortedBedPrint xargsCmd mosixCmd joinps makeMake);
 
 my $binzcat = "zcat";
-my $binbgzip = "bgzip";
-my $bintabix = "tabix";
+my $binbgzip = "$module_dir/bgzip";
+my $bintabix = "$module_dir/tabix";
 my $binruncluster = "$module_dir/runcluster.pl";
 
 my %codon1 = (TTT=>"F", TTC=>"F", TCT=>"S", TCC=>"S", TAT=>"Y", TAC=>"Y", TGT=>"C", TGC=>"C", TTA=>"L", TCA=>"S", TAA=>"*", TGA=>"*", TTG=>"L", TCG=>"S", TAG=>"*", TGG=>"W", CTT=>"L", CTC=>"L", CCT=>"P", CCC=>"P", CAT=>"H", CAC=>"H", CGT=>"R", CGC=>"R", CTA=>"L", CTG=>"L", CCA=>"P", CCG=>"P", CAA=>"Q", CAG=>"Q", CGA=>"R", CGG=>"R", ATT=>"I", ATC=>"I", ACT=>"T", ACC=>"T", AAT=>"N", AAC=>"N", AGT=>"S", AGC=>"S", ATA=>"I", ACA=>"T", AAA=>"K", AGA=>"R", ATG=>"M", ACG=>"T", AAG=>"K", AGG=>"R", GTT=>"V", GTC=>"V", GCT=>"A", GCC=>"A", GAT=>"D", GAC=>"D", GGT=>"G", GGC=>"G", GTA=>"V", GTG=>"V", GCA=>"A", GCG=>"A", GAA=>"E", GAG=>"E", GGA=>"G", GGG=>"G");
@@ -232,7 +232,7 @@ sub writeGTF {
 	}
     }
     close OUT;
-    &runCmd("tabix -pvcf $outf.genes.gz");
+    &runCmd("$bintabix -pvcf $outf.genes.gz");
 
     ## sort by the starting points
     my @tkeys = sort { &compareChrPos($a,$b,$rht) } keys (%ht);
@@ -258,7 +258,7 @@ sub writeGTF {
 	print OUT "\n";
     }
     close OUT;
-    &runCmd("tabix -pvcf $outf.transcripts.gz");
+    &runCmd("$bintabix -pvcf $outf.transcripts.gz");
 }
 
 sub loadGTF {
@@ -552,7 +552,7 @@ sub zopen {
 	if ( defined($reg) && ( $reg ) ) {
 	    die "Cannot parse $reg\n" unless ( $reg =~ /^\S+:\d+(-\d+)?/ );
 	    die "Cannot open file $fn.tbi\n" unless ( -s "$fn.tbi" );
-	    open($fh,"tabix -h $fn $reg |");
+	    open($fh,"$bintabix -h $fn $reg |");
 	}
 	else {
 	    open($fh,"zcat $fn|");
@@ -575,7 +575,7 @@ sub wopen {
     my $fn = shift;
     my $fh = FileHandle->new;
     if ( $fn =~ /\.gz$/ ) {
-	open($fh,"| bgzip -c > $fn");
+	open($fh,"| $binbgzip -c > $fn");
     }
     else {
 	if ( $fn eq "-" ) {
