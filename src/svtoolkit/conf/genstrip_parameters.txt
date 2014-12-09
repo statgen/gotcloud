@@ -77,7 +77,7 @@ membership.minimumSampleSpanCoverage: 1.0
 depth.mixtureModel: GMM
 
 # R script to compute mixture model
-depth.mixtureModelScript: compute_gmm.R
+#depth.mixtureModelScript: compute_gmm.R
 
 # minimum mapping quality for reads used in genotyping by depth
 depth.minimumMappingQuality: 10

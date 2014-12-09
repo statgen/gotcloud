@@ -6,11 +6,7 @@ SVToolkit and Genome STRiP (Genome STRucture In Populations) is a suite of tools
 The official website for SVToolkit / Genome STRiP is http://www.broadinstitute.org/software/genomestrip.
 Documentation for SVToolkit / Genome STRiP is online at http://www.broadinstitute.org/software/genomestrip/documentation.
 
-GenomeSTRiP was developed at the Broad Institute and at the McCarroll Lab at the Harvard Medical School Department of Genetics.
+A short test that can be used to verify the installation and correct installation of pre-requisite software is in the installtest subdirectory.
+There is also a cookbook of common usage recipes in the cookbook subdirectory.
 
-If you use GenomeSTRiP for your research, please cite it:
-  Handsaker RE, Korn JM, Nemesh J, McCarroll SA
-  Discovery and genotyping of genome structural polymorphism by sequencing on a population scale.
-  Nature genetics 43, 269-276 (2011)
-  PMID: 21317889
-
+If you are upgrading from a previous version of Genome STRiP, please consult the UPGRADE.txt file.

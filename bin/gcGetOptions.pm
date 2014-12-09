@@ -15,6 +15,8 @@ use hyunlib qw(getAbsPath getIntConf loadConf dumpConf setConf getConf ReadConfi
 $podstr = "";
 $statusstr = "";
 
+
+## Advanced version of GetOptions specialized for gotCloud
 sub gcGetOptions {
     my @arg = @_;
     my %htypes = ( "s" => "STR", "i" => "INT", "f" => "FLT" );
@@ -33,7 +35,10 @@ sub gcGetOptions {
 
     my $confref;
     my $gcrootref;
+    my $outdirref;
 
+    ## Scan through the input arguments and assign the arguments to variables
+    ## Also, detect special variables such as gcroot or conf
     for(my $i=0; $i < @_; ++$i) {
 	if ( $arg[$i] =~ /^-/ ) {  ## this entry is not an argument but a description
 	    if ( $arg[$i] =~ /^--/ ) {
@@ -83,11 +88,17 @@ sub gcGetOptions {
 		die "Argument gcroot or gotcloudroot must be a string. Use 'gcroot=s' when specifying" unless ( $type eq "s" );
 		$gcrootref = $ref;
 	    }
+	    elsif ( $key eq "outdir" ) {
+		die "Argument outdir must be a string. Use 'outdir=s' when specifying" unless ( $type eq "s" );
+		$outdirref = $ref;		
+	    }
 	}
     }
 
+    ## perform getOptions to get the values
     my $ret = GetOptions(@opts);
 
+    ## Create a custom man file in the case manual needs to be generated
     $podstr = "=pod\n\n=head1 NAME\n\n$0 - $main \n\n=head1 SYNOPSIS\n\n$0 [options]\n\n";
 # General Options:\n";
 #  -help             Print out brief help message [OFF]\n  -man              Print the full documentation in man page style [OFF]\n";
@@ -120,7 +131,7 @@ sub gcGetOptions {
     gcpod2usage(-verbose => 1, -exitval => 1) if ( $help );
     gcpod2usage(-verbose => 2) if ( $man );
 
-    ## Read configuration file and override values if needed
+    ## Read configuration file and override values from runtime arguments if needed
     if ( defined($confref) ) { ## If config option exists
 	my @configs = split(' ',${$confref});  ## read configuration file
 	my @confSettings;
@@ -135,6 +146,13 @@ sub gcGetOptions {
 	    $gcroot =~ s/\/bin\/*$//;
 	    push(@confSettings, "GOTCLOUD_ROOT = $gcroot");
 	}
+	#die "gcroot = $gcroot\n";
+
+	my $outdir;
+	if ( defined($outdirref) ) {
+	    $outdir = ${$outdirref};
+	    push(@confSettings, "OUT_DIR = ".${$outdirref});
+	}
 
 	my ($scriptName, $scriptPath) = fileparse(abs_path($FindBin::Script));
 
@@ -144,11 +162,11 @@ sub gcGetOptions {
 	    );
 	push(@configs, $opts{pipelinedefaults});
 
-	if ( loadConf(\@confSettings,\@configs,$verbose) ) {
+	if ( loadConf(\@confSettings,\@configs,$verbose) ) {  ## load configurations
 	    die "Failed to read configuration files @configs";
 	}
 
-	## iterate variables and assign values
+	## iterate configuration variables and assign values
 	for(my $i=0; $i < @keys; ++$i) {
 	    if ( defined($confnames[$i]) && ( $confnames[$i] ) ) {
                 my $argval;
@@ -169,7 +187,7 @@ sub gcGetOptions {
 		if ( $confval ) { ## if configuration value exists
 		    ## check if it was changed from the default value
 
-		    ##print STDERR "$keys[$i] $argval $defaults[$i]\n";
+		    #print STDERR "** $keys[$i] $argval $defaults[$i] $confval\n";
 		    if ( $argval eq $defaults[$i] ) {
 			## if default value was not changed and the configuration value exist, override
 			if ( $types[$i] ) {

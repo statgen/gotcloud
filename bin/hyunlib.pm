@@ -1201,6 +1201,9 @@ sub setConf {
 
 sub getConf {
     my ($key, $required) = @_;
+
+    #print STDERR "getConf() : @_\n";
+    
     if (! defined($required)) { $required = 0; }
 
     my $section = 'global';

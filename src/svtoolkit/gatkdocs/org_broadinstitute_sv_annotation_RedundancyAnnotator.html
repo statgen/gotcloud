@@ -1,0 +1,428 @@
+<!--
+  ~ Copyright (c) 2013, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<!--
+  ~ Copyright (c) 2012, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+
+
+<?php $group = 'Variant Annotators'; ?>
+        <?php ob_start(); ?>
+        <!DOCTYPE html>
+        <html lang='en'>
+        <head>
+            <meta charset='utf-8'>
+            <title>RedundancyAnnotator documentation documentation</title>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <meta name='description' content=''>
+
+            <link type="text/css" rel="stylesheet" href="bootstrap.min.css">
+            <script src="jquery.min.js"></script>
+            <script src="bootstrap.min.js"></script>
+            <style>
+                @media (min-width: 980px) {
+                    body {
+                        padding-top : 60px;
+                    }
+                }
+            </style>
+
+        </head>
+        <body>
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container-fluid">
+                    <a class="brand" href="index.html">GenomeSTRiP Documentation</a>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid">
+            <?php
+    // Output Buffering allows for the website to inject a different header
+    ob_clean();
+    include '../include/common.php';
+    printHeader("RedundancyAnnotator documentation", "Guides");
+    ?>
+
+            <div class="row-fluid">
+
+<section class="span4">
+    <aside class="well">
+        <h2>Categories</h2>
+        <style>
+            #sidenav .accordion-body a {
+                color : gray;
+            }
+
+            .accordion-body li {
+                list-style : none;
+            }
+        </style>
+        <ul class="nav nav-pills nav-stacked" id="sidenav">
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#QueueScripts">Queue Scripts</a>
+
+                    <div id="QueueScripts"
+                    <?php echo ($group == 'Queue Scripts')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVDiscovery.html">SVDiscovery</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVGenotyper.html">SVGenotyper</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVPreprocess.html">SVPreprocess</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVQScript.html">SVQScript</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#VariantAnnotation">Variant Annotation</a>
+
+                    <div id="VariantAnnotation"
+                    <?php echo ($group == 'Variant Annotation')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_main_SVAnnotator.html">SVAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_SVVariantAnnotatorWalker.html">SVVariantAnnotatorWalker</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#VariantAnnotators">Variant Annotators</a>
+
+                    <div id="VariantAnnotators"
+                    <?php echo ($group == 'Variant Annotators')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_AlleleFrequencyAnnotator.html">AlleleFrequencyAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_ClusterSeparationAnnotator.html">ClusterSeparationAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_CopyNumberClassAnnotator.html">CopyNumberClassAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_GCContentAnnotator.html">GCContentAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_GeneOverlapAnnotator.html">GeneOverlapAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_IntensityRankSumAnnotator.html">IntensityRankSumAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_NonVariantAnnotator.html">NonVariantAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_ReciprocalOverlapAnnotator.html">ReciprocalOverlapAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_RedundancyAnnotator.html">RedundancyAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_TagVariantsAnnotator.html">TagVariantsAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_VariantsPerSampleAnnotator.html">VariantsPerSampleAnnotator</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+        </ul>
+    </aside>
+    <?php getForumPosts( 'RedundancyAnnotator' ) ?>
+
+</section>
+
+<div class="span8">
+
+    <h1>RedundancyAnnotator</h1>
+
+    <p class="lead">Annotator used to detect and filter redundant structural variation calls with similar coordinates.</p>
+        <h3>Category
+            <small> Variant Annotators</small>
+        </h3>
+    <br/>
+
+    <h2>Introduction</h2>
+    
+
+ <p>
+ The Redundancy annotator is invoked through the <a href="org_broadinstitute_sv_main_SVAnnotator.html">SVAnnotator</a> framework, which defines arguments common to all annotators.
+ </p><p>
+ One difficulty in structural variant calling is that often different methods (or even the same method) will call the same variant more than once, with slightly different coordiantes.
+ This annotator provides one solution to that problem, by detecting, ranking and scoring potentially duplicate calls, based on the popuation genotypes.  These duplication scores
+ can then be used to filter duplicate sites from the variant call set.
+ </p><p>
+ The Redundancy annotator computes a "redundancy" score and related annotations for each site in the input VCF.
+ The redundancy score indicates how likely it is that a site is a duplicate of another site in the comparison VCF file, based on the genotype likelihoods at both sites in overlapping samples.
+ The comparison VCF file can be, and usually is, the same as the input VCF file.
+ The Redundancy annotator also indicates which other sites in the comparison VCF are potential duplicates and between these potential duplicate sites which site is the preferred one to
+ keep based on the strength of the genotype likelihoods. Sites with stronger genotype likelihoods usually indicate a better call with more accurate boundaries.
+ </p><p>
+ This annotator is normally used as part of the Genome STRiP Queue pipelines for variant calling and filtration and is not often used separately.
+ After running this annotator, the output VCF is usually filtered based on GSDUPLICATESCORE to remove duplicates.
+ Variants are only compared if they overlap by more than a threshold given by the -duplicateOverlapThreshold parameter.
+ Setting this parameter to zero will cause all overlapping variants to be evaluated as potential duplicates.
+ Combining this with a very low filtering value (e.g. -1000) will result in a non-overlapping output call set, with the strongest calls retained.
+ </p>
+ 
+ <h3>Output Formats</h3>
+ <p>
+ This annotator can produce the following outputs: annotated VCF, report file.
+ </p><p>
+ The following VCF annotations are produced by this annotator:
+ </p>
+ <dl>
+ <dt>GSDUPLICATESCORE</dt><dd>LOD score that this site is distinct based on the genotypes of the most discordant sample at each comparison site.</dd>
+ <dt>GSDUPLICATEOVERLAP</dt><dd>Highest overlap with a duplicate comparison site.</dd>
+ <dt>GSDUPLICATES</dt><dd>List of duplicate sites preferred to this site.</dd>
+ </dl>
+ </p><p>
+ The report file contains one line for every pairwise comparison between two sites (one from the input VCF, one from the comparison VCF).
+ The following columns are produced in the report file:
+ </p>
+ <dl>
+ <dt>SITE1</dt><dd>The site from the input VCF.</dd>
+ <dt>SITE2</dt><dd>The site from the comparison VCF.</dd>
+ <dt>LENGTH1</dt><dd>The genomic length of site 1.</dd>
+ <dt>LENGTH2</dt><dd>The genomic length of site 2.</dd>
+ <dt>OVERLAP</dt><dd>The length of the genomic overlap between the two sites.</dd>
+ <dt>SCORE</dt><dd>The duplicate score between these two sites.</dd>
+ <dt>LEGACY_SCORE</dt><dd>An older method for scoring duplicate sites (retained for backwards compatibility).</dd>
+ <dt>LODSUM</dt><dd>Sum of the LOD scores across all samples (not used).</dd>
+ <dt>DOSAGE_CORRELATION</dt><dd>The correlation coefficient between genotype dosages of common samples at the two sites.</dd>
+ <dt>DISCORDANT_GENOTYPES</dt><dd>The number of discordant genotype calls at common samples between the two sites.</dd>
+ <dt>DUPLICATE_OVERLAP</dt><dd>Fractional overlap between the two sites.</dd>
+ <dt>DUPLICATE_NONOVERLAP</dt><dd>Fraction of non-overlapping bases between the two sites.</dd>
+ <dt>PREFERRED</dt><dd>Which of the two sites is the better site to retain.</dd>
+ </dl>
+ 
+ <h3>Example</h3>
+ <p>
+ <pre>
+ java -Xmx4g -cp SVToolkit.jar \
+     org.broadinstitute.sv.main.SVAnnotator \
+     -A Redundancy \
+     -R human_g1k_v37.fasta \
+     -vcf input.vcf \
+     -comparisonFile input.vcf \
+     -duplicateOverlapThreshold 0.5 \
+     -O output.vcf \
+     -writeReport true \
+     -reportDirectory reportdir
+ </pre>
+ </p>
+
+            <hr>
+            <h3>RedundancyAnnotator specific arguments</h3>
+            <table class="table table-striped table-bordered table-condensed">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Default value</th>
+                    <th>Summary</th>
+                </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <th colspan="4" id="row-divider">Required</th>
+        </tr>
+            <tr>
+                <td><a href="#--comparisonFile">--comparisonFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>VCF file of variants for comparison</td>
+            </tr>
+        <tr>
+            <th colspan="4" id="row-divider">Optional</th>
+        </tr>
+            <tr>
+                <td><a href="#--discordantGenotypeThreshold">--discordantGenotypeThreshold</a></td>
+                <td>Integer</td>
+                <td>NA</td>
+                <td>Maximum number of discordant genotypes allowed for redundant events (default: any)</td>
+            </tr>
+            <tr>
+                <td><a href="#--duplicateOverlapDenonminator">--duplicateOverlapDenonminator</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Denominator for measuring overlap, UNION (reciprocal overlap) or SHORTEST (default, length of shortest event)</td>
+            </tr>
+            <tr>
+                <td><a href="#--duplicateOverlapThreshold">--duplicateOverlapThreshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Minimum overlap required to determine two events are redundant</td>
+            </tr>
+            <tr>
+                <td><a href="#--duplicateScoreThreshold">--duplicateScoreThreshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Concordance LOD score threshold (minimum per-sample LOD score at which events are considered non-redundant)</td>
+            </tr>
+            <tr>
+                <td><a href="#--filterGenotypes">--filterGenotypes</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to ignore genotypes that have been filtered (default true).</td>
+            </tr>
+            <tr>
+                <td><a href="#--filterVariants">--filterVariants</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to ignore variants that have been filtered (default true).</td>
+            </tr>
+                </tbody>
+            </table>
+
+
+
+                        <hr>
+                            <h2>Argument details</h2>
+    <h3><a name="--comparisonFile">--comparisonFile
+         / -comparisonFile
+    </a>
+        (
+        required
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        VCF file of variants for comparison. 
+            </p>
+    <h3><a name="--discordantGenotypeThreshold">--discordantGenotypeThreshold
+         / -discordantGenotypeThreshold
+    </a>
+        (
+        
+        Integer
+        
+        )
+    </h3>
+    <p class="args">
+        Maximum number of discordant genotypes allowed for redundant events (default: any). 
+            </p>
+    <h3><a name="--duplicateOverlapDenonminator">--duplicateOverlapDenonminator
+         / -duplicateOverlapDenominator
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Denominator for measuring overlap, UNION (reciprocal overlap) or SHORTEST (default, length of shortest event). 
+            </p>
+    <h3><a name="--duplicateOverlapThreshold">--duplicateOverlapThreshold
+         / -duplicateOverlapThreshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Minimum overlap required to determine two events are redundant. 
+            </p>
+    <h3><a name="--duplicateScoreThreshold">--duplicateScoreThreshold
+         / -duplicateScoreThreshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Concordance LOD score threshold (minimum per-sample LOD score at which events are considered non-redundant). 
+            </p>
+    <h3><a name="--filterGenotypes">--filterGenotypes
+         / -filterGenotypes
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to ignore genotypes that have been filtered (default true).. 
+            </p>
+    <h3><a name="--filterVariants">--filterVariants
+         / -filterVariants
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to ignore variants that have been filtered (default true).. 
+            </p>
+
+        <hr>
+        <p class="see-also">See also <a href="index.html">Documentation index</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip">GenomeSTRiP Site</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip/documentation">GenomeSTRiP Support</a></p>
+
+        <p class="version">GenomeSTRiP version 1.04-r1441 built at 2014/07/14 14:26:06.</p>
+        </div><!--/.span-->
+        </div><!--/.row-->
+        </body>
+        <?php printFooter();
+        ob_end_flush();
+        ?>

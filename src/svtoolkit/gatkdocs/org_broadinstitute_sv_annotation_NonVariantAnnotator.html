@@ -1,0 +1,360 @@
+<!--
+  ~ Copyright (c) 2013, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<!--
+  ~ Copyright (c) 2012, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+
+
+<?php $group = 'Variant Annotators'; ?>
+        <?php ob_start(); ?>
+        <!DOCTYPE html>
+        <html lang='en'>
+        <head>
+            <meta charset='utf-8'>
+            <title>NonVariantAnnotator documentation documentation</title>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <meta name='description' content=''>
+
+            <link type="text/css" rel="stylesheet" href="bootstrap.min.css">
+            <script src="jquery.min.js"></script>
+            <script src="bootstrap.min.js"></script>
+            <style>
+                @media (min-width: 980px) {
+                    body {
+                        padding-top : 60px;
+                    }
+                }
+            </style>
+
+        </head>
+        <body>
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container-fluid">
+                    <a class="brand" href="index.html">GenomeSTRiP Documentation</a>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid">
+            <?php
+    // Output Buffering allows for the website to inject a different header
+    ob_clean();
+    include '../include/common.php';
+    printHeader("NonVariantAnnotator documentation", "Guides");
+    ?>
+
+            <div class="row-fluid">
+
+<section class="span4">
+    <aside class="well">
+        <h2>Categories</h2>
+        <style>
+            #sidenav .accordion-body a {
+                color : gray;
+            }
+
+            .accordion-body li {
+                list-style : none;
+            }
+        </style>
+        <ul class="nav nav-pills nav-stacked" id="sidenav">
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#QueueScripts">Queue Scripts</a>
+
+                    <div id="QueueScripts"
+                    <?php echo ($group == 'Queue Scripts')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVDiscovery.html">SVDiscovery</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVGenotyper.html">SVGenotyper</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVPreprocess.html">SVPreprocess</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVQScript.html">SVQScript</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#VariantAnnotation">Variant Annotation</a>
+
+                    <div id="VariantAnnotation"
+                    <?php echo ($group == 'Variant Annotation')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_main_SVAnnotator.html">SVAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_SVVariantAnnotatorWalker.html">SVVariantAnnotatorWalker</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#VariantAnnotators">Variant Annotators</a>
+
+                    <div id="VariantAnnotators"
+                    <?php echo ($group == 'Variant Annotators')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_AlleleFrequencyAnnotator.html">AlleleFrequencyAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_ClusterSeparationAnnotator.html">ClusterSeparationAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_CopyNumberClassAnnotator.html">CopyNumberClassAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_GCContentAnnotator.html">GCContentAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_GeneOverlapAnnotator.html">GeneOverlapAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_IntensityRankSumAnnotator.html">IntensityRankSumAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_NonVariantAnnotator.html">NonVariantAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_ReciprocalOverlapAnnotator.html">ReciprocalOverlapAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_RedundancyAnnotator.html">RedundancyAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_TagVariantsAnnotator.html">TagVariantsAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_VariantsPerSampleAnnotator.html">VariantsPerSampleAnnotator</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+        </ul>
+    </aside>
+    <?php getForumPosts( 'NonVariantAnnotator' ) ?>
+
+</section>
+
+<div class="span8">
+
+    <h1>NonVariantAnnotator</h1>
+
+    <p class="lead">Annotator used to detect and filter sites that are likely not polymorphic in the genotyped population.</p>
+        <h3>Category
+            <small> Variant Annotators</small>
+        </h3>
+    <br/>
+
+    <h2>Introduction</h2>
+    
+
+ <p>
+ The NonVariant annotator is invoked through the <a href="org_broadinstitute_sv_main_SVAnnotator.html">SVAnnotator</a> framework, which defines arguments common to all annotators.
+ </p><p>
+ The NonVariant annotator computes a "non-variance" score for each site in the input VCF.
+ Only sites that have all homozygous reference genotype calls receive a numeric score.  For sites with all homozygous reference genotypes, the non-variance score is the minimum
+ quality score (either GQ or CNQ, depending on the variant) across all evaluated samples.  A higher non-variance score indicates higher confidence that no sample in the
+ evaluated population has a polymorphism at this site.
+ </p><p>
+ If genotype filters are present in the input VCF, they will be used by default and the corresponding genotypes will not be used in computing the non-variance score,
+ except that genotypes failing only the "LowQual" filter, which is based on the genotype quality values, are always used.
+ </p><p>
+ The -sample argument can be used to restrict the non-variance test to a subset of the samples in the input VCF.
+ </p>
+ 
+ <h3>Output Formats</h3>
+ <p>
+ This annotator can produce the following outputs: annotated VCF, report file.
+ </p><p>
+ The following VCF annotations are produced by this annotator (and corresponding columns in the report file):
+ </p>
+ <dl>
+ <dt>GSNONVARSCORE</dt><dd>The non-variance score.  For uniformly homozygous reference sites, the minimum genotype quality.</dd>
+ </dl>
+ 
+ <h3>Example</h3>
+ <p>
+ <pre>
+ java -Xmx4g -cp SVToolkit.jar \
+     org.broadinstitute.sv.main.SVAnnotator \
+     -A NonVariant \
+     -R human_g1k_v37.fasta \
+     -vcf input.vcf \
+     -O output.vcf \
+     -writeReport true \
+     -reportDirectory reportdir
+ </pre>
+ </p>
+
+            <hr>
+            <h3>NonVariantAnnotator specific arguments</h3>
+            <table class="table table-striped table-bordered table-condensed">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Default value</th>
+                    <th>Summary</th>
+                </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <th colspan="4" id="row-divider">Optional</th>
+        </tr>
+            <tr>
+                <td><a href="#--filterGenotypes">--filterGenotypes</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to ignore genotypes that have been filtered (default true).  The "LowQual" filter is not used, however.</td>
+            </tr>
+            <tr>
+                <td><a href="#--filterVariants">--filterVariants</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to ignore variants that have been filtered (default true).</td>
+            </tr>
+            <tr>
+                <td><a href="#--genderMapFile">--genderMapFile</a></td>
+                <td>List[File]</td>
+                <td>NA</td>
+                <td>Map file(s) containing the gender for each sample</td>
+            </tr>
+            <tr>
+                <td><a href="#--ploidyMapFile">--ploidyMapFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Map file containing ploidy information</td>
+            </tr>
+            <tr>
+                <td><a href="#--sample">--sample</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Sample(s) or .list file of sample names to be evaluated</td>
+            </tr>
+                </tbody>
+            </table>
+
+
+
+                        <hr>
+                            <h2>Argument details</h2>
+    <h3><a name="--filterGenotypes">--filterGenotypes
+         / -filterGenotypes
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to ignore genotypes that have been filtered (default true).  The "LowQual" filter is not used, however.. 
+            </p>
+    <h3><a name="--filterVariants">--filterVariants
+         / -filterVariants
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to ignore variants that have been filtered (default true).. 
+            </p>
+    <h3><a name="--genderMapFile">--genderMapFile
+         / -genderMapFile
+    </a>
+        (
+        
+        List[File]
+        
+        )
+    </h3>
+    <p class="args">
+        Map file(s) containing the gender for each sample. 
+            </p>
+    <h3><a name="--ploidyMapFile">--ploidyMapFile
+         / -ploidyMapFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Map file containing ploidy information. 
+            </p>
+    <h3><a name="--sample">--sample
+         / -sample
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Sample(s) or .list file of sample names to be evaluated. 
+            </p>
+
+        <hr>
+        <p class="see-also">See also <a href="index.html">Documentation index</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip">GenomeSTRiP Site</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip/documentation">GenomeSTRiP Support</a></p>
+
+        <p class="version">GenomeSTRiP version 1.04-r1441 built at 2014/07/14 14:26:06.</p>
+        </div><!--/.span-->
+        </div><!--/.row-->
+        </body>
+        <?php printFooter();
+        ob_end_flush();
+        ?>

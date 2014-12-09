@@ -16,9 +16,10 @@ current.expected.data <- NULL
 current.pair.data <- NULL
 current.model.data <- NULL
 current.truth.data <- NULL
-
+current.sample.data <- NULL
 
 main <- function() {
+    options(warn = 2)
     cmdArguments <<- parseProgramArguments()
     siteList = if (is.null(cmdArguments$site)) NULL else unlist(strsplit(cmdArguments$site, ","))
     outputFile = if (is.null(cmdArguments$outputFile)) cmdArguments$O else cmdArguments$outputFile
@@ -33,6 +34,7 @@ main <- function() {
         cat(" --partitionMapFile file    Map file specifying the partition for each site [optional].\n")
         cat(" --genderMapFile file       Map file providing the gender of each sample [optional].\n")
         cat(" --truthDataFile file       File containing truth data genotypes [optional].\n")
+        cat(" --sampleGroupFile file     File containing samples/groups to highlight [optional].\n")
         cat(" --debug true/false         Enable debug output [optional, default false].\n")
         cat(" --verbose true/false       Enable verbose output [optional, default false].\n")
         cat(" --pretty true/false        Produce prettier plots but with less detail [optional, default false].\n")
@@ -71,6 +73,7 @@ plotCnps <- function(siteList, outputFile) {
 plotSites <- function(siteList, threshold=1.3, ymax=NULL, impMethod=NULL) {
     gender.data <- loadGenderMap()
     current.truth.data <<- loadTruthData()
+    current.sample.data <<- loadSampleGroups()
     for (cnp in siteList) {
         loadCnpData(cnp)
         if (is.null(current.partition) || ! (cnp %in% rownames(current.genotype.data))) {
@@ -91,13 +94,14 @@ plotSites <- function(siteList, threshold=1.3, ymax=NULL, impMethod=NULL) {
                         loadModel(current.model.data[cnp,]),
                         current.model.data[cnp,],
                         current.truth.data[cnp,],
+                        current.sample.data,
                         gender.data,
                         threshold=threshold,
                         ymax=ymax)
     }
 }
 
-plotCnpInternal <- function(cnp, coverage.data, count.data, expected.data, genotype.data, confidence.data, pair.data, model, norm.data, truth.data, gender.data=NULL, threshold=NULL, ymax=NULL) {
+plotCnpInternal <- function(cnp, coverage.data, count.data, expected.data, genotype.data, confidence.data, pair.data, model, norm.data, truth.data, sample.data=NULL, gender.data=NULL, threshold=NULL, ymax=NULL) {
     # genotype.data is *our* genotype calls
     # optionally, we can take in gold standard reference calls and display those as well
     # make sure we plot cna genotypes (e.g. light blue)
@@ -313,6 +317,13 @@ plotCnpInternal <- function(cnp, coverage.data, count.data, expected.data, genot
         col <- truth.colors[!is.null(truth.colors)]
         points(xvals, yvals, pch=21, col=col, bg=col)
     }
+    if (!is.null(sample.data)) {
+        sample.colors <- sample.data[rownames(bin.data),]$COLOR
+        xvals <- bin.data$b[!is.null(sample.colors)]-0.5
+        yvals <- bin.data$off[!is.null(sample.colors)]-0.3
+        col <- sample.colors[!is.null(sample.colors)]
+        points(xvals, yvals, pch=21, col=col, bg=col)
+    }
 
     if (any(genotype.data$CHR %in% c("X", "Y", "chrX", "chrY")) && !is.null(gender.data)) {
         sample.genders <- gender.data[rownames(bin.data)]
@@ -359,8 +370,8 @@ makeHist <- function(domain, value, data, idx, func) {
     names(result) <- domain
     tapply.result <- tapply(data, idx, func)
     result[names(tapply.result)] <- tapply.result
-    # remove NaNs from the input data
-    result <- result[!(names(result) %in% "NaN")]
+    # remove NaNs from the input data, also infinite values that can happen in pathological cases (zero expectation)
+    result <- result[!(names(result) %in% c("NaN","Inf"))]
     return(result)
 }
 
@@ -471,6 +482,15 @@ loadTruthData <- function() {
         return(NULL)
     }
     file.data = read.table(cmdArguments$truthDataFile, sep="\t", header=T, row.names=1, stringsAsFactors=F)
+    return(file.data)
+}
+
+loadSampleGroups <- function() {
+    if (is.null(cmdArguments$sampleGroupFile)) {
+        return(NULL)
+    }
+    file.data = read.table(cmdArguments$sampleGroupFile, sep="\t", header=T, stringsAsFactors=F)
+    rownames(file.data) = file.data$SAMPLE
     return(file.data)
 }
 

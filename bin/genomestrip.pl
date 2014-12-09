@@ -77,12 +77,12 @@ gcGetOptions(
     "run-discovery" => [\$runDiscovery, "Run variant discovery and filtering. Can run with --run-metadata together", "GENOMESTRIP_RUN_DISCOVERY"],
     "run-genotype" => [\$runGenotype, "Run genotyping - requires to finish run-metadata and run-discovery", "GENOMESTRIP_RUN_GENOTYPE"],
     "run-thirdparty" => [\$runThirdparty, "Run genotyping and filtering of third-party sites", "GENOMESTRIP_RUN_THIRDPARTY"],
-    "--Options for input data",
+
+    "--Options for input/output data",
     "gotcloudroot|gcroot=s" => [\$gcroot, "GotCloud Root Directory", "GOTCLOUD_ROOT"],
     "conf=s" => [\$conf, "GotCloud configuration files"],
+    "outdir=s" => [\$outdir, "Override's conf file's OUT_DIR.  Used as the genomestrip output directory unless --out or GENOMESTRIP_OUT is set", "OUT_DIR"],    
     "list=s" => [\$listf, "BAM list file containing ID and BAM path", "BAM_LIST"],
-    "--Options for output data",
-    "outdir=s" => [\$outdir, "Override's conf file's OUT_DIR.  Used as the genomestrip output directory unless --out or GENOMESTRIP_OUT is set", "OUT_DIR"],
     "out=s" => [\$out, "Output directory which stores subdirectories such as metadata/, discovery/, genotypes/, thirdparty/ unless overriden individually", "GENOMESTRIP_OUT"],
     "metadata=s", [\$outMetadata,"Output directory to store --run-metadata results. Default is [OUT]/metadata/", "GENOMESTRIP_METADATA"],
     "discovery=s", [\$outDiscovery,"Output directory to store --run-discovery results. Default is [OUT]/discovery/", "GENOMESTRIP_DISCOVERY"],
@@ -123,6 +123,20 @@ unless ( $runMetadata || $runDiscovery || $runGenotype || $runThirdparty ) {
 }
 
 my $runcluster = "\$(GOTCLOUD_ROOT)/scripts/runcluster.pl";
+
+#--------------------------------------------------------------
+#   Convert command line options to conf settings
+#--------------------------------------------------------------
+#   Set the configuration values for applicable command-line options.
+#if ($listf)    { push(@confSettings, "BAM_LIST = $listf"); }
+#if ($bamprefix)  { push(@confSettings, "BAM_PREFIX = $bamprefix"); }
+#if ($refprefix)  { push(@confSettings, "REF_PREFIX = $refprefix"); }
+#if ($baseprefix) { push(@confSettings, "BASE_PREFIX = $baseprefix"); }
+#if ($makebasename)   { push(@confSettings, "MAKE_BASE_NAME = $makebasename"); }
+#if ($outdir)     { push(@confSettings, "OUT_DIR = $outdir"); }
+#if ($copyglf)    { push(@confSettings, "COPY_GLF = $copyglf"); }
+#if ($refdir)     { push(@confSettings, "REF_DIR = $refdir"); }
+#if ($chroms)     { $chroms =~ s/,/ /g; push(@confSettings, "CHRS = $chroms"); }
 
 ## METADATA directory is always needed
 if ( $outMetadata ) {
@@ -221,24 +235,24 @@ foreach my $rOpt (keys %requiredOpts)
 
 #die "Please specify the full path for --out $out\n" unless ( $out =~ /^\// );
 unless ( (!$out) || ( -d $out ) ) {
-    mkdir($out) || die "Cannot create $out\n";
+    make_path($out) || die "Cannot create $out\n";
 }
 
 unless ( (!$outMetadata) || ( -d $outMetadata ) ) {
-    mkdir($outMetadata) || die "Cannot create $outMetadata\n";
+    make_path($outMetadata) || die "Cannot create $outMetadata\n";
     mkdir("$outMetadata/cpt") || die "Cannot create $outMetadata/cpt\n";
 }
 
 unless ( (!$outDiscovery) || ( -d $outDiscovery ) ) {
-    mkdir($outDiscovery) || die "Cannot create $outDiscovery\n";
+    make_path($outDiscovery) || die "Cannot create $outDiscovery\n";
 }
 
 unless ( (!$outGenotype) || ( -d $outGenotype ) ) {
-    mkdir($outGenotype) || die "Cannot create $outGenotype\n";
+    make_path($outGenotype) || die "Cannot create $outGenotype\n";
 }
 
 unless ( (!$outThirdparty) || ( -d $outThirdparty ) ) {
-    mkdir($outThirdparty) || die "Cannot create $outThirdparty\n";
+    make_path($outThirdparty) || die "Cannot create $outThirdparty\n";
 }
 
 unless ( $out ) {
@@ -291,9 +305,15 @@ setConf("REF_PREFIX",$refprefix) if ( $refprefix );
 my @ids = ();
 my @bams = ();
 my @fns = ();
-open(IN,$listf) || die "Cannot read $listf, check your setting of --list/BAM_LIST\n";
+
+unless ( $listf ) {
+    print STDERR "ERROR: Empty --list (in argument) or BAM_LIST (in config file)\n";
+    gcpodusage(2);
+}
+
+open(IN,$listf) || die "Cannot read $listf, check your setting of --list (in argument) or BAM_LIST (in config file)\n";
 while(<IN>) {
-    my ($id,$pop,$bam) = split;
+    my ($id,$bam) = split;
     my @F = split(/\//,$bam);
     $F[$#F] =~ s/.bam$//;
 
@@ -367,7 +387,7 @@ if ( $runMetadata ) {
     print MAK "\tmkdir --p $outMetadata/spans\n";
     print MAK "\tmkdir --p $outMetadata/isd\n";
     print MAK "\tmkdir --p $outMetadata/gcprofile\n";
-    if ( $skiprc ) {
+    if ( !$skiprc ) {
 	print MAK "\tmkdir --p $outMetadata/rccache\n";
 	print MAK "\tmkdir --p $outMetadata/rccache.merge\n";
     }
@@ -375,6 +395,7 @@ if ( $runMetadata ) {
 
     print MAK "$outMetadata/cpt/size.OK: $outMetadata/cpt/mkdir.OK\n";
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.ComputeGenomeSizes ".($mapf ? " -ploidyMapFile $mapf" : "")." -O $outMetadata/genome_sizes.txt -R $ref -genomeMaskFile $maskf",$mosixopts);
+    print MAK "\tls $outMetadata/genome_sizes.txt\n";
     print MAK "\ttouch $outMetadata/cpt/size.OK\n\n";
     
     print MAK "$outMetadata/cpt/gcprof.OK: $outMetadata/cpt/mkdir.OK $outMetadata/cpt/gcprof.reference.OK ".&joinps(" ","$outMetadata/cpt/",".gcprof.OK",@fns)."\n\n";
@@ -388,15 +409,18 @@ if ( $runMetadata ) {
 
     #print MAK &mosixCmd("$setenv; ".&xargsCmd("$outMetadata/cpt/gcprof.cmd","$queuecmd org.broadinstitute.sv.apps.MergeGCProfiles ".&joinps(" ","-I $outMetadata/gcprofile/",".gcprof.zip",@fns)." -O $outMetadata/gcprofiles.zip"),$mosixopts)."\n\n";
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.MergeGCProfiles -I $outMetadata/gcprofiles.list -O $outMetadata/gcprofiles.zip",$mosixopts);
+    print MAK "\tls $outMetadata/gcprofiles.zip\n";	
     print MAK "\ttouch $outMetadata/cpt/gcprof.OK\n\n";
 
     print MAK "$outMetadata/cpt/gcprof.reference.OK: $outMetadata/cpt/mkdir.OK\n\n";
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.ComputeGCProfiles -O $outMetadata/gcprofile/reference.gcprof.zip -R $ref -md $outMetadata -writeReferenceProfile true -genomeMaskFile $maskf -configFile $paramf",$mosixopts);
+    print MAK "\tls $outMetadata/gcprofile/reference.gcprof.zip\n";
     print MAK "\ttouch $outMetadata/cpt/gcprof.reference.OK\n\n";
 
     for(my $i=0; $i < @fns; ++$i) {
 	print MAK "$outMetadata/cpt/$fns[$i].gcprof.OK: $outMetadata/cpt/gcprof.reference.OK\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.main.SVCommandLine -T ComputeGCProfileWalker -R $ref -I $bams[$i] -O $outMetadata/gcprofile/$fns[$i].gcprof.zip -disableGATKTraversal true -md $outMetadata -referenceProfile $outMetadata/gcprofile/reference.gcprof.zip -genomeMaskFile $maskf -insertSizeRadius $isradius",$mosixopts);
+	print MAK "\tls $outMetadata/gcprofile/$fns[$i].gcprof.zip\n";
 	print MAK "\ttouch $outMetadata/cpt/$fns[$i].gcprof.OK\n";
     }
     
@@ -411,12 +435,15 @@ if ( $runMetadata ) {
     print MAK "$outMetadata/cpt/hist.OK: $outMetadata/cpt/mkdir.OK ".&joinps(" ","$outMetadata/cpt/hist.",".OK",@fns)."\n";
     #print MAK &mosixCmd("$setenv; ".&xargsCmd("$outMetadata/cpt/hist.cmd","$queuecmd org.broadinstitute.sv.apps.MergeInsertSizeDistributions ".&joinps(" ","-I $outMetadata/isd/",".dist.bin",@fns)." -O $outMetadata/isd.dist.bin"),$mosixopts);
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.MergeInsertSizeDistributions -args $outMetadata/isd.dist.args.list",$mosixopts);
+    print MAK "\tls $outMetadata/isd.dist.bin\n";
     print MAK "\ttouch $outMetadata/cpt/hist.OK\n\n";
     for(my $i=0; $i < @fns; ++$i) {
 	print MAK "$outMetadata/cpt/hist.$fns[$i].OK: $outMetadata/cpt/mkdir.OK\n";
 	print MAK "\tsleep ".sprintf("%.2lf",rand(30))."\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.main.SVCommandLine -T ComputeInsertSizeHistogramsWalker -R $ref -I $bams[$i] -O $outMetadata/isd/$fns[$i].hist.bin -disableGATKTraversal true -md $outMetadata",$mosixopts);
+	print MAK "\tls $outMetadata/isd/$fns[$i].hist.bin\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.ReduceInsertSizeHistograms -I $outMetadata/isd/$fns[$i].hist.bin -O $outMetadata/isd/$fns[$i].dist.bin",$mosixopts);
+	print MAK "\tls $outMetadata/isd/$fns[$i].dist.bin\n";	
 	print MAK "\ttouch $outMetadata/cpt/hist.$fns[$i].OK\n\n";
     }
 
@@ -440,12 +467,16 @@ if ( $runMetadata ) {
     #print MAK &mosixCmd("$setenv; ".&xargsCmd("$outMetadata/cpt/depth.cmd","$queuecmd org.broadinstitute.sv.apps.MergeReadDepthCoverage ".&joinps(" ","-I $outMetadata/depth/",".depth.txt",@fns)." -O $outMetadata/depth.dat"),$mosixopts);
     #print MAK &mosixCmd("$setenv; ".&xargsCmd("$outMetadata/cpt/spans.cmd","$queuecmd org.broadinstitute.sv.apps.MergeReadSpanCoverage ".&joinps(" ","-I $outMetadata/spans/",".spans.txt",@fns)." -O $outMetadata/spans.dat"),$mosixopts);
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.MergeReadDepthCoverage -args $outMetadata/depth.args.list",$mosixopts);
+    print MAK "\tls $outMetadata/depth.dat\n";
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.MergeReadSpanCoverage -args $outMetadata/spans.args.list",$mosixopts);
+    print MAK "\tls $outMetadata/spans.dat\n";    
     print MAK "\ttouch $outMetadata/cpt/depthspan.OK\n\n";
     for(my $i=0; $i < @fns; ++$i) {
 	print MAK "$outMetadata/cpt/depthspan.$fns[$i].OK: $outMetadata/cpt/mkdir.OK $outMetadata/cpt/hist.OK\n";
 	print MAK "\tsleep ".sprintf("%.2lf",rand(30))."\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.main.SVCommandLine -T ComputeMetadataWalker -R $ref -I $bams[$i] -disableGATKTraversal true -md $outMetadata -depthFile $outMetadata/depth/$fns[$i].depth.txt -spanFile $outMetadata/spans/$fns[$i].spans.txt -genomeMaskFile $maskf -minMapQ $minMapQ -insertSizeRadius $isradius",$mosixopts);
+	print MAK "\tls $outMetadata/depth/$fns[$i].depth.txt\n";
+	print MAK "\tls $outMetadata/spans/$fns[$i].spans.txt\n";		
 	print MAK "\ttouch $outMetadata/cpt/depthspan.$fns[$i].OK\n\n";
     }
 
@@ -461,12 +492,15 @@ if ( $runMetadata ) {
 	print MAK "$outMetadata/cpt/rccache.OK: $outMetadata/cpt/computerc.OK $outMetadata/cpt/mergerc.OK\n\n";
 	print MAK "$outMetadata/cpt/computerc.OK: $outMetadata/cpt/mkdir.OK ".&joinps(" ","$outMetadata/cpt/computerc.",".OK",@fns)."\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.queue.WriteFileList -args $outMetadata/computerc.args.list",$mosixopts);
+	print MAK "\tls $outMetadata/rccache.list\n";		
 	print MAK "\ttouch $outMetadata/cpt/computerc.OK\n\n";
 	for(my $i=0; $i < @fns; ++$i) {
 	    print MAK "$outMetadata/cpt/computerc.$fns[$i].OK: $outMetadata/cpt/mkdir.OK\n";
 	    print MAK "\tsleep ".sprintf("%.2lf",rand(30))."\n";
 	    print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.main.SVCommandLine -T ComputeReadCountsWalker -R $ref -I $bams[$i] -O $outMetadata/rccache/$fns[$i].rc.bin -disableGATKTraversal true -md $outMetadata -genomeMaskFile $maskf -minMapQ $minMapQ -insertSizeRadius $isradius",$mosixopts);
+	    print MAK "\tls $outMetadata/rccache/$fns[$i].rc.bin\n";	    
 	    print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.IndexReadCountFile -I $outMetadata/rccache/$fns[$i].rc.bin -O $outMetadata/rccache/$fns[$i].rc.bin.idx",$mosixopts);
+	    print MAK "\tls $outMetadata/rccache/$fns[$i].rc.bin.idx\n";
 	    print MAK "\ttouch $outMetadata/cpt/computerc.$fns[$i].OK\n\n";
 	}
 	
@@ -508,16 +542,20 @@ if ( $runMetadata ) {
 		++$seq;
 	    }
 	}
-	
-	print MAK "$outMetadata/cpt/mergerc.OK: $outMetadata/cpt/mkdir.OK ".&joinps(" ","",".OK",@bins)."\n";
+
+	print MAK "$outMetadata/cpt/mergerc.OK: $outMetadata/cpt/computerc.OK $outMetadata/cpt/mkdir.OK ".&joinps(" ","",".OK",@bins)."\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.MergeReadCounts ".&joinps(" "," -I ","",@bins)." -O $outMetadata/rccache.bin -R $ref",$mosixopts);
+	print MAK "\tls $outMetadata/rccache.bin\n";
 	print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.IndexReadCountFile -I $outMetadata/rccache.bin -O $outMetadata/rccache.bin.idx",$mosixopts);
-	print MAK "\ttouch $outMetadata/cpt/mergcrc.OK\n\n";
+	print MAK "\ttouch $outMetadata/cpt/mergerc.OK\n\n";
+	print MAK "\tls $outMetadata/rccache.bin.idx\n";
 	
 	for(my $i=0; $i < @bins; ++$i) {
-	    print MAK "$bins[$i].OK: $outMetadata/cpt/mkdir.OK\n";
+	    print MAK "$bins[$i].OK: $outMetadata/cpt/computerc.OK $outMetadata/cpt/mkdir.OK\n";
 	    print MAK &mosixCmd($mcmds[$i],$mosixopts);
+	    print MAK "\tls $bins[$i]\n";
 	    print MAK &mosixCmd($icmds[$i],$mosixopts);
+	    print MAK "\tls $bins[$i].idx\n";	    
 	    print MAK "\ttouch $bins[$i].OK\n\n";
 	}
     }
@@ -579,7 +617,7 @@ if ( $runDiscovery ) {
 	    push(@vcfs,$ovcf);
 
 	    #push(@cmds,"$setenv; ".&xargsCmd("$ovcf.cmd","$queuecmd org.broadinstitute.sv.main.SVDiscovery -T SVDiscoveryWalker -R $ref ".&joinps(" ","-I ","",@bams)." -O $ovcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outDiscovery -genomeMaskFile $maskf -partitionName $prefix -runFilePrefix $prefix -L $win -searchLocus $locus -searchWindow $win -searchMinimumSize $minimumSize -searchMaximumSize $maximumSize"));
-	    push(@cmds,"$setenv; $queuecmd org.broadinstitute.sv.main.SVDiscovery -T SVDiscoveryWalker -R $ref -I $outDiscovery/discovery.bams.args.list -O $ovcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outDiscovery -genomeMaskFile $maskf -partitionName $prefix -runFilePrefix $prefix -L $win -searchLocus $locus -searchWindow $win -searchMinimumSize $minimumSize -searchMaximumSize $maximumSize");
+	    push(@cmds,"$setenv; $queuecmd org.broadinstitute.sv.main.SVDiscovery -T SVDiscoveryWalker -R $ref -I $outDiscovery/discovery.bams.args.list -O $ovcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outDiscovery -genomeMaskFile $maskf -partitionName $prefix -runFilePrefix $prefix -L $win -searchLocus $locus -searchWindow $win -searchMinimumSize $minimumSize -searchMaximumSize $maximumSize; ls $ovcf");
 	    ++$seq;
 	}
     }
@@ -587,7 +625,9 @@ if ( $runDiscovery ) {
     print MAK "\techo 'Successfully finished GenomeSTRiP discovery pipeline'\n\n";
     print MAK "$outvcf.OK: ".&joinps(" ","",".OK",@vcfs)."\n";
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.apps.MergeDiscoveryOutput -O $outDiscovery/discovery.unfiltered.vcf -runDirectory $outDiscovery");
+    print MAK "\tls $outDiscovery/discovery.unfiltered.vcf\n";
     print MAK &mosixCmd("$setenv; $queuecmd -jar $gsdir/lib/gatk/GenomeAnalysisTK.jar -T VariantFiltration -V $outDiscovery/discovery.unfiltered.vcf -o $outvcf -R $ref -no_cmdline_in_header -filterName COVERAGE -filter \"GSDEPTHCALLTHRESHOLD == \\\"NA\\\" || GSDEPTHCALLTHRESHOLD >= 1.0\" -filterName COHERENCE -filter \"GSCOHPVALUE == \\\"NA\\\" || GSCOHPVALUE <= 0.01\" -filterName DEPTHPVAL -filter \"GSDEPTHPVALUE == \\\"NA\\\" || GSDEPTHPVALUE >= 0.01\" -filterName DEPTH -filter \"GSDEPTHRATIO == \\\"NA\\\" || GSDEPTHRATIO > 0.8 || (GSDEPTHRATIO > 0.63 && (GSMEMBPVALUE == \\\"NA\\\" || GSMEMBPVALUE >= 0.01))\" -filterName PAIRSPERSAMPLE -filter \"GSNPAIRS <= 1.1 * GSNSAMPLES\"");
+    print MAK "\tls $outvcf\n";    
     print MAK "\ttouch $outvcf.OK\n\n";
     for(my $i=0; $i < @vcfs; ++$i) {
 	print MAK "$vcfs[$i].OK:\n";
@@ -656,12 +696,12 @@ if ( $runGenotype ) {
 	my $ovcf = sprintf("$outGenotype/genotypes.P%04d.vcf",$i+1);
 	push(@ovcfs,$ovcf);
 	#push(@cmds,"$setenv; ".&xargsCmd("$ovcf.cmd","$queuecmd org.broadinstitute.sv.main.SVGenotyper -T SVGenotyperWalker -R $ref ".&joinps(" ","-I ","",@bams)." -O $ovcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outGenotype -genomeMaskFile $maskf -vcf $svcfs[$i]"));
-	push(@cmds,"$setenv; $queuecmd org.broadinstitute.sv.main.SVGenotyper -T SVGenotyperWalker -R $ref -I $outGenotype/genotype.bams.args.list -O $ovcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outGenotype -genomeMaskFile $maskf -vcf $svcfs[$i]");
+	push(@cmds,"$setenv; $queuecmd org.broadinstitute.sv.main.SVGenotyper -T SVGenotyperWalker -R $ref -I $outGenotype/genotype.bams.args.list -O $ovcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outGenotype -genomeMaskFile $maskf -vcf $svcfs[$i]; ls $ovcf");
     }
     print MAK "genotype: $outvcf.OK\n";
     print MAK "\techo 'Successfully finished GenomeSTRiP genotyping pipeline'\n\n";
     print MAK "$outvcf.OK: ".&joinps(" ","",".OK",@ovcfs)."\n";
-    print MAK &mosixCmd("(cat $ovcfs[0]; cat ".join(" ",@ovcfs[1..$#ovcfs])." | grep -v ^#;) > $outvcf");
+    print MAK &mosixCmd("(cat $ovcfs[0] ".($#ovcfs >= 1 ? "; cat ".join(" ",@ovcfs[1..$#ovcfs])." | grep -v ^#;" : "")." ) > $outvcf");
     print MAK "\tmkdir --p $outGenotype/eval\n";
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.main.SVAnnotator -vcf $outvcf -R $ref -md $outMetadata -auxFilePrefix $outpref -reportDirectory $outGenotype -A AlleleFrequency -A SiteFilters -A VariantsPerSample -reportFileMap SiteFilters:$outGenotype/eval/GenotypeSiteFilters.report.dat -summaryFileMap SiteFilters:$outGenotype/eval/GenotypeSiteFilters.summary.dat  -writeReport true -writeSummary true");
     print MAK &mosixCmd("$setenv; $queuecmd org.broadinstitute.sv.main.SVAnnotator -vcf $outvcf -R $ref -md $outMetadata -auxFilePrefix $outpref -reportDirectory $outGenotype -A CopyNumberClass -writeReport true -writeSummary true");
@@ -735,7 +775,7 @@ if ( $runThirdparty ) {
 	my $pref = sprintf("$outThirdparty/genotypes.P%04d",$i+1);
 	my $ovcf = "$pref.vcf";
 	push(@ovcfs,$ovcf);
-	push(@cmds,["$setenv; $queuecmd org.broadinstitute.sv.main.SVGenotyper -T SVGenotyperWalker -R $ref -I $outThirdparty/thirdparty.bams.args.list -O $pref.unfiltered.vcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outThirdparty -genomeMaskFile $maskf -vcf $svcfs[$i]",
+	push(@cmds,["$setenv; $queuecmd org.broadinstitute.sv.main.SVGenotyper -T SVGenotyperWalker -R $ref -I $outThirdparty/thirdparty.bams.args.list -O $pref.unfiltered.vcf -md $outMetadata -disableGATKTraversal true -configFile $paramf -runDirectory $outThirdparty -genomeMaskFile $maskf -vcf $svcfs[$i];ls $pref.unfiltered.vcf",
 		    "$setenv; $queuecmd org.broadinstitute.sv.main.SVAnnotator -O $pref.annotated.vcf -vcf $pref.unfiltered.vcf -R $ref -md $outMetadata -auxFilePrefix $pref.unfiltered.genotypes -A ClusterSeparation -A GCContent -A GenotypeLikelihoodStats -A NonVariant -A Redundancy -filterVariants false -writeReport true -writeSummary true -reportDirectory $outThirdparty -comparisonFile $pref.unfiltered.vcf -duplicateOverlapThreshold 0.5 -duplicateScoreThreshold 0.0",
 		    "$setenv; $queuecmd -jar $gsdir/lib/gatk/GenomeAnalysisTK.jar -T VariantFiltration -V $pref.annotated.vcf -o $pref.vcf -R $ref  -filterName ALIGNLENGTH -filter \"GSELENGTH < 200\" -filterName CLUSTERSEP -filter \"GSCLUSTERSEP == \\\"NA\\\" || GSCLUSTERSEP <= 2.0\" -filterName GTDEPTH -filter \"GSM1 == \\\"NA\\\" || GSM1 <= 0.5 || GSM1 >= 2.0\" -filterName NONVARIANT -filter \"GSNONVARSCORE != \\\"NA\\\" && GSNONVARSCORE >= 13.0\" -filterName DUPLICATE -filter \"GSDUPLICATESCORE != \\\"NA\\\" && GSDUPLICATEOVERLAP >= 0.5 && GSDUPLICATESCORE >= 0.0\" -filterName INBREEDINGCOEFF -filter \"GLINBREEDINGCOEFF != \\\"NA\\\" && GLINBREEDINGCOEFF < -0.15\""]);
     }
