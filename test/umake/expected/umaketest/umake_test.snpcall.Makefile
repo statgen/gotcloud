@@ -7,16 +7,17 @@ all: all20
 
 all20: split20 svm20 filt20 pvcf20 vcf20 glf20
 
-split20: $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist
+split20: $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK
 
 $(OUT_DIR)/split/chr20/subset.OK: $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK
 	mkdir --p $(OUT_DIR)/split/chr20
 	bash -c "set -e -o pipefail; zcat $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz | grep -E \"\sPASS\s|^#\" | $(GOTCLOUD_ROOT)/bin/bgzip -c > $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz"
 	if [ -e  $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz ]; then touch $(OUT_DIR)/split/chr20/subset.OK; else exit 1; fi
 
-$(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist: $(OUT_DIR)/split/chr20/subset.OK
+$(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK: $(OUT_DIR)/split/chr20/subset.OK
 	mkdir --p $(OUT_DIR)/split/chr20
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.snpcall.Makefile.cluster,$(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist local 'perl $(GOTCLOUD_ROOT)/scripts/vcfSplit.pl --in $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz --out $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split --nunit 10000 --noverlap 1000 2> $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.err'
+	if [ -e  $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist ]; then touch $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK; else exit 1; fi
 
 svm20: $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK
 

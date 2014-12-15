@@ -194,7 +194,7 @@ if($testdir ne "") {
     if($beagleOpt)
     {
         # Verify that first the snpcall test was run.
-        my $checkFile = "$testoutdir/split/chr20/chr20.filtered.PASS.split.vcflist";
+        my $checkFile = "$testoutdir/split/chr20/chr20.filtered.PASS.split.vcflist.OK";
         if(! -r $checkFile)
         {
             die "ERROR, $checkFile does not exist, first run snpcall test\n\tgotcloud snpcall --test $origTestDir\n";
@@ -207,7 +207,7 @@ if($testdir ne "") {
     if($thunderOpt)
     {
         # Verify that first the beagle test was run.
-        my $checkFile = "$testoutdir/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist";
+        my $checkFile = "$testoutdir/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist.OK";
         if(! -r $checkFile)
         {
             die "ERROR, $checkFile does not exist, first run beagle test\n\tgotcloud beagle --test $origTestDir\n";
@@ -220,7 +220,7 @@ if($testdir ne "") {
     if($split4Opt)
     {
         # Verify that first the snpcall test was run.
-        my $checkFile = "$testoutdir/split/chr20/chr20.filtered.PASS.split.vcflist";
+        my $checkFile = "$testoutdir/split/chr20/chr20.filtered.PASS.split.vcflist.OK";
         if(! -r $checkFile)
         {
             die "ERROR, $checkFile does not exist, first run snpcall test\n\tgotcloud snpcall --test $origTestDir\n";
@@ -233,7 +233,7 @@ if($testdir ne "") {
     if($beagle4Opt)
     {
         # Verify that first the split4 test was run.
-        my $checkFile = "$testoutdir/split4/chr20/chr20.filtered.PASS.split.list";
+        my $checkFile = "$testoutdir/split4/chr20/chr20.filtered.PASS.split.list.OK";
         if(! -r $checkFile)
         {
             die "ERROR, $checkFile does not exist, first run split4 test\n\tgotcloud snpcall --test $origTestDir\n";
@@ -1404,7 +1404,7 @@ foreach my $chr (@chrs) {
 
         print MAK "subset$chr:";
         foreach my $pop (@pops) {
-            print MAK " $thunderDir/$chrchr/$pop/split/$chrchr.filtered.PASS.beagled.$pop.split.vcflist";
+            print MAK " $thunderDir/$chrchr/$pop/split/$chrchr.filtered.PASS.beagled.$pop.split.vcflist.OK";
         }
         print MAK "\n\n";
 
@@ -1438,11 +1438,12 @@ foreach my $chr (@chrs) {
 
         foreach my $pop (@pops) {
             my $splitPrefix = "$thunderDir/$chrchr/$pop/split/$chrchr.filtered.PASS.beagled.$pop.split";
-            print MAK "$splitPrefix.vcflist: $beagleDir/$chrchr/subset.OK\n";
+            print MAK "$splitPrefix.vcflist.OK: $beagleDir/$chrchr/subset.OK\n";
             print MAK "\tmkdir --p $thunderDir/$chrchr/$pop/split/\n";
             my $cmd = getConf("VCFSPLIT")." --in $remotePrefix$beaglePrefix.$pop.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n\n";
+            print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n";
+            writeTouch("$splitPrefix.vcflist");
         }
     }
 
@@ -1529,7 +1530,7 @@ foreach my $chr (@chrs) {
 
         print MAK "split$chr:";
         my $splitPrefix = "$splitDir/$chrchr/$chrchr.filtered.PASS.split";
-        print MAK " $splitPrefix.vcflist";
+        print MAK " $splitPrefix.vcflist.OK";
         print MAK "\n\n";
 
         my $nLdSNPs = getConf("LD_NSNPS");
@@ -1548,11 +1549,12 @@ foreach my $chr (@chrs) {
         writeLocalCmd($cmd);
         writeTouch("$splitDir/$chrchr/subset", "$subsetPrefix.PASS.vcf.gz");
 
-        print MAK "$splitPrefix.vcflist: $splitDir/$chrchr/subset.OK\n";
+        print MAK "$splitPrefix.vcflist.OK: $splitDir/$chrchr/subset.OK\n";
         print MAK "\tmkdir --p $splitDir/$chrchr\n";
         $cmd = getConf("VCFSPLIT")." --in $remotePrefix$subsetPrefix.PASS.vcf.gz --out $remotePrefix$splitPrefix --nunit $nLdSNPs --noverlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-        print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n\n";
+        print MAK "\t".getMosixCmd($cmd, "$splitPrefix.vcflist")."\n";
+        writeTouch("$splitPrefix.vcflist");
     }
 
     #############################################################################
@@ -1635,7 +1637,7 @@ foreach my $chr (@chrs) {
         my $splitPrefix = "$split4Dir/$chrchr/$chrchr.filtered.PASS.split";
 
         my $listFile = "$splitPrefix.list";
-        print MAK " $listFile";
+        print MAK " $listFile.OK";
         print MAK "\n\n";
 
         my $nLdSNPs = getConf("LD_NSNPS");
@@ -1652,11 +1654,12 @@ foreach my $chr (@chrs) {
         my $splitCmd = "";
         $splitCmd = &getConf("VCFSPLIT4")." --vcf $mvcf --out $remotePrefix$splitPrefix --win $nLdSNPs --overlap $nLdOverlap 2> $remotePrefix$splitPrefix.err";
 
-        print MAK "$listFile:$dep\n";
+        print MAK "$listFile.OK:$dep\n";
         print MAK "\tmkdir --p $split4Dir/$chrchr\n";
 
         $splitCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "\t".getMosixCmd($splitCmd, "$listFile")."\n\n";
+        writeTouch("$listFile");
     }
 
 
