@@ -311,6 +311,12 @@ unless ( $listf ) {
     gcpodusage(2);
 }
 
+$gsdir = &getAbsPath($gsdir);
+$listf = &getAbsPath($listf);
+$ref = &getAbsPath($ref);
+$maskf = &getAbsPath($maskf);
+$mapf = &getAbsPath($mapf);
+
 open(IN,$listf) || die "Cannot read $listf, check your setting of --list (in argument) or BAM_LIST (in config file)\n";
 while(<IN>) {
     my ($id,$bam) = split;
@@ -340,6 +346,7 @@ while(<IN>) {
 }
 close IN;
 
+$ref = &getAbsPath($ref);
 &initRef($ref);
 
 my ($startbp,$endbp) = (0,0);
