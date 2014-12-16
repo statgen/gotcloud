@@ -102,6 +102,7 @@ sub getDegeneracies {
 
 sub getCpGs {
     my ($chr,$beg,$end) = @_;
+    $end = $beg unless (defined($end));
     my @seqs = split(//,uc(&readFasta($chr,$beg-1,$end+1)));
     my @cpgs = ();
     for(my $i=1; $i < $#seqs; ++$i) {
