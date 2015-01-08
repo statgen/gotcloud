@@ -140,12 +140,12 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^End time: ' \
     -I '^\s*Output : --outfile \[.*glfs/samples/chr20/[0-9]*\.[0-9]*/.*\.[0-9]*\.[0-9]*\.glf\],$' \
     -I '^  .*glfs/bams/.*/chr20/.*\.bam\.[0-9]*\.[0-9]*\.glf$' \
-    -I '^.*gotcloud/bin/invNorm --in .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.raw --out .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.norm$' \
+    -I '^.*/bin/invNorm --in .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.raw --out .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.norm$' \
     -I '^\s*Input options : --in \[.*vcfs/chr20/chr20\.filtered\.sites\.vcf\.raw\],$' \
     -I '^\s*Output Options : --out \[.*vcfs/chr20/chr20\.filtered\.sites\.vcf\.norm\],$' \
     -I '^Reading positive examples from .*chr20Ref/.*$' \
-    -I '^.*gotcloud/bin/svm-train -s 0 -t 2 .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.labeled\.svm .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm\.model$' \
-    -I '^.*gotcloud/bin/svm-predict .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm\.model .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm\.pred$' \
+    -I '^.*/bin/svm-train -s 0 -t 2 .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.labeled\.svm .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm\.model$' \
+    -I '^.*/bin/svm-predict .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm\.model .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.svm\.pred$' \
     -I '^\s*VCF Input options : --in-vcf \[.*vcfs/chr20/chr20\.merged\.stats\.vcf\]$' \
     -I '^\s*--indelVCF \[.*chr20Ref/1kg\.pilot_release\.merged\.indels\.sites\.hg19\.chr20\.vcf\],$' \
     -I '^\s*Output Options : --out \[.*vcfs/chr20/chr20\.hardfiltered\.sites\.vcf\],$' \
