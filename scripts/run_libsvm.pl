@@ -380,14 +380,35 @@ else {
 }
 open(PRED,"$out.svm.pred") || die "Cannot open $out.svm.pred file to read\n";
 
+my $infoAdded = 0;
+my $newInfo = "##INFO=<ID=$keyword,Number=1,Type=Float,Description=\"SVM\">\n";
+my $infoFound = 0;
+
 while (<$in>)
 {
 	if (/^#/)
 	{
-		print VCF $_;
+            if($infoAdded == 0)
+            {
+                if(/^##INFO=</)
+                {
+                    $infoFound = 1;
+                }
+                elsif($infoFound == 1)
+                {
+                    print VCF $newInfo;
+                    $infoAdded = 1;
+                }
+            }
+            print VCF $_;
 	}
 	else
 	{
+                if($infoAdded == 0)
+                {
+                    print VCF $newInfo;
+                    $infoAdded = 1;
+                }
 		chomp;
 		my (@F) = split;
 		my $pred = <PRED>;

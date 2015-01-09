@@ -766,6 +766,9 @@ int main(int argc, char ** argv) {
       fprintf(baseCalls, "##INFO=<ID=AC,Number=.,Type=Integer,Description=\"Alternate Allele Counts in Samples with Coverage\">\n");
       fprintf(baseCalls, "##INFO=<ID=AF,Number=.,Type=Float,Description=\"Alternate Allele Frequencies\">\n");
       fprintf(baseCalls, "##INFO=<ID=AB,Number=1,Type=Float,Description=\"Allele Balance in Heterozygotes\">\n");
+      fprintf(baseCalls, "##INFO=<ID=AZ,Number=1,Type=Float,Description=\"AZ\">\n");
+      fprintf(baseCalls, "##INFO=<ID=FIC,Number=1,Type=Float,Description=\"FIC - inbreeding coefficient\">\n");
+      fprintf(baseCalls, "##INFO=<ID=SLRT,Number=1,Type=Float,Description=\"SLRT - signed LRT\">\n");
       fprintf(baseCalls, "##FILTER=<ID=mq%d,Description=\"Mapping Quality Below %d\">\n", minMapQuality, minMapQuality);
       fprintf(baseCalls, "##FILTER=<ID=dp%d,Description=\"Total Read Depth Below %d\">\n", minTotalDepth, minTotalDepth);
       if (maxTotalDepth != INT_MAX)
@@ -773,7 +776,7 @@ int main(int argc, char ** argv) {
       fprintf(baseCalls, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Most Likely Genotype\">\n");
       fprintf(baseCalls, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Call Quality\">\n");
       fprintf(baseCalls, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">\n");
-      fprintf(baseCalls, "##FORMAT=<ID=PL,Number=.,Type=Integer,Description=\"Genotype Likelihoods for Genotypes in Phred Scale, for 0/0, 0/1, 1/1, 0/2, 1/2, 2/2, ...\">\n");
+      fprintf(baseCalls, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Genotype Likelihoods for Genotypes in Phred Scale, for 0/0, 0/1, 1/1, 0/2, 1/2, 2/2, ...\">\n");
       fprintf(baseCalls, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
       for (int i = 0; i < n; i++) {
          fprintf(baseCalls, "\t%s", ped.count ?

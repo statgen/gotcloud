@@ -12,13 +12,16 @@
 ##INFO=<ID=AC,Number=.,Type=Integer,Description="Alternate Allele Counts in Samples with Coverage">
 ##INFO=<ID=AF,Number=.,Type=Float,Description="Alternate Allele Frequencies">
 ##INFO=<ID=AB,Number=1,Type=Float,Description="Allele Balance in Heterozygotes">
+##INFO=<ID=AZ,Number=1,Type=Float,Description="AZ">
+##INFO=<ID=FIC,Number=1,Type=Float,Description="FIC - inbreeding coefficient">
+##INFO=<ID=SLRT,Number=1,Type=Float,Description="SLRT - signed LRT">
 ##FILTER=<ID=mq0,Description="Mapping Quality Below 0">
 ##FILTER=<ID=dp1,Description="Total Read Depth Below 1">
 ##FILTER=<ID=DP10000000,Description="Total Read Depth Above 10000000">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Most Likely Genotype">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Call Quality">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
-##FORMAT=<ID=PL,Number=.,Type=Integer,Description="Genotype Likelihoods for Genotypes in Phred Scale, for 0/0, 0/1, 1/1, 0/2, 1/2, 2/2, ...">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Genotype Likelihoods for Genotypes in Phred Scale, for 0/0, 0/1, 1/1, 0/2, 1/2, 2/2, ...">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 20	20000121	.	A	G	154.495	PASS	DP=323;MQ=56;NS=60;AN=120;AC=3;AF=0.028817;AB=0.5542;AZ=0.4873;FIC=-0.0347;SLRT=-0.1027
 20	20000786	.	T	A	2050.495	PASS	DP=282;MQ=56;NS=59;AN=118;AC=64;AF=0.518630;AB=0.5376;AZ=0.6124;FIC=0.0793;SLRT=0.2581

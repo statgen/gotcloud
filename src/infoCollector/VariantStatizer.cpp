@@ -291,6 +291,10 @@ bool VariantStatizer::writeMergedVcf(const char* outFile) {
       ++i;
 
       anchorVcf.asMetaKeys.InsertAt(i,"INFO");
+      anchorVcf.asMetaValues.InsertAt(i,"<ID=LQR,Number=1,Type=Float,Description=\"LQR\">");
+      ++i;
+
+      anchorVcf.asMetaKeys.InsertAt(i,"INFO");
       anchorVcf.asMetaValues.InsertAt(i,"<ID=MQ0,Number=1,Type=Float,Description=\"Fraction of bases with mapQ=0\">");
       ++i;
 
@@ -304,6 +308,14 @@ bool VariantStatizer::writeMergedVcf(const char* outFile) {
 
       anchorVcf.asMetaKeys.InsertAt(i,"INFO");
       anchorVcf.asMetaValues.InsertAt(i,"<ID=MQ30,Number=1,Type=Float,Description=\"Fraction of bases with mapQ<=30\">");
+      ++i;
+
+      anchorVcf.asMetaKeys.InsertAt(i,"INFO");
+      anchorVcf.asMetaValues.InsertAt(i,"<ID=LBS,Number=8,Type=Integer,Description=\"LBS\">");
+      ++i;
+
+      anchorVcf.asMetaKeys.InsertAt(i,"INFO");
+      anchorVcf.asMetaValues.InsertAt(i,"<ID=OBS,Number=8,Type=Integer,Description=\"OBS\">");
       ++i;
     }
   }
