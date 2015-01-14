@@ -52,7 +52,7 @@ while(<IN>) {
 	if ( /^##([^=]+)=(.+)$/ ) {
 	    my ($key,$val) = ($1,$2);
 	    if ( ( $key ne "INFO" ) && ( $prevMetaKey eq "INFO" ) ) {
-		print OUT "##INFO=<ID=BAVPOST,Number=1,Type=Float,Description=\"Average posterior probability from beagle\">\n";
+		print OUT "##INFO=<ID=BAVGPOST,Number=1,Type=Float,Description=\"Average posterior probability from beagle\">\n";
 		print OUT "##INFO=<ID=BRSQ,Number=1,Type=Float,Description=\"Genotype imputation quality estimate from beagle\">\n";
 	    }
 	    $prevMetaKey = $key;

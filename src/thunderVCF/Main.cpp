@@ -45,7 +45,7 @@ int     nerror_rates = 0;
 // thetas contains recombination rate information between markers
 // error-rates contains per-marker error rates
 // rsqs contains rsq_hat estimates ??
-void OutputVCFConsensus(const String& inVcf, Pedigree & ped, ConsensusBuilder & consensus, DosageCalculator &doses, const String& filename, float* thetas, float* error_rates)
+void OutputVCFConsensus(const String& inVcf, Pedigree & ped, ConsensusBuilder & consensus, DosageCalculator &doses, const String& filename, float* thetas, float* error_rates, int thetaSize)
 {
   consensus.Merge(); // calculate consensus sequence
 
@@ -156,7 +156,15 @@ void OutputVCFConsensus(const String& inVcf, Pedigree & ped, ConsensusBuilder & 
       sprintf(sDose,"%.4lf",nerror_rates ? error_rates[m] / nerror_rates : 0);
       pMarker->asInfoKeys.Add("ERATE");
       pMarker->asInfoValues.Add(sDose);
-      sprintf(sDose,"%.4lf",nthetas ? thetas[m] / nthetas : 0);
+
+      if(m < thetaSize)
+      {
+          sprintf(sDose,"%.4lf",nthetas ? thetas[m] / nthetas : 0);
+      }
+      else
+      {
+          sprintf(sDose,"%.4lf",0);
+      }
       pMarker->asInfoKeys.Add("THETA");
       pMarker->asInfoValues.Add(sDose);
 
@@ -680,7 +688,7 @@ END_LONG_PARAMETERS();
       UpdateErrorRates(engine.error_models, error_rates, nerror_rates, engine.markers);
 
       if (polling > 0 && ((i - burnin) % polling) == 0) {
-	OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".prelim" + (i+1) + ".vcf.gz", thetas, error_rates);
+          OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".prelim" + (i+1) + ".vcf.gz", thetas, error_rates, engine.markers - 1);
       	//OutputManager::OutputConsensus(ped, consensus, doses, outfile + ".prelim" + (i + 1));
       }
 
@@ -713,7 +721,7 @@ END_LONG_PARAMETERS();
 
    // If we did multiple rounds of haplotyping, then generate consensus
    if (rounds > 1)
-     OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".vcf.gz", thetas, error_rates);
+       OutputVCFConsensus(shotgunfile, ped, consensus, doses, outfile + ".vcf.gz", thetas, error_rates, engine.markers - 1);
      //OutputManager::OutputConsensus(ped, consensus, doses, outfile);
    else
       OutputManager::WriteHaplotypes(outfile, ped, engine.haplotypes);
