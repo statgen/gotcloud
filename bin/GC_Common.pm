@@ -189,7 +189,17 @@ sub genMD5Files {
     {
         # Write MD5 info.
         my $md5Script = getConf("MD5_SCRIPT", 1);
-        system("$md5Script -root $md5NoPercent ".getConf("REF",1)) && die "ERROR: Failed to generate MD5s in $md5_dir for $ref:\n\t$!\n";
+        my $ref = getConf("REF",1);
+        my $cmd = "";
+        my $file = $ref;
+        if($ref =~ /.gz$/)
+        {
+            $cmd = "zcat $ref | ";
+            $file = "";
+        }
+        $cmd .= "$md5Script -root $md5NoPercent $file";
+        system("$cmd") && die "ERROR: Failed to generate MD5s in $md5Dir for $ref:\n\t$!\n$cmd\n";
+
         # We generated MD5, so set the percent path.
         # if -subdirs is specified in MD5_SCRIPT, set the %2s appropriately.
         my $numSubDirs = 2;
