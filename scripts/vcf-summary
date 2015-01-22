@@ -102,6 +102,8 @@ if ( $dbSNPf ) {
 	    ++$ndbsnp;
 	}
 	close DBSNP;
+        my $exit = $? >> 8;
+        die "ERROR: vcf-summary, failed to open $dbSNPf, exit code: $exit\n" if $exit;
     }
     else {
 	print STDERR "loading $dbSNPf\n";
@@ -161,15 +163,15 @@ elsif ( $FNRvcf ) {
     if ( $FNRvcf =~ /\.gz$/ ) {
 	if ( ($chr) && ( -s "$FNRvcf.tbi" ) ) {
             die "Can't read $FNRvcf.tbi" unless( -f "$FNRvcf.tbi" and -r "$FNRvcf.tbi");
-	    open(IN,"$tabix -h $FNRvcf $chr:0 |") || die "Cannot open file\n";
+	    open(IN,"$tabix -h $FNRvcf $chr:0 |") || die "Cannot open file, $FNRvcf\n";
 	}
 	else {
             die "Can't read $FNRvcf" unless( -f $FNRvcf and -r $FNRvcf);
-	    open(IN,"zcat $FNRvcf|") || die "Cannot open file\n";
+	    open(IN,"zcat $FNRvcf|") || die "Cannot open file, $FNRvcf\n";
 	}
     }
     else {
-	open(IN,$FNRvcf) || die "Cannot open file\n";
+	open(IN,$FNRvcf) || die "Cannot open file, $FNRvcf\n";
     }
     while(<IN>) {
 	next if ( /^#/ );
@@ -206,6 +208,8 @@ elsif ( $FNRvcf ) {
 	}
     }
     close IN;
+    my $exit = $? >> 8;
+    die "ERROR: vcf-summary, failed to open $FNRvcf, exit code: $exit\n" if $exit;
 }
 else {
     print STDERR "Skipped loading FNR evaluation sites\n";

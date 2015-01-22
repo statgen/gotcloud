@@ -28,13 +28,15 @@ if [ -d $EXPECTED_DIR/indeltest ]; then
 fi
 
 DISCOVER_LIST=candidate_vcf_files.txt
-GENOTYPE_LISTS=`find -L $EXPECTED_DIR/ -name "merge.*.*.*.vcf.list.txt"`
+GENOTYPE_LISTS=`find -L $EXPECTED_DIR/ -name "*.list.txt"`
 
 SKIP_FILES="-x gotcloud.indel.conf -x gotcloud.indel.Makefile -x gotcloud.indel.Makefile.log -x "$DISCOVER_LIST
 for file in $GENOTYPE_LISTS
 do
   SKIP_FILES+=" -x $(basename $file)"
 done
+
+status=0
 
 #   Diff the results
 #set -e                          # Fail on errors
@@ -44,7 +46,10 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $DIFF_FILE $SKIP_FILES \
     -I '^options: \[L\] input VCF file list *.*aux/candidate_vcf_files\.txt ([0-9]* files)$' \
     -I '^options: *input VCF file *.*aux/all\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*aux/all\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
+    -I '^options: *input VCF file *.*aux/all\.sites\.[0-9]*\.bcf$' \
+    -I '^ *\[o\] output VCF file *.*aux/all\.sites\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*aux/probes\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
+    -I '^ *\[o\] output VCF file *.*final/merge/all\.genotypes\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*final/merge/all\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*indelvcf/\S*/\S*\.sites\.bcf$' \
     -I '^ *\[r\] reference FASTA [fF]ile *.*test/chr[0-9]*Ref/human_g1k_v37_chr[0-9]*\.fa$' \
@@ -58,21 +63,23 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $DIFF_FILE $SKIP_FILES \
     -I '^ *Output BAM file : .*mergedBams/\S*\.bam$' \
     -I '^ *Output log file : .*mergedBams/\S*\.bam\.log$' \
     -I '^Time elapsed: .*$' \
+    -I '^processing .*final/merge/all\.genotypes\.[0-9]*\.bcf$' \
     -I '^processing .*final/merge/all\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
+    -I '^processing .*/.*\.genotypes\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
-    exit 2
+    status=2
 fi
 
 
-SED_REGEX="s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
+SED_REGEX="s/tmpNoLibCtrPltfm/tmp/g;s/tmpNoSM/tmp/g;s/tmpOrig/tmp/g;s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
 
-diff <(sed "$SED_REGEX" $RESULTS_DIR/aux/$DISCOVER_LIST) <(sed "$SED_REGEX" $EXPECTED_DIR/aux/$DISCOVER_LIST) \
+diff <(sed "$SED_REGEX" $RESULTS_DIR/indel/aux/$DISCOVER_LIST) <(sed "$SED_REGEX" $EXPECTED_DIR/indel/aux/$DISCOVER_LIST) \
     >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation of $RESULTS_DIR/aux/$DISCOVER_LIST. See mismatches in $DIFFRESULTS"
-    exit 3
+    status=3
 fi
 
 for file in $GENOTYPE_LISTS
@@ -80,8 +87,8 @@ do
   diff <(sed "$SED_REGEX" ${file/$EXPECTED_DIR/$RESULTS_DIR}) <(sed "$SED_REGEX" $file) \
     >> $DIFFRESULTS
   if [ "$?" != "0" ]; then
-      echo "Failed results validation of $RESULTS_DIR/aux/$file. See mismatches in $DIFFRESULTS"
-      exit 3
+      echo "Failed results validation of ${file/$EXPECTED_DIR/$RESULTS_DIR} & $file. See mismatches in $DIFFRESULTS"
+      status=3
   fi
 done
 
@@ -89,13 +96,17 @@ diff <(sed "$SED_REGEX" $RESULTS_DIR/gotcloud.indel.Makefile) <(sed "$SED_REGEX"
     >> $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed Makefile results validation. See mismatches in $DIFFRESULTS"
-    exit 3
+    status=3
 fi
 
 
-echo "Successful comparison of data in '$RESULTS_DIR' and '$EXPECTED_DIR'"
-exit 0
 
+if [ $status == 0 ]
+then
+    echo "Successful comparison of data in '$RESULTS_DIR' and '$EXPECTED_DIR'"
+    exit 0
+fi
+exit $status
 
 
 

@@ -1,0 +1,12 @@
+
+SVToolkit / Genome STRiP
+
+SVToolkit and Genome STRiP (Genome STRucture In Populations) is a suite of tools for discovery and genotyping of structural variation using sequencing data.
+
+The official website for SVToolkit / Genome STRiP is http://www.broadinstitute.org/software/genomestrip.
+Documentation for SVToolkit / Genome STRiP is online at http://www.broadinstitute.org/software/genomestrip/documentation.
+
+A short test that can be used to verify the installation and correct installation of pre-requisite software is in the installtest subdirectory.
+There is also a cookbook of common usage recipes in the cookbook subdirectory.
+
+If you are upgrading from a previous version of Genome STRiP, please consult the UPGRADE.txt file.

@@ -1,7 +1,7 @@
 .DELETE_ON_ERROR:
 .DEFAULT_GOAL := all
 
-all: mergeBam indexBam singleBamDiscover multiBamDiscover indexD merge indexM probes indexP singleBamGenotype multiBamGenotype indexG mergeG indexMG concat indexC
+all: mergeBam indexBam singleBamDiscover multiBamDiscover indexD merge indexM probes indexP singleBamGenotype multiBamGenotype indexG concatG indexCG mergeG indexMG concat indexC
 mergedBams/NA12045.bam.OK: | mergedBams/
 	scripts/runcluster.pl local 'bin/bam mergeBam --in test/umake/bams/NA12045.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam --in test/umake/bams/NA12045.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam --out mergedBams/NA12045.bam'
 	touch mergedBams/NA12045.bam.OK
@@ -532,20 +532,20 @@ indelvcf/NA12874/NA12874.sites.bcf.csi.OK: indelvcf/NA12874/NA12874.sites.bcf.OK
 
 indexD: indelvcf/NA12272/NA12272.sites.bcf.csi.OK indelvcf/NA12004/NA12004.sites.bcf.csi.OK indelvcf/NA11994/NA11994.sites.bcf.csi.OK indelvcf/NA12749/NA12749.sites.bcf.csi.OK indelvcf/NA10847/NA10847.sites.bcf.csi.OK indelvcf/NA12716/NA12716.sites.bcf.csi.OK indelvcf/NA12829/NA12829.sites.bcf.csi.OK indelvcf/NA12275/NA12275.sites.bcf.csi.OK indelvcf/NA12750/NA12750.sites.bcf.csi.OK indelvcf/NA12348/NA12348.sites.bcf.csi.OK indelvcf/NA12347/NA12347.sites.bcf.csi.OK indelvcf/NA12003/NA12003.sites.bcf.csi.OK indelvcf/NA12286/NA12286.sites.bcf.csi.OK indelvcf/NA11829/NA11829.sites.bcf.csi.OK indelvcf/NA07357/NA07357.sites.bcf.csi.OK indelvcf/NA12144/NA12144.sites.bcf.csi.OK indelvcf/NA12045/NA12045.sites.bcf.csi.OK indelvcf/NA12812/NA12812.sites.bcf.csi.OK indelvcf/NA12718/NA12718.sites.bcf.csi.OK indelvcf/NA12777/NA12777.sites.bcf.csi.OK indelvcf/NA12872/NA12872.sites.bcf.csi.OK indelvcf/NA12751/NA12751.sites.bcf.csi.OK indelvcf/NA12717/NA12717.sites.bcf.csi.OK indelvcf/NA07051/NA07051.sites.bcf.csi.OK indelvcf/NA12249/NA12249.sites.bcf.csi.OK indelvcf/NA11992/NA11992.sites.bcf.csi.OK indelvcf/NA12058/NA12058.sites.bcf.csi.OK indelvcf/NA12889/NA12889.sites.bcf.csi.OK indelvcf/NA12400/NA12400.sites.bcf.csi.OK indelvcf/NA12778/NA12778.sites.bcf.csi.OK indelvcf/NA12154/NA12154.sites.bcf.csi.OK indelvcf/NA11932/NA11932.sites.bcf.csi.OK indelvcf/NA11931/NA11931.sites.bcf.csi.OK indelvcf/NA06986/NA06986.sites.bcf.csi.OK indelvcf/NA07056/NA07056.sites.bcf.csi.OK indelvcf/NA12046/NA12046.sites.bcf.csi.OK indelvcf/NA12342/NA12342.sites.bcf.csi.OK indelvcf/NA06984/NA06984.sites.bcf.csi.OK indelvcf/NA12273/NA12273.sites.bcf.csi.OK indelvcf/NA12748/NA12748.sites.bcf.csi.OK indelvcf/NA12814/NA12814.sites.bcf.csi.OK indelvcf/NA12546/NA12546.sites.bcf.csi.OK indelvcf/NA12827/NA12827.sites.bcf.csi.OK indelvcf/NA12489/NA12489.sites.bcf.csi.OK indelvcf/NA12283/NA12283.sites.bcf.csi.OK indelvcf/NA11919/NA11919.sites.bcf.csi.OK indelvcf/NA11995/NA11995.sites.bcf.csi.OK indelvcf/NA07000/NA07000.sites.bcf.csi.OK indelvcf/NA10851/NA10851.sites.bcf.csi.OK indelvcf/NA11918/NA11918.sites.bcf.csi.OK indelvcf/NA12341/NA12341.sites.bcf.csi.OK indelvcf/NA11892/NA11892.sites.bcf.csi.OK indelvcf/NA12383/NA12383.sites.bcf.csi.OK indelvcf/NA06994/NA06994.sites.bcf.csi.OK indelvcf/NA12006/NA12006.sites.bcf.csi.OK indelvcf/NA12043/NA12043.sites.bcf.csi.OK indelvcf/NA11993/NA11993.sites.bcf.csi.OK indelvcf/NA12413/NA12413.sites.bcf.csi.OK indelvcf/NA11920/NA11920.sites.bcf.csi.OK indelvcf/NA12874/NA12874.sites.bcf.csi.OK
 
-aux/all.sites.20.20000001.40000000.bcf.OK: indelvcf/NA12272/NA12272.sites.bcf.csi.OK indelvcf/NA12004/NA12004.sites.bcf.csi.OK indelvcf/NA11994/NA11994.sites.bcf.csi.OK indelvcf/NA12749/NA12749.sites.bcf.csi.OK indelvcf/NA10847/NA10847.sites.bcf.csi.OK indelvcf/NA12716/NA12716.sites.bcf.csi.OK indelvcf/NA12829/NA12829.sites.bcf.csi.OK indelvcf/NA12275/NA12275.sites.bcf.csi.OK indelvcf/NA12750/NA12750.sites.bcf.csi.OK indelvcf/NA12348/NA12348.sites.bcf.csi.OK indelvcf/NA12347/NA12347.sites.bcf.csi.OK indelvcf/NA12003/NA12003.sites.bcf.csi.OK indelvcf/NA12286/NA12286.sites.bcf.csi.OK indelvcf/NA11829/NA11829.sites.bcf.csi.OK indelvcf/NA07357/NA07357.sites.bcf.csi.OK indelvcf/NA12144/NA12144.sites.bcf.csi.OK indelvcf/NA12045/NA12045.sites.bcf.csi.OK indelvcf/NA12812/NA12812.sites.bcf.csi.OK indelvcf/NA12718/NA12718.sites.bcf.csi.OK indelvcf/NA12777/NA12777.sites.bcf.csi.OK indelvcf/NA12872/NA12872.sites.bcf.csi.OK indelvcf/NA12751/NA12751.sites.bcf.csi.OK indelvcf/NA12717/NA12717.sites.bcf.csi.OK indelvcf/NA07051/NA07051.sites.bcf.csi.OK indelvcf/NA12249/NA12249.sites.bcf.csi.OK indelvcf/NA11992/NA11992.sites.bcf.csi.OK indelvcf/NA12058/NA12058.sites.bcf.csi.OK indelvcf/NA12889/NA12889.sites.bcf.csi.OK indelvcf/NA12400/NA12400.sites.bcf.csi.OK indelvcf/NA12778/NA12778.sites.bcf.csi.OK indelvcf/NA12154/NA12154.sites.bcf.csi.OK indelvcf/NA11932/NA11932.sites.bcf.csi.OK indelvcf/NA11931/NA11931.sites.bcf.csi.OK indelvcf/NA06986/NA06986.sites.bcf.csi.OK indelvcf/NA07056/NA07056.sites.bcf.csi.OK indelvcf/NA12046/NA12046.sites.bcf.csi.OK indelvcf/NA12342/NA12342.sites.bcf.csi.OK indelvcf/NA06984/NA06984.sites.bcf.csi.OK indelvcf/NA12273/NA12273.sites.bcf.csi.OK indelvcf/NA12748/NA12748.sites.bcf.csi.OK indelvcf/NA12814/NA12814.sites.bcf.csi.OK indelvcf/NA12546/NA12546.sites.bcf.csi.OK indelvcf/NA12827/NA12827.sites.bcf.csi.OK indelvcf/NA12489/NA12489.sites.bcf.csi.OK indelvcf/NA12283/NA12283.sites.bcf.csi.OK indelvcf/NA11919/NA11919.sites.bcf.csi.OK indelvcf/NA11995/NA11995.sites.bcf.csi.OK indelvcf/NA07000/NA07000.sites.bcf.csi.OK indelvcf/NA10851/NA10851.sites.bcf.csi.OK indelvcf/NA11918/NA11918.sites.bcf.csi.OK indelvcf/NA12341/NA12341.sites.bcf.csi.OK indelvcf/NA11892/NA11892.sites.bcf.csi.OK indelvcf/NA12383/NA12383.sites.bcf.csi.OK indelvcf/NA06994/NA06994.sites.bcf.csi.OK indelvcf/NA12006/NA12006.sites.bcf.csi.OK indelvcf/NA12043/NA12043.sites.bcf.csi.OK indelvcf/NA11993/NA11993.sites.bcf.csi.OK indelvcf/NA12413/NA12413.sites.bcf.csi.OK indelvcf/NA11920/NA11920.sites.bcf.csi.OK indelvcf/NA12874/NA12874.sites.bcf.csi.OK | aux/
-	scripts/runcluster.pl local 'vt merge_candidate_variants -L aux/candidate_vcf_files.txt -o aux/all.sites.20.20000001.40000000.bcf -i 20:20000001-40000000 2> aux/all.sites.20.20000001.40000000.bcf.log'
-	touch aux/all.sites.20.20000001.40000000.bcf.OK
+aux/all.sites.20.bcf.OK: indelvcf/NA12272/NA12272.sites.bcf.csi.OK indelvcf/NA12004/NA12004.sites.bcf.csi.OK indelvcf/NA11994/NA11994.sites.bcf.csi.OK indelvcf/NA12749/NA12749.sites.bcf.csi.OK indelvcf/NA10847/NA10847.sites.bcf.csi.OK indelvcf/NA12716/NA12716.sites.bcf.csi.OK indelvcf/NA12829/NA12829.sites.bcf.csi.OK indelvcf/NA12275/NA12275.sites.bcf.csi.OK indelvcf/NA12750/NA12750.sites.bcf.csi.OK indelvcf/NA12348/NA12348.sites.bcf.csi.OK indelvcf/NA12347/NA12347.sites.bcf.csi.OK indelvcf/NA12003/NA12003.sites.bcf.csi.OK indelvcf/NA12286/NA12286.sites.bcf.csi.OK indelvcf/NA11829/NA11829.sites.bcf.csi.OK indelvcf/NA07357/NA07357.sites.bcf.csi.OK indelvcf/NA12144/NA12144.sites.bcf.csi.OK indelvcf/NA12045/NA12045.sites.bcf.csi.OK indelvcf/NA12812/NA12812.sites.bcf.csi.OK indelvcf/NA12718/NA12718.sites.bcf.csi.OK indelvcf/NA12777/NA12777.sites.bcf.csi.OK indelvcf/NA12872/NA12872.sites.bcf.csi.OK indelvcf/NA12751/NA12751.sites.bcf.csi.OK indelvcf/NA12717/NA12717.sites.bcf.csi.OK indelvcf/NA07051/NA07051.sites.bcf.csi.OK indelvcf/NA12249/NA12249.sites.bcf.csi.OK indelvcf/NA11992/NA11992.sites.bcf.csi.OK indelvcf/NA12058/NA12058.sites.bcf.csi.OK indelvcf/NA12889/NA12889.sites.bcf.csi.OK indelvcf/NA12400/NA12400.sites.bcf.csi.OK indelvcf/NA12778/NA12778.sites.bcf.csi.OK indelvcf/NA12154/NA12154.sites.bcf.csi.OK indelvcf/NA11932/NA11932.sites.bcf.csi.OK indelvcf/NA11931/NA11931.sites.bcf.csi.OK indelvcf/NA06986/NA06986.sites.bcf.csi.OK indelvcf/NA07056/NA07056.sites.bcf.csi.OK indelvcf/NA12046/NA12046.sites.bcf.csi.OK indelvcf/NA12342/NA12342.sites.bcf.csi.OK indelvcf/NA06984/NA06984.sites.bcf.csi.OK indelvcf/NA12273/NA12273.sites.bcf.csi.OK indelvcf/NA12748/NA12748.sites.bcf.csi.OK indelvcf/NA12814/NA12814.sites.bcf.csi.OK indelvcf/NA12546/NA12546.sites.bcf.csi.OK indelvcf/NA12827/NA12827.sites.bcf.csi.OK indelvcf/NA12489/NA12489.sites.bcf.csi.OK indelvcf/NA12283/NA12283.sites.bcf.csi.OK indelvcf/NA11919/NA11919.sites.bcf.csi.OK indelvcf/NA11995/NA11995.sites.bcf.csi.OK indelvcf/NA07000/NA07000.sites.bcf.csi.OK indelvcf/NA10851/NA10851.sites.bcf.csi.OK indelvcf/NA11918/NA11918.sites.bcf.csi.OK indelvcf/NA12341/NA12341.sites.bcf.csi.OK indelvcf/NA11892/NA11892.sites.bcf.csi.OK indelvcf/NA12383/NA12383.sites.bcf.csi.OK indelvcf/NA06994/NA06994.sites.bcf.csi.OK indelvcf/NA12006/NA12006.sites.bcf.csi.OK indelvcf/NA12043/NA12043.sites.bcf.csi.OK indelvcf/NA11993/NA11993.sites.bcf.csi.OK indelvcf/NA12413/NA12413.sites.bcf.csi.OK indelvcf/NA11920/NA11920.sites.bcf.csi.OK indelvcf/NA12874/NA12874.sites.bcf.csi.OK | aux/
+	scripts/runcluster.pl local 'vt merge_candidate_variants -L aux/candidate_vcf_files.txt -o aux/all.sites.20.bcf -i 20 2> aux/all.sites.20.bcf.log'
+	touch aux/all.sites.20.bcf.OK
 
-merge: aux/all.sites.20.20000001.40000000.bcf.OK
+merge: aux/all.sites.20.bcf.OK
 
-aux/all.sites.20.20000001.40000000.bcf.csi.OK: aux/all.sites.20.20000001.40000000.bcf.OK | aux/
-	scripts/runcluster.pl local 'vt index aux/all.sites.20.20000001.40000000.bcf 2> aux/all.sites.20.20000001.40000000.bcf.csi.log'
-	touch aux/all.sites.20.20000001.40000000.bcf.csi.OK
+aux/all.sites.20.bcf.csi.OK: aux/all.sites.20.bcf.OK | aux/
+	scripts/runcluster.pl local 'vt index aux/all.sites.20.bcf 2> aux/all.sites.20.bcf.csi.log'
+	touch aux/all.sites.20.bcf.csi.OK
 
-indexM: aux/all.sites.20.20000001.40000000.bcf.csi.OK
+indexM: aux/all.sites.20.bcf.csi.OK
 
-aux/probes.sites.20.20000001.40000000.bcf.OK: aux/all.sites.20.20000001.40000000.bcf.OK aux/all.sites.20.20000001.40000000.bcf.csi.OK | aux/
-	scripts/runcluster.pl local 'vt construct_probes aux/all.sites.20.20000001.40000000.bcf -r test/chr20Ref/human_g1k_v37_chr20.fa -o aux/probes.sites.20.20000001.40000000.bcf -i 20:20000001-40000000 2> aux/probes.20.20000001.40000000.log'
+aux/probes.sites.20.20000001.40000000.bcf.OK: aux/all.sites.20.bcf.OK aux/all.sites.20.bcf.csi.OK | aux/
+	scripts/runcluster.pl local 'vt construct_probes aux/all.sites.20.bcf -r test/chr20Ref/human_g1k_v37_chr20.fa -o aux/probes.sites.20.20000001.40000000.bcf -i 20:20000001-40000000 2> aux/probes.20.20000001.40000000.log'
 	touch aux/probes.sites.20.20000001.40000000.bcf.OK
 
 probes: aux/probes.sites.20.20000001.40000000.bcf.OK
@@ -1042,20 +1042,504 @@ indelvcf/NA12874/NA12874.genotypes.20.20000001.40000000.bcf.csi.OK: indelvcf/NA1
 
 indexG: indelvcf/NA12272/NA12272.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12004/NA12004.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11994/NA11994.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12749/NA12749.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA10847/NA10847.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12716/NA12716.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12829/NA12829.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12275/NA12275.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12750/NA12750.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12348/NA12348.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12347/NA12347.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12003/NA12003.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12286/NA12286.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11829/NA11829.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07357/NA07357.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12144/NA12144.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12045/NA12045.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12812/NA12812.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12718/NA12718.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12777/NA12777.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12872/NA12872.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12751/NA12751.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12717/NA12717.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07051/NA07051.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12249/NA12249.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11992/NA11992.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12058/NA12058.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12889/NA12889.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12400/NA12400.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12778/NA12778.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12154/NA12154.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11932/NA11932.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11931/NA11931.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA06986/NA06986.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07056/NA07056.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12046/NA12046.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12342/NA12342.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA06984/NA06984.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12273/NA12273.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12748/NA12748.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12814/NA12814.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12546/NA12546.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12827/NA12827.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12489/NA12489.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12283/NA12283.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11919/NA11919.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11995/NA11995.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07000/NA07000.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA10851/NA10851.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11918/NA11918.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12341/NA12341.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11892/NA11892.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12383/NA12383.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA06994/NA06994.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12006/NA12006.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12043/NA12043.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11993/NA11993.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12413/NA12413.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11920/NA11920.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12874/NA12874.genotypes.20.20000001.40000000.bcf.csi.OK
 
-final/merge/all.genotypes.20.20000001.40000000.bcf.OK: indelvcf/NA12272/NA12272.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12004/NA12004.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11994/NA11994.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12749/NA12749.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA10847/NA10847.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12716/NA12716.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12829/NA12829.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12275/NA12275.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12750/NA12750.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12348/NA12348.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12347/NA12347.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12003/NA12003.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12286/NA12286.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11829/NA11829.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07357/NA07357.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12144/NA12144.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12045/NA12045.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12812/NA12812.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12718/NA12718.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12777/NA12777.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12872/NA12872.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12751/NA12751.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12717/NA12717.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07051/NA07051.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12249/NA12249.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11992/NA11992.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12058/NA12058.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12889/NA12889.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12400/NA12400.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12778/NA12778.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12154/NA12154.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11932/NA11932.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11931/NA11931.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA06986/NA06986.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07056/NA07056.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12046/NA12046.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12342/NA12342.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA06984/NA06984.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12273/NA12273.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12748/NA12748.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12814/NA12814.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12546/NA12546.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12827/NA12827.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12489/NA12489.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12283/NA12283.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11919/NA11919.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11995/NA11995.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA07000/NA07000.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA10851/NA10851.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11918/NA11918.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12341/NA12341.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11892/NA11892.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12383/NA12383.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA06994/NA06994.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12006/NA12006.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12043/NA12043.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11993/NA11993.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12413/NA12413.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA11920/NA11920.genotypes.20.20000001.40000000.bcf.csi.OK indelvcf/NA12874/NA12874.genotypes.20.20000001.40000000.bcf.csi.OK | final/merge/
-	scripts/runcluster.pl local 'vt merge -L aux/merge.20.20000001.40000000.vcf.list.txt -o + | vt compute_features + -o + 2> final/merge/compute_features.20.20000001.40000000.log | vt remove_overlap + -o final/merge/all.genotypes.20.20000001.40000000.bcf 2> final/merge/remove_overlap.20.20000001.40000000.log'
-	touch final/merge/all.genotypes.20.20000001.40000000.bcf.OK
+indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.OK: indelvcf/NA12272/NA12272.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12272/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12272/NA12272.genotypesConcat.20.bcf 2> indelvcf/NA12272/concat.20.log'
+	touch indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.OK
 
-mergeG: final/merge/all.genotypes.20.20000001.40000000.bcf.OK
+indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.OK: indelvcf/NA12004/NA12004.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12004/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12004/NA12004.genotypesConcat.20.bcf 2> indelvcf/NA12004/concat.20.log'
+	touch indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.OK
 
-final/merge/all.genotypes.20.20000001.40000000.bcf.csi.OK: final/merge/all.genotypes.20.20000001.40000000.bcf.OK | final/merge/
-	scripts/runcluster.pl local 'vt index final/merge/all.genotypes.20.20000001.40000000.bcf 2> final/merge/all.genotypes.20.20000001.40000000.bcf.csi.log'
-	touch final/merge/all.genotypes.20.20000001.40000000.bcf.csi.OK
+indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.OK: indelvcf/NA11994/NA11994.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11994/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11994/NA11994.genotypesConcat.20.bcf 2> indelvcf/NA11994/concat.20.log'
+	touch indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.OK
 
-indexMG: final/merge/all.genotypes.20.20000001.40000000.bcf.csi.OK
+indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.OK: indelvcf/NA12749/NA12749.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12749/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12749/NA12749.genotypesConcat.20.bcf 2> indelvcf/NA12749/concat.20.log'
+	touch indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.OK
 
-final/all.genotypes.vcf.gz.OK: final/merge/all.genotypes.20.20000001.40000000.bcf.OK | final/
-	scripts/runcluster.pl local 'vt concat final/merge/all.genotypes.20.20000001.40000000.bcf -o final/all.genotypes.vcf.gz 2> final/concat.log'
+indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.OK: indelvcf/NA10847/NA10847.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA10847/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.list.txt -o indelvcf/NA10847/NA10847.genotypesConcat.20.bcf 2> indelvcf/NA10847/concat.20.log'
+	touch indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.OK: indelvcf/NA12716/NA12716.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12716/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12716/NA12716.genotypesConcat.20.bcf 2> indelvcf/NA12716/concat.20.log'
+	touch indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.OK: indelvcf/NA12829/NA12829.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12829/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12829/NA12829.genotypesConcat.20.bcf 2> indelvcf/NA12829/concat.20.log'
+	touch indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.OK: indelvcf/NA12275/NA12275.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12275/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12275/NA12275.genotypesConcat.20.bcf 2> indelvcf/NA12275/concat.20.log'
+	touch indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.OK: indelvcf/NA12750/NA12750.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12750/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12750/NA12750.genotypesConcat.20.bcf 2> indelvcf/NA12750/concat.20.log'
+	touch indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.OK: indelvcf/NA12348/NA12348.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12348/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12348/NA12348.genotypesConcat.20.bcf 2> indelvcf/NA12348/concat.20.log'
+	touch indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.OK: indelvcf/NA12347/NA12347.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12347/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12347/NA12347.genotypesConcat.20.bcf 2> indelvcf/NA12347/concat.20.log'
+	touch indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.OK: indelvcf/NA12003/NA12003.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12003/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12003/NA12003.genotypesConcat.20.bcf 2> indelvcf/NA12003/concat.20.log'
+	touch indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.OK: indelvcf/NA12286/NA12286.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12286/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12286/NA12286.genotypesConcat.20.bcf 2> indelvcf/NA12286/concat.20.log'
+	touch indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.OK: indelvcf/NA11829/NA11829.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11829/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11829/NA11829.genotypesConcat.20.bcf 2> indelvcf/NA11829/concat.20.log'
+	touch indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.OK
+
+indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.OK: indelvcf/NA07357/NA07357.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA07357/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.list.txt -o indelvcf/NA07357/NA07357.genotypesConcat.20.bcf 2> indelvcf/NA07357/concat.20.log'
+	touch indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.OK: indelvcf/NA12144/NA12144.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12144/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12144/NA12144.genotypesConcat.20.bcf 2> indelvcf/NA12144/concat.20.log'
+	touch indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.OK: indelvcf/NA12045/NA12045.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12045/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12045/NA12045.genotypesConcat.20.bcf 2> indelvcf/NA12045/concat.20.log'
+	touch indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.OK: indelvcf/NA12812/NA12812.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12812/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12812/NA12812.genotypesConcat.20.bcf 2> indelvcf/NA12812/concat.20.log'
+	touch indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.OK: indelvcf/NA12718/NA12718.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12718/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12718/NA12718.genotypesConcat.20.bcf 2> indelvcf/NA12718/concat.20.log'
+	touch indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.OK: indelvcf/NA12777/NA12777.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12777/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12777/NA12777.genotypesConcat.20.bcf 2> indelvcf/NA12777/concat.20.log'
+	touch indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.OK: indelvcf/NA12872/NA12872.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12872/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12872/NA12872.genotypesConcat.20.bcf 2> indelvcf/NA12872/concat.20.log'
+	touch indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.OK: indelvcf/NA12751/NA12751.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12751/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12751/NA12751.genotypesConcat.20.bcf 2> indelvcf/NA12751/concat.20.log'
+	touch indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.OK: indelvcf/NA12717/NA12717.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12717/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12717/NA12717.genotypesConcat.20.bcf 2> indelvcf/NA12717/concat.20.log'
+	touch indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.OK
+
+indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.OK: indelvcf/NA07051/NA07051.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA07051/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.list.txt -o indelvcf/NA07051/NA07051.genotypesConcat.20.bcf 2> indelvcf/NA07051/concat.20.log'
+	touch indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.OK: indelvcf/NA12249/NA12249.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12249/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12249/NA12249.genotypesConcat.20.bcf 2> indelvcf/NA12249/concat.20.log'
+	touch indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.OK: indelvcf/NA11992/NA11992.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11992/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11992/NA11992.genotypesConcat.20.bcf 2> indelvcf/NA11992/concat.20.log'
+	touch indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.OK: indelvcf/NA12058/NA12058.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12058/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12058/NA12058.genotypesConcat.20.bcf 2> indelvcf/NA12058/concat.20.log'
+	touch indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.OK: indelvcf/NA12889/NA12889.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12889/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12889/NA12889.genotypesConcat.20.bcf 2> indelvcf/NA12889/concat.20.log'
+	touch indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.OK: indelvcf/NA12400/NA12400.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12400/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12400/NA12400.genotypesConcat.20.bcf 2> indelvcf/NA12400/concat.20.log'
+	touch indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.OK: indelvcf/NA12778/NA12778.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12778/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12778/NA12778.genotypesConcat.20.bcf 2> indelvcf/NA12778/concat.20.log'
+	touch indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.OK: indelvcf/NA12154/NA12154.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12154/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12154/NA12154.genotypesConcat.20.bcf 2> indelvcf/NA12154/concat.20.log'
+	touch indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.OK: indelvcf/NA11932/NA11932.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11932/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11932/NA11932.genotypesConcat.20.bcf 2> indelvcf/NA11932/concat.20.log'
+	touch indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.OK: indelvcf/NA11931/NA11931.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11931/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11931/NA11931.genotypesConcat.20.bcf 2> indelvcf/NA11931/concat.20.log'
+	touch indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.OK
+
+indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.OK: indelvcf/NA06986/NA06986.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA06986/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.list.txt -o indelvcf/NA06986/NA06986.genotypesConcat.20.bcf 2> indelvcf/NA06986/concat.20.log'
+	touch indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.OK
+
+indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.OK: indelvcf/NA07056/NA07056.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA07056/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.list.txt -o indelvcf/NA07056/NA07056.genotypesConcat.20.bcf 2> indelvcf/NA07056/concat.20.log'
+	touch indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.OK: indelvcf/NA12046/NA12046.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12046/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12046/NA12046.genotypesConcat.20.bcf 2> indelvcf/NA12046/concat.20.log'
+	touch indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.OK: indelvcf/NA12342/NA12342.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12342/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12342/NA12342.genotypesConcat.20.bcf 2> indelvcf/NA12342/concat.20.log'
+	touch indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.OK
+
+indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.OK: indelvcf/NA06984/NA06984.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA06984/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.list.txt -o indelvcf/NA06984/NA06984.genotypesConcat.20.bcf 2> indelvcf/NA06984/concat.20.log'
+	touch indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.OK: indelvcf/NA12273/NA12273.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12273/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12273/NA12273.genotypesConcat.20.bcf 2> indelvcf/NA12273/concat.20.log'
+	touch indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.OK: indelvcf/NA12748/NA12748.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12748/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12748/NA12748.genotypesConcat.20.bcf 2> indelvcf/NA12748/concat.20.log'
+	touch indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.OK: indelvcf/NA12814/NA12814.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12814/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12814/NA12814.genotypesConcat.20.bcf 2> indelvcf/NA12814/concat.20.log'
+	touch indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.OK: indelvcf/NA12546/NA12546.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12546/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12546/NA12546.genotypesConcat.20.bcf 2> indelvcf/NA12546/concat.20.log'
+	touch indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.OK: indelvcf/NA12827/NA12827.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12827/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12827/NA12827.genotypesConcat.20.bcf 2> indelvcf/NA12827/concat.20.log'
+	touch indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.OK: indelvcf/NA12489/NA12489.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12489/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12489/NA12489.genotypesConcat.20.bcf 2> indelvcf/NA12489/concat.20.log'
+	touch indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.OK: indelvcf/NA12283/NA12283.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12283/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12283/NA12283.genotypesConcat.20.bcf 2> indelvcf/NA12283/concat.20.log'
+	touch indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.OK: indelvcf/NA11919/NA11919.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11919/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11919/NA11919.genotypesConcat.20.bcf 2> indelvcf/NA11919/concat.20.log'
+	touch indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.OK: indelvcf/NA11995/NA11995.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11995/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11995/NA11995.genotypesConcat.20.bcf 2> indelvcf/NA11995/concat.20.log'
+	touch indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.OK
+
+indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.OK: indelvcf/NA07000/NA07000.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA07000/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.list.txt -o indelvcf/NA07000/NA07000.genotypesConcat.20.bcf 2> indelvcf/NA07000/concat.20.log'
+	touch indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.OK
+
+indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.OK: indelvcf/NA10851/NA10851.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA10851/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.list.txt -o indelvcf/NA10851/NA10851.genotypesConcat.20.bcf 2> indelvcf/NA10851/concat.20.log'
+	touch indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.OK: indelvcf/NA11918/NA11918.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11918/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11918/NA11918.genotypesConcat.20.bcf 2> indelvcf/NA11918/concat.20.log'
+	touch indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.OK: indelvcf/NA12341/NA12341.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12341/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12341/NA12341.genotypesConcat.20.bcf 2> indelvcf/NA12341/concat.20.log'
+	touch indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.OK: indelvcf/NA11892/NA11892.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11892/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11892/NA11892.genotypesConcat.20.bcf 2> indelvcf/NA11892/concat.20.log'
+	touch indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.OK: indelvcf/NA12383/NA12383.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12383/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12383/NA12383.genotypesConcat.20.bcf 2> indelvcf/NA12383/concat.20.log'
+	touch indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.OK
+
+indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.OK: indelvcf/NA06994/NA06994.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA06994/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.list.txt -o indelvcf/NA06994/NA06994.genotypesConcat.20.bcf 2> indelvcf/NA06994/concat.20.log'
+	touch indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.OK: indelvcf/NA12006/NA12006.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12006/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12006/NA12006.genotypesConcat.20.bcf 2> indelvcf/NA12006/concat.20.log'
+	touch indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.OK: indelvcf/NA12043/NA12043.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12043/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12043/NA12043.genotypesConcat.20.bcf 2> indelvcf/NA12043/concat.20.log'
+	touch indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.OK: indelvcf/NA11993/NA11993.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11993/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11993/NA11993.genotypesConcat.20.bcf 2> indelvcf/NA11993/concat.20.log'
+	touch indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.OK: indelvcf/NA12413/NA12413.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12413/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12413/NA12413.genotypesConcat.20.bcf 2> indelvcf/NA12413/concat.20.log'
+	touch indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.OK
+
+indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.OK: indelvcf/NA11920/NA11920.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA11920/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.list.txt -o indelvcf/NA11920/NA11920.genotypesConcat.20.bcf 2> indelvcf/NA11920/concat.20.log'
+	touch indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.OK: indelvcf/NA12874/NA12874.genotypes.20.20000001.40000000.bcf.OK | indelvcf/NA12874/
+	scripts/runcluster.pl local 'vt concat -L indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.list.txt -o indelvcf/NA12874/NA12874.genotypesConcat.20.bcf 2> indelvcf/NA12874/concat.20.log'
+	touch indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.OK
+
+concatG: indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.OK indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.OK indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.OK indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.OK indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.OK indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.OK indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.OK indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.OK indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.OK indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.OK indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.OK indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.OK indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.OK indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.OK indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.OK indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.OK indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.OK indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.OK indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.OK indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.OK indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.OK indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.OK indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.OK indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.OK indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.OK indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.OK indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.OK indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.OK indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.OK indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.OK indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.OK indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.OK indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.OK indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.OK indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.OK indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.OK indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.OK indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.OK indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.OK indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.OK indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.OK indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.OK indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.OK indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.OK indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.OK indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.OK indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.OK indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.OK indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.OK indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.OK indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.OK indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.OK indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.OK indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.OK indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.OK indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.OK indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.OK indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.OK indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.OK indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.OK
+
+indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.OK | indelvcf/NA12272/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12272/NA12272.genotypesConcat.20.bcf 2> indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.OK | indelvcf/NA12004/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12004/NA12004.genotypesConcat.20.bcf 2> indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.OK | indelvcf/NA11994/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11994/NA11994.genotypesConcat.20.bcf 2> indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.OK | indelvcf/NA12749/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12749/NA12749.genotypesConcat.20.bcf 2> indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.csi.OK: indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.OK | indelvcf/NA10847/
+	scripts/runcluster.pl local 'vt index indelvcf/NA10847/NA10847.genotypesConcat.20.bcf 2> indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.OK | indelvcf/NA12716/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12716/NA12716.genotypesConcat.20.bcf 2> indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.OK | indelvcf/NA12829/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12829/NA12829.genotypesConcat.20.bcf 2> indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.OK | indelvcf/NA12275/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12275/NA12275.genotypesConcat.20.bcf 2> indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.OK | indelvcf/NA12750/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12750/NA12750.genotypesConcat.20.bcf 2> indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.OK | indelvcf/NA12348/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12348/NA12348.genotypesConcat.20.bcf 2> indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.OK | indelvcf/NA12347/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12347/NA12347.genotypesConcat.20.bcf 2> indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.OK | indelvcf/NA12003/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12003/NA12003.genotypesConcat.20.bcf 2> indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.OK | indelvcf/NA12286/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12286/NA12286.genotypesConcat.20.bcf 2> indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.OK | indelvcf/NA11829/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11829/NA11829.genotypesConcat.20.bcf 2> indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.csi.OK: indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.OK | indelvcf/NA07357/
+	scripts/runcluster.pl local 'vt index indelvcf/NA07357/NA07357.genotypesConcat.20.bcf 2> indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.OK | indelvcf/NA12144/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12144/NA12144.genotypesConcat.20.bcf 2> indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.OK | indelvcf/NA12045/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12045/NA12045.genotypesConcat.20.bcf 2> indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.OK | indelvcf/NA12812/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12812/NA12812.genotypesConcat.20.bcf 2> indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.OK | indelvcf/NA12718/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12718/NA12718.genotypesConcat.20.bcf 2> indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.OK | indelvcf/NA12777/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12777/NA12777.genotypesConcat.20.bcf 2> indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.OK | indelvcf/NA12872/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12872/NA12872.genotypesConcat.20.bcf 2> indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.OK | indelvcf/NA12751/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12751/NA12751.genotypesConcat.20.bcf 2> indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.OK | indelvcf/NA12717/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12717/NA12717.genotypesConcat.20.bcf 2> indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.csi.OK: indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.OK | indelvcf/NA07051/
+	scripts/runcluster.pl local 'vt index indelvcf/NA07051/NA07051.genotypesConcat.20.bcf 2> indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.OK | indelvcf/NA12249/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12249/NA12249.genotypesConcat.20.bcf 2> indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.OK | indelvcf/NA11992/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11992/NA11992.genotypesConcat.20.bcf 2> indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.OK | indelvcf/NA12058/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12058/NA12058.genotypesConcat.20.bcf 2> indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.OK | indelvcf/NA12889/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12889/NA12889.genotypesConcat.20.bcf 2> indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.OK | indelvcf/NA12400/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12400/NA12400.genotypesConcat.20.bcf 2> indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.OK | indelvcf/NA12778/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12778/NA12778.genotypesConcat.20.bcf 2> indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.OK | indelvcf/NA12154/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12154/NA12154.genotypesConcat.20.bcf 2> indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.OK | indelvcf/NA11932/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11932/NA11932.genotypesConcat.20.bcf 2> indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.OK | indelvcf/NA11931/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11931/NA11931.genotypesConcat.20.bcf 2> indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.csi.OK: indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.OK | indelvcf/NA06986/
+	scripts/runcluster.pl local 'vt index indelvcf/NA06986/NA06986.genotypesConcat.20.bcf 2> indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.csi.OK: indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.OK | indelvcf/NA07056/
+	scripts/runcluster.pl local 'vt index indelvcf/NA07056/NA07056.genotypesConcat.20.bcf 2> indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.OK | indelvcf/NA12046/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12046/NA12046.genotypesConcat.20.bcf 2> indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.OK | indelvcf/NA12342/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12342/NA12342.genotypesConcat.20.bcf 2> indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.csi.OK: indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.OK | indelvcf/NA06984/
+	scripts/runcluster.pl local 'vt index indelvcf/NA06984/NA06984.genotypesConcat.20.bcf 2> indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.OK | indelvcf/NA12273/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12273/NA12273.genotypesConcat.20.bcf 2> indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.OK | indelvcf/NA12748/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12748/NA12748.genotypesConcat.20.bcf 2> indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.OK | indelvcf/NA12814/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12814/NA12814.genotypesConcat.20.bcf 2> indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.OK | indelvcf/NA12546/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12546/NA12546.genotypesConcat.20.bcf 2> indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.OK | indelvcf/NA12827/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12827/NA12827.genotypesConcat.20.bcf 2> indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.OK | indelvcf/NA12489/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12489/NA12489.genotypesConcat.20.bcf 2> indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.OK | indelvcf/NA12283/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12283/NA12283.genotypesConcat.20.bcf 2> indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.OK | indelvcf/NA11919/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11919/NA11919.genotypesConcat.20.bcf 2> indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.OK | indelvcf/NA11995/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11995/NA11995.genotypesConcat.20.bcf 2> indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.csi.OK: indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.OK | indelvcf/NA07000/
+	scripts/runcluster.pl local 'vt index indelvcf/NA07000/NA07000.genotypesConcat.20.bcf 2> indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.csi.OK: indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.OK | indelvcf/NA10851/
+	scripts/runcluster.pl local 'vt index indelvcf/NA10851/NA10851.genotypesConcat.20.bcf 2> indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.OK | indelvcf/NA11918/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11918/NA11918.genotypesConcat.20.bcf 2> indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.OK | indelvcf/NA12341/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12341/NA12341.genotypesConcat.20.bcf 2> indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.OK | indelvcf/NA11892/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11892/NA11892.genotypesConcat.20.bcf 2> indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.OK | indelvcf/NA12383/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12383/NA12383.genotypesConcat.20.bcf 2> indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.csi.OK: indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.OK | indelvcf/NA06994/
+	scripts/runcluster.pl local 'vt index indelvcf/NA06994/NA06994.genotypesConcat.20.bcf 2> indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.OK | indelvcf/NA12006/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12006/NA12006.genotypesConcat.20.bcf 2> indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.OK | indelvcf/NA12043/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12043/NA12043.genotypesConcat.20.bcf 2> indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.OK | indelvcf/NA11993/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11993/NA11993.genotypesConcat.20.bcf 2> indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.OK | indelvcf/NA12413/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12413/NA12413.genotypesConcat.20.bcf 2> indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.csi.OK: indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.OK | indelvcf/NA11920/
+	scripts/runcluster.pl local 'vt index indelvcf/NA11920/NA11920.genotypesConcat.20.bcf 2> indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.csi.OK
+
+indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.csi.OK: indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.OK | indelvcf/NA12874/
+	scripts/runcluster.pl local 'vt index indelvcf/NA12874/NA12874.genotypesConcat.20.bcf 2> indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.csi.log'
+	touch indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.csi.OK
+
+indexCG: indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.csi.OK indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.csi.OK indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.csi.OK indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.csi.OK indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.csi.OK indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.csi.OK indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.csi.OK indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.csi.OK indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.csi.OK indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.csi.OK indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.csi.OK indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.csi.OK indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.csi.OK indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.csi.OK indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.csi.OK indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.csi.OK indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.csi.OK indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.csi.OK indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.csi.OK indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.csi.OK indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.csi.OK indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.csi.OK indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.csi.OK indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.csi.OK indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.csi.OK indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.csi.OK indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.csi.OK indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.csi.OK indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.csi.OK indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.csi.OK indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.csi.OK indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.csi.OK indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.csi.OK indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.csi.OK indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.csi.OK indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.csi.OK indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.csi.OK indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.csi.OK indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.csi.OK indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.csi.OK indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.csi.OK indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.csi.OK indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.csi.OK indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.csi.OK indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.csi.OK indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.csi.OK indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.csi.OK indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.csi.OK indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.csi.OK indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.csi.OK indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.csi.OK indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.csi.OK indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.csi.OK indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.csi.OK indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.csi.OK indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.csi.OK indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.csi.OK indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.csi.OK indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.csi.OK indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.csi.OK
+
+final/merge/all.genotypes.20.bcf.OK: indelvcf/NA12272/NA12272.genotypesConcat.20.bcf.csi.OK indelvcf/NA12004/NA12004.genotypesConcat.20.bcf.csi.OK indelvcf/NA11994/NA11994.genotypesConcat.20.bcf.csi.OK indelvcf/NA12749/NA12749.genotypesConcat.20.bcf.csi.OK indelvcf/NA10847/NA10847.genotypesConcat.20.bcf.csi.OK indelvcf/NA12716/NA12716.genotypesConcat.20.bcf.csi.OK indelvcf/NA12829/NA12829.genotypesConcat.20.bcf.csi.OK indelvcf/NA12275/NA12275.genotypesConcat.20.bcf.csi.OK indelvcf/NA12750/NA12750.genotypesConcat.20.bcf.csi.OK indelvcf/NA12348/NA12348.genotypesConcat.20.bcf.csi.OK indelvcf/NA12347/NA12347.genotypesConcat.20.bcf.csi.OK indelvcf/NA12003/NA12003.genotypesConcat.20.bcf.csi.OK indelvcf/NA12286/NA12286.genotypesConcat.20.bcf.csi.OK indelvcf/NA11829/NA11829.genotypesConcat.20.bcf.csi.OK indelvcf/NA07357/NA07357.genotypesConcat.20.bcf.csi.OK indelvcf/NA12144/NA12144.genotypesConcat.20.bcf.csi.OK indelvcf/NA12045/NA12045.genotypesConcat.20.bcf.csi.OK indelvcf/NA12812/NA12812.genotypesConcat.20.bcf.csi.OK indelvcf/NA12718/NA12718.genotypesConcat.20.bcf.csi.OK indelvcf/NA12777/NA12777.genotypesConcat.20.bcf.csi.OK indelvcf/NA12872/NA12872.genotypesConcat.20.bcf.csi.OK indelvcf/NA12751/NA12751.genotypesConcat.20.bcf.csi.OK indelvcf/NA12717/NA12717.genotypesConcat.20.bcf.csi.OK indelvcf/NA07051/NA07051.genotypesConcat.20.bcf.csi.OK indelvcf/NA12249/NA12249.genotypesConcat.20.bcf.csi.OK indelvcf/NA11992/NA11992.genotypesConcat.20.bcf.csi.OK indelvcf/NA12058/NA12058.genotypesConcat.20.bcf.csi.OK indelvcf/NA12889/NA12889.genotypesConcat.20.bcf.csi.OK indelvcf/NA12400/NA12400.genotypesConcat.20.bcf.csi.OK indelvcf/NA12778/NA12778.genotypesConcat.20.bcf.csi.OK indelvcf/NA12154/NA12154.genotypesConcat.20.bcf.csi.OK indelvcf/NA11932/NA11932.genotypesConcat.20.bcf.csi.OK indelvcf/NA11931/NA11931.genotypesConcat.20.bcf.csi.OK indelvcf/NA06986/NA06986.genotypesConcat.20.bcf.csi.OK indelvcf/NA07056/NA07056.genotypesConcat.20.bcf.csi.OK indelvcf/NA12046/NA12046.genotypesConcat.20.bcf.csi.OK indelvcf/NA12342/NA12342.genotypesConcat.20.bcf.csi.OK indelvcf/NA06984/NA06984.genotypesConcat.20.bcf.csi.OK indelvcf/NA12273/NA12273.genotypesConcat.20.bcf.csi.OK indelvcf/NA12748/NA12748.genotypesConcat.20.bcf.csi.OK indelvcf/NA12814/NA12814.genotypesConcat.20.bcf.csi.OK indelvcf/NA12546/NA12546.genotypesConcat.20.bcf.csi.OK indelvcf/NA12827/NA12827.genotypesConcat.20.bcf.csi.OK indelvcf/NA12489/NA12489.genotypesConcat.20.bcf.csi.OK indelvcf/NA12283/NA12283.genotypesConcat.20.bcf.csi.OK indelvcf/NA11919/NA11919.genotypesConcat.20.bcf.csi.OK indelvcf/NA11995/NA11995.genotypesConcat.20.bcf.csi.OK indelvcf/NA07000/NA07000.genotypesConcat.20.bcf.csi.OK indelvcf/NA10851/NA10851.genotypesConcat.20.bcf.csi.OK indelvcf/NA11918/NA11918.genotypesConcat.20.bcf.csi.OK indelvcf/NA12341/NA12341.genotypesConcat.20.bcf.csi.OK indelvcf/NA11892/NA11892.genotypesConcat.20.bcf.csi.OK indelvcf/NA12383/NA12383.genotypesConcat.20.bcf.csi.OK indelvcf/NA06994/NA06994.genotypesConcat.20.bcf.csi.OK indelvcf/NA12006/NA12006.genotypesConcat.20.bcf.csi.OK indelvcf/NA12043/NA12043.genotypesConcat.20.bcf.csi.OK indelvcf/NA11993/NA11993.genotypesConcat.20.bcf.csi.OK indelvcf/NA12413/NA12413.genotypesConcat.20.bcf.csi.OK indelvcf/NA11920/NA11920.genotypesConcat.20.bcf.csi.OK indelvcf/NA12874/NA12874.genotypesConcat.20.bcf.csi.OK | final/merge/
+	scripts/runcluster.pl local 'vt merge -L aux/merge.20.vcf.list.txt -o + | vt compute_features + -o + 2> final/merge/compute_features.20.log | vt remove_overlap + -o final/merge/all.genotypes.20.bcf 2> final/merge/remove_overlap.20.log'
+	touch final/merge/all.genotypes.20.bcf.OK
+
+mergeG: final/merge/all.genotypes.20.bcf.OK
+
+final/merge/all.genotypes.20.bcf.csi.OK: final/merge/all.genotypes.20.bcf.OK | final/merge/
+	scripts/runcluster.pl local 'vt index final/merge/all.genotypes.20.bcf 2> final/merge/all.genotypes.20.bcf.csi.log'
+	touch final/merge/all.genotypes.20.bcf.csi.OK
+
+indexMG: final/merge/all.genotypes.20.bcf.csi.OK
+
+final/all.genotypes.vcf.gz.OK: final/merge/all.genotypes.20.bcf.OK | final/
+	scripts/runcluster.pl local 'vt concat final/merge/all.genotypes.20.bcf -o final/all.genotypes.vcf.gz 2> final/concat.log'
 	touch final/all.genotypes.vcf.gz.OK
 
 concat: final/all.genotypes.vcf.gz.OK

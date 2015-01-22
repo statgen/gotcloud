@@ -90,6 +90,8 @@ foreach my $chr (@chrs) {
 	}
     }
     close VCF;
+    my $exit = $? >> 8;
+    die "ERROR: ligateVcf4.pl, failed to open $vcf, exit code: $exit\n" if $exit;
 
     if ( $ignoreFilter ) {
 	open(VCF,"$tabix $vcf $chr:0 |") || die "Cannot open file\n";

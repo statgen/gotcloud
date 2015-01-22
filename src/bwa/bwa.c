@@ -6,6 +6,7 @@
 #include "bwa.h"
 #include "ksw.h"
 #include "utils.h"
+#include "kstring.h"
 
 #ifdef USE_MALLOC_WRAPPERS
 #  include "malloc_wrap.h"
@@ -13,6 +14,7 @@
 
 int bwa_verbose = 3;
 char bwa_rg_id[256];
+char *bwa_pg;
 
 /************************
  * Batch FASTA/Q reader *
@@ -85,13 +87,17 @@ void bwa_fill_scmat(int a, int b, int8_t mat[25])
 }
 
 // Generate CIGAR when the alignment end points are known
-uint32_t *bwa_gen_cigar(const int8_t mat[25], int q, int r, int w_, int64_t l_pac, const uint8_t *pac, int l_query, uint8_t *query, int64_t rb, int64_t re, int *score, int *n_cigar, int *NM)
+uint32_t *bwa_gen_cigar2(const int8_t mat[25], int o_del, int e_del, int o_ins, int e_ins, int w_, int64_t l_pac, const uint8_t *pac, int l_query, uint8_t *query, int64_t rb, int64_t re, int *score, int *n_cigar, int *NM)
 {
 	uint32_t *cigar = 0;
 	uint8_t tmp, *rseq;
 	int i;
 	int64_t rlen;
-	*n_cigar = 0; *NM = -1;
+	kstring_t str;
+	const char *int2base;
+
+	if (n_cigar) *n_cigar = 0;
+	if (NM) *NM = -1;
 	if (l_query <= 0 || rb >= re || (rb < l_pac && re > l_pac)) return 0; // reject if negative length or bridging the forward and reverse strand
 	rseq = bns_get_seq(l_pac, pac, rb, re, &rlen);
 	if (re - rb != rlen) goto ret_gen_cigar; // possible if out of range
@@ -102,38 +108,63 @@ uint32_t *bwa_gen_cigar(const int8_t mat[25], int q, int r, int w_, int64_t l_pa
 			tmp = rseq[i], rseq[i] = rseq[rlen - 1 - i], rseq[rlen - 1 - i] = tmp;
 	}
 	if (l_query == re - rb && w_ == 0) { // no gap; no need to do DP
-		cigar = malloc(4);
-		cigar[0] = l_query<<4 | 0;
-		*n_cigar = 1;
+		// UPDATE: we come to this block now... FIXME: due to an issue in mem_reg2aln(), we never come to this block. This does not affect accuracy, but it hurts performance.
+		if (n_cigar) {
+			cigar = malloc(4);
+			cigar[0] = l_query<<4 | 0;
+			*n_cigar = 1;
+		}
 		for (i = 0, *score = 0; i < l_query; ++i)
 			*score += mat[rseq[i]*5 + query[i]];
 	} else {
-		int w, max_gap, min_w;
-		//printf("[Q] "); for (i = 0; i < l_query; ++i) putchar("ACGTN"[(int)query[i]]); putchar('\n');
-		//printf("[R] "); for (i = 0; i < re - rb; ++i) putchar("ACGTN"[(int)rseq[i]]); putchar('\n');
+		int w, max_gap, max_ins, max_del, min_w;
 		// set the band-width
-		max_gap = (int)((double)(((l_query+1)>>1) * mat[0] - q) / r + 1.);
+		max_ins = (int)((double)(((l_query+1)>>1) * mat[0] - o_ins) / e_ins + 1.);
+		max_del = (int)((double)(((l_query+1)>>1) * mat[0] - o_del) / e_del + 1.);
+		max_gap = max_ins > max_del? max_ins : max_del;
 		max_gap = max_gap > 1? max_gap : 1;
 		w = (max_gap + abs(rlen - l_query) + 1) >> 1;
 		w = w < w_? w : w_;
 		min_w = abs(rlen - l_query) + 3;
 		w = w > min_w? w : min_w;
 		// NW alignment
-		*score = ksw_global(l_query, query, rlen, rseq, 5, mat, q, r, w, n_cigar, &cigar);
-	}
-	{// compute NM
-		int k, x, y, n_mm = 0, n_gap = 0;
-		for (k = 0, x = y = 0; k < *n_cigar; ++k) {
-			int op  = cigar[k]&0xf;
-			int len = cigar[k]>>4;
-			if (op == 0) { // match
-				for (i = 0; i < len; ++i)
-					if (query[x + i] != rseq[y + i]) ++n_mm;
-				x += len; y += len;
-			} else if (op == 1) x += len, n_gap += len;
-			else if (op == 2) y += len, n_gap += len;
+		if (bwa_verbose >= 4) {
+			printf("* Global bandwidth: %d\n", w);
+			printf("* Global ref:   "); for (i = 0; i < rlen; ++i) putchar("ACGTN"[(int)rseq[i]]); putchar('\n');
+			printf("* Global query: "); for (i = 0; i < l_query; ++i) putchar("ACGTN"[(int)query[i]]); putchar('\n');
 		}
+		*score = ksw_global2(l_query, query, rlen, rseq, 5, mat, o_del, e_del, o_ins, e_ins, w, n_cigar, &cigar);
+	}
+	if (NM && n_cigar) {// compute NM and MD
+		int k, x, y, u, n_mm = 0, n_gap = 0;
+		str.l = str.m = *n_cigar * 4; str.s = (char*)cigar; // append MD to CIGAR
+		int2base = rb < l_pac? "ACGTN" : "TGCAN";
+		for (k = 0, x = y = u = 0; k < *n_cigar; ++k) {
+			int op, len;
+			cigar = (uint32_t*)str.s;
+			op  = cigar[k]&0xf, len = cigar[k]>>4;
+			if (op == 0) { // match
+				for (i = 0; i < len; ++i) {
+					if (query[x + i] != rseq[y + i]) {
+						kputw(u, &str);
+						kputc(int2base[rseq[y+i]], &str);
+						++n_mm; u = 0;
+					} else ++u;
+				}
+				x += len; y += len;
+			} else if (op == 2) { // deletion
+				if (k > 0 && k < *n_cigar - 1) { // don't do the following if D is the first or the last CIGAR
+					kputw(u, &str); kputc('^', &str);
+					for (i = 0; i < len; ++i)
+						kputc(int2base[rseq[y+i]], &str);
+					u = 0; n_gap += len;
+				}
+				y += len;
+			} else if (op == 1) x += len, n_gap += len; // insertion
+		}
+		kputw(u, &str); kputc(0, &str);
 		*NM = n_mm + n_gap;
+		cigar = (uint32_t*)str.s;
 	}
 	if (rb >= l_pac) // reverse back query
 		for (i = 0; i < l_query>>1; ++i)
@@ -144,49 +175,9 @@ ret_gen_cigar:
 	return cigar;
 }
 
-int bwa_fix_xref(const int8_t mat[25], int q, int r, int w, const bntseq_t *bns, const uint8_t *pac, uint8_t *query, int *qb, int *qe, int64_t *rb, int64_t *re)
+uint32_t *bwa_gen_cigar(const int8_t mat[25], int q, int r, int w_, int64_t l_pac, const uint8_t *pac, int l_query, uint8_t *query, int64_t rb, int64_t re, int *score, int *n_cigar, int *NM)
 {
-	int is_rev;
-	int64_t cb, ce, fm;
-	bntann1_t *ra;
-	if (*rb < bns->l_pac && *re > bns->l_pac) { // cross the for-rev boundary; actually with BWA-MEM, we should never come to here
-		*qb = *qe = *rb = *re = -1;
-		return -1; // unable to fix
-	}
-	fm = bns_depos(bns, (*rb + *re) >> 1, &is_rev); // coordinate of the middle point on the forward strand
-	ra = &bns->anns[bns_pos2rid(bns, fm)]; // annotation of chr corresponding to the middle point
-	cb = is_rev? (bns->l_pac<<1) - (ra->offset + ra->len) : ra->offset; // chr start on the mapping strand
-	ce = cb + ra->len; // chr end
-	if (cb > *rb || ce < *re) { // fix is needed
-		int i, score, n_cigar, y, NM;
-		uint32_t *cigar;
-		int64_t x;
-		cb = cb > *rb? cb : *rb;
-		ce = ce < *re? ce : *re;
-		cigar = bwa_gen_cigar(mat, q, r, w, bns->l_pac, pac, *qe - *qb, query + *qb, *rb, *re, &score, &n_cigar, &NM);
-		for (i = 0, x = *rb, y = *qb; i < n_cigar; ++i) {
-			int op = cigar[i]&0xf, len = cigar[i]>>4;
-			if (op == 0) {
-				if (x <= cb && cb < x + len)
-					*qb = y + (cb - x), *rb = cb;
-				if (x < ce && ce <= x + len) {
-					*qe = y + (ce - x), *re = ce;
-					break;
-				} else x += len, y += len;
-			} else if (op == 1) {
-				y += len;
-			} else if (op == 2) {
-				if (x <= cb && cb < x + len)
-					*qb = y, *rb = x + len;
-				if (x < ce && ce <= x + len) {
-					*qe = y, *re = x;
-					break;
-				} else x += len;
-			} else abort(); // should not be here
-		}
-		free(cigar);
-	}
-	return (*qb == *qe || *rb == *re)? -2 : 0;
+	return bwa_gen_cigar2(mat, q, r, q, r, w_, l_pac, pac, l_query, query, rb, re, score, n_cigar, NM);
 }
 
 /*********************
@@ -237,7 +228,7 @@ bwt_t *bwa_idx_load_bwt(const char *hint)
 	return bwt;
 }
 
-bwaidx_t *bwa_idx_load(const char *hint, int which)
+bwaidx_t *bwa_idx_load_from_disk(const char *hint, int which)
 {
 	bwaidx_t *idx;
 	char *prefix;
@@ -249,7 +240,12 @@ bwaidx_t *bwa_idx_load(const char *hint, int which)
 	idx = calloc(1, sizeof(bwaidx_t));
 	if (which & BWA_IDX_BWT) idx->bwt = bwa_idx_load_bwt(hint);
 	if (which & BWA_IDX_BNS) {
+		int i, c;
 		idx->bns = bns_restore(prefix);
+		for (i = c = 0; i < idx->bns->n_seqs; ++i)
+			if (idx->bns->anns[i].is_alt) ++c;
+		if (bwa_verbose >= 3)
+			fprintf(stderr, "[M::%s] read %d ALT contigs\n", __func__, c);
 		if (which & BWA_IDX_PAC) {
 			idx->pac = calloc(idx->bns->l_pac/4+1, 1);
 			err_fread_noeof(idx->pac, 1, idx->bns->l_pac/4+1, idx->bns->fp_pac); // concatenated 2-bit encoded sequence
@@ -261,13 +257,89 @@ bwaidx_t *bwa_idx_load(const char *hint, int which)
 	return idx;
 }
 
+bwaidx_t *bwa_idx_load(const char *hint, int which)
+{
+	return bwa_idx_load_from_disk(hint, which);
+}
+
 void bwa_idx_destroy(bwaidx_t *idx)
 {
 	if (idx == 0) return;
-	if (idx->bwt) bwt_destroy(idx->bwt);
-	if (idx->bns) bns_destroy(idx->bns);
-	if (idx->pac) free(idx->pac);
+	if (idx->mem == 0) {
+		if (idx->bwt) bwt_destroy(idx->bwt);
+		if (idx->bns) bns_destroy(idx->bns);
+		if (idx->pac) free(idx->pac);
+	} else {
+		free(idx->bwt); free(idx->bns->anns); free(idx->bns);
+		if (!idx->is_shm) free(idx->mem);
+	}
 	free(idx);
+}
+
+int bwa_mem2idx(int64_t l_mem, uint8_t *mem, bwaidx_t *idx)
+{
+	int64_t k = 0, x;
+	int i;
+
+	// generate idx->bwt
+	x = sizeof(bwt_t); idx->bwt = malloc(x); memcpy(idx->bwt, mem + k, x); k += x;
+	x = idx->bwt->bwt_size * 4; idx->bwt->bwt = (uint32_t*)(mem + k); k += x;
+	x = idx->bwt->n_sa * sizeof(bwtint_t); idx->bwt->sa = (bwtint_t*)(mem + k); k += x;
+
+	// generate idx->bns and idx->pac
+	x = sizeof(bntseq_t); idx->bns = malloc(x); memcpy(idx->bns, mem + k, x); k += x;
+	x = idx->bns->n_holes * sizeof(bntamb1_t); idx->bns->ambs = (bntamb1_t*)(mem + k); k += x;
+	x = idx->bns->n_seqs  * sizeof(bntann1_t); idx->bns->anns = malloc(x); memcpy(idx->bns->anns, mem + k, x); k += x;
+	for (i = 0; i < idx->bns->n_seqs; ++i) {
+		idx->bns->anns[i].name = (char*)(mem + k); k += strlen(idx->bns->anns[i].name) + 1;
+		idx->bns->anns[i].anno = (char*)(mem + k); k += strlen(idx->bns->anns[i].anno) + 1;
+	}
+	idx->pac = (uint8_t*)(mem + k); k += idx->bns->l_pac/4+1;
+	assert(k == l_mem);
+
+	idx->l_mem = k; idx->mem = mem;
+	return 0;
+}
+
+int bwa_idx2mem(bwaidx_t *idx)
+{
+	int i;
+	int64_t k, x, tmp;
+	uint8_t *mem;
+
+	// copy idx->bwt
+	x = idx->bwt->bwt_size * 4;
+	mem = realloc(idx->bwt->bwt, sizeof(bwt_t) + x); idx->bwt->bwt = 0;
+	memmove(mem + sizeof(bwt_t), mem, x);
+	memcpy(mem, idx->bwt, sizeof(bwt_t)); k = sizeof(bwt_t) + x;
+	x = idx->bwt->n_sa * sizeof(bwtint_t); mem = realloc(mem, k + x); memcpy(mem + k, idx->bwt->sa, x); k += x;
+	free(idx->bwt->sa);
+	free(idx->bwt); idx->bwt = 0;
+
+	// copy idx->bns
+	tmp = idx->bns->n_seqs * sizeof(bntann1_t) + idx->bns->n_holes * sizeof(bntamb1_t);
+	for (i = 0; i < idx->bns->n_seqs; ++i) // compute the size of heap-allocated memory
+		tmp += strlen(idx->bns->anns[i].name) + strlen(idx->bns->anns[i].anno) + 2;
+	mem = realloc(mem, k + sizeof(bntseq_t) + tmp);
+	x = sizeof(bntseq_t); memcpy(mem + k, idx->bns, x); k += x;
+	x = idx->bns->n_holes * sizeof(bntamb1_t); memcpy(mem + k, idx->bns->ambs, x); k += x;
+	free(idx->bns->ambs);
+	x = idx->bns->n_seqs * sizeof(bntann1_t); memcpy(mem + k, idx->bns->anns, x); k += x;
+	for (i = 0; i < idx->bns->n_seqs; ++i) {
+		x = strlen(idx->bns->anns[i].name) + 1; memcpy(mem + k, idx->bns->anns[i].name, x); k += x;
+		x = strlen(idx->bns->anns[i].anno) + 1; memcpy(mem + k, idx->bns->anns[i].anno, x); k += x;
+		free(idx->bns->anns[i].name); free(idx->bns->anns[i].anno);
+	}
+	free(idx->bns->anns);
+
+	// copy idx->pac
+	x = idx->bns->l_pac/4+1;
+	mem = realloc(mem, k + x);
+	memcpy(mem + k, idx->pac, x); k += x;
+	free(idx->bns); idx->bns = 0;
+	free(idx->pac); idx->pac = 0;
+
+	return bwa_mem2idx(k, mem, idx);
 }
 
 /***********************
@@ -277,9 +349,11 @@ void bwa_idx_destroy(bwaidx_t *idx)
 void bwa_print_sam_hdr(const bntseq_t *bns, const char *rg_line)
 {
 	int i;
+	extern char *bwa_pg;
 	for (i = 0; i < bns->n_seqs; ++i)
 		err_printf("@SQ\tSN:%s\tLN:%d\n", bns->anns[i].name, bns->anns[i].len);
 	if (rg_line) err_printf("%s\n", rg_line);
+	if (bwa_pg) err_printf("%s\n", bwa_pg);
 }
 
 static char *bwa_escape(char *s)

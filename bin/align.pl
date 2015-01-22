@@ -82,7 +82,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     test=s
     out_dir|outdir=s
     conf=s
-    index_file|indexfile=s
+    list|fastq_list|fastqlist|index|index_file|indexfile=s
     ref_dir|refdir=s
     ref_prefix|refprefix=s
     fastq_prefix|fastqprefix=s
@@ -92,11 +92,17 @@ Getopt::Long::GetOptions( \%opts,qw(
     cram
     noPhoneHome
     verbose=i
-    numjobspersample|numjobs=i
-    numconcurrentsamples|numcs=i
+    threads=i
+    numjobs=i
+    numcs=i
     maxlocaljobs=i
     gotcloudroot|gcroot=s
 )) || die "Failed to parse options\n";
+
+if ($opts{numcs})
+{
+    die "ERROR: The '--numcs' option has been removed, please use:\n\t--numjobs : number of samples to run concurrently (previously '--numcs').\n\t--threads : number of jobs per sample (previously '--numjobs').\n";
+}
 
 #   Simple help if requested, sanity check input options
 if ($opts{help}) {
@@ -199,17 +205,11 @@ if(!$opts{calcstorage})
 }
 
 
-if ((! $opts{conf}) || (! -r $opts{conf})) {
-    my $usage;
-    if($opts{conf})
-    {
-        $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
-    }
-    $usage .= "Usage:\tgotcloud align --conf [conf.file]\n".
-    "Specify --help to get more usage infromation\n";
-    die "$usage";
+# Conf file no longer required.
+if ($opts{conf})
+{
+    $opts{conf} = abs_path($opts{conf});
 }
-$opts{conf} = abs_path($opts{conf});
 
 #############################################################################
 #   Set configuration variables from comand line options
@@ -237,7 +237,7 @@ if ($opts{base_prefix})  { push(@confSettings, "BASE_PREFIX = $opts{base_prefix}
 if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
 if (exists $opts{cram})  { push(@confSettings, "ALIGN_CRAM_OUTPUT = TRUE"); }
-if ($opts{index_file})   { push(@confSettings, "INDEX_FILE = $opts{index_file}"); }
+if ($opts{list})         { push(@confSettings, "FASTQ_LIST = $opts{list}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
 if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
 
@@ -258,10 +258,21 @@ if(uc(getConf("ALIGN_CRAM_OUTPUT")) eq "TRUE")
     push(@allSteps, @cramSteps);
 }
 
+
+if(!getConf("FASTQ_LIST"))
+{
+    if(getConf("INDEX_FILE"))
+    {
+        setConf("FASTQ_LIST", getConf("INDEX_FILE"));
+    }
+}
+
 #############################################################################
 #   Make sure paths for variables are fully qualified
 #############################################################################
-foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
+# Do not add FASTQ_PREFIX to FASTQ_LIST. FASTQ_PREFIX is the prefix to add
+# to the fastq file names.
+foreach my $key (qw(REF_DIR OUT_DIR)) {
     my $f = getConf($key);
     if (! $f) { die "Required field -$key was not specified\n"; }
     #   Extract up to the first '_' from the key to get the prefix type option.
@@ -269,7 +280,15 @@ foreach my $key (qw(REF_DIR INDEX_FILE OUT_DIR)) {
     #   Replace the already stored value with the absolute path
     setConf($key, getAbsPath($f, $type));
 }
-my $index_file = getConf('INDEX_FILE');
+
+# paths to add base prefix, but not specific type.
+foreach my $key (qw(FASTQ_LIST)) {
+    my $f = getConf($key);
+    if (! $f) { die "Required field -$key was not specified\n"; }
+    #   Replace the already stored value with the absolute path
+    setConf($key, getAbsPath($f));
+}
+my $index_file = getConf('FASTQ_LIST');
 my $out_dir = getConf('OUT_DIR');
 
 #----------------------------------------------------------------------------
@@ -492,6 +511,28 @@ if($deprecatedFiles)
     die "EXITING: Deprecated configuration.  Please update your configyration and rerun.\n";
 }
 
+# Just warn about these deprecated values.
+my %deprecatedWarn = (
+    BAM_INDEX => "BAM_LIST",
+    INDEX_FILE => "FASTQ_LIST",
+    FASTQ => "FASTQ_PREFIX",
+    BWA_MAX_MEM => "SORT_MAX_MEM",
+    VERIFY_BAM_ID_OPTIONS => "verifyBamID_USER_PARAMS",
+    MORE_RECAB_PARAMS => "recab_USER_PARAMS",
+    ALT_RECAB => "recab_CMD",
+    ALT_DEDUP => "dedup_CMD",
+    RUN_QPLOT => "PER_MERGE_STEPS",
+    RUN_VERIFY_BAM_ID => "PER_MERGE_STEPS",
+);
+
+foreach my $key (keys %deprecatedWarn)
+{
+    if(getConf("$key"))
+    {
+        warn "WARNING: '$key' is deprecated and has been replaced by '$deprecatedWarn{$key}'\n";
+    }
+}
+
 #----------------------------------------------------------------------------
 #   Check for valid parameters
 #----------------------------------------------------------------------------
@@ -540,7 +581,7 @@ if (! $opts{'dry-run'}) {
         setConf("BAMUTIL_THINNING", "--phoneHomeThinning 0");
     }
     #   Last warning to user about storage requirements
-    system($opts{calcstorage} . ' ' . getConf('INDEX_FILE') . ' ' . $fastqpref);
+    system($opts{calcstorage} . ' ' . getConf('FASTQ_LIST') . ' ' . $fastqpref);
 }
 
 
@@ -597,9 +638,24 @@ foreach my $index (0..$#fields)
     if (! exists($fieldname2index{$field})) { warn "Warning, ignoring unknown header field, $field\n"; next; }
     $fieldname2index{$field} = $index;
 }
-foreach my $key (qw(MERGE_NAME FASTQ1)) {       # These are required, other columns could be missing
+foreach my $key (qw(FASTQ1)) {       # These are required, other columns could be missing
     if (! defined($fieldname2index{$key})) { die "Index File, $index_file, is missing required header field, $key\n"; }
 }
+
+# Either MERGE_NAME or SAMPLE are required.
+if(! defined($fieldname2index{MERGE_NAME}))
+{
+    if(! defined($fieldname2index{SAMPLE}))
+    {
+        die "Index File, $index_file, is missing required header field.  Either 'MERGE_NAME' or 'SAMPLE' is required.\n";
+    }
+    else
+    {
+        $fieldname2index{MERGE_NAME} = $fieldname2index{SAMPLE};
+    }
+}
+
+
 
 #----------------------------------------------------------------------------
 #   Read the rest of the file
@@ -615,6 +671,9 @@ my %smToMerge = ();
 my $numBlanks = 0;
 my $numFieldSubs = 0;
 my $numMultiTab = 0;
+my $numInfer = 0;
+my $rgNum = 0;
+my %warn = ();
 while ($line = <IN>)
 {
     chomp($line);
@@ -650,25 +709,95 @@ while ($line = <IN>)
 
     my $fastq1 = $fields[$fieldname2index{FASTQ1}];
     my $mergeName = $fields[$fieldname2index{MERGE_NAME}];
+    if($mergeName eq '.')
+    {
+        # If merge name is not set, check the sample.
+        if (defined($fieldname2index{SAMPLE}))
+        {
+            $mergeName = $fields[$fieldname2index{SAMPLE}];
+        }
+        if($mergeName eq '.')
+        {
+            die "\nERROR: It is invalid to have a '.' in both the 'MERGE_NAME' and 'SAMPLE' fields of $index_file.\n";
+        }
+    }
     push @{$mergeToFq1{$mergeName}}, $fastq1;
 
     if (defined($fieldname2index{FASTQ2}))   { $fq1toFq2{$fastq1} = $fields[$fieldname2index{FASTQ2}]; }
     else { $fq1toFq2{$fastq1} = '.'; }
 
     if (defined($fieldname2index{RGID}))     { $fq1toRg{$fastq1} = $fields[$fieldname2index{RGID}]; }
-    else { $fq1toRg{$fastq1} = '.'; }
+    else
+    {
+        # RG not in header.
+        # Read the first line of the FASTQ to try to determine the RG
+        my $fullPathFQ1 = getAbsPath($fastq1, 'FASTQ');
+        die "ERROR: Cannot open file $fastq1: $!\n" unless ( -s $fullPathFQ1 );
+        tie *FQ1, "IO::Zlib", $fullPathFQ1, "rb";
+        my $fqline = FQ1->getline();
+
+        # Check if first line of fastq1 matches expected default format:
+        if($fqline =~ m/^@([^:]*:[^:]*:[^:]*:[^:]*)/)
+        {
+            if(!exists $warn{RGID1})
+            {
+                ++$numInfer;
+                warn "WARNING: RGID was not specified, so defaulting to the first 4 fields (':' delimited) of the first FASTQ1 sequence identifier.\n";
+                $warn{RGID1} = 1;
+            }
+            $fq1toRg{$fastq1} = $1;
+        }
+        else
+        {
+            # Unable to determine readgroup, default to fastq name.
+            if(!exists $warn{RGID2})
+            {
+                ++$numInfer;
+                warn "WARNING: RGID was not specified, so defaulting to incrementing numbers.\n";
+                $warn{RGID2} = 1;
+            }
+            $fq1toRg{$fastq1} = $rgNum++;
+        }
+    }
 
     if (defined($fieldname2index{SAMPLE}))   { $fq1toSm{$fastq1} = $fields[$fieldname2index{SAMPLE}]; }
-    else { $fq1toSm{$fastq1} = '.'; }
+    else { $fq1toSm{$fastq1} = $mergeName; }
 
     if (defined($fieldname2index{LIBRARY}))  { $fq1toLib{$fastq1} = $fields[$fieldname2index{LIBRARY}]; }
-    else { $fq1toLib{$fastq1} = '.'; }
+    else
+    {
+        if(!exists $warn{LIBRARY})
+        {
+            ++$numInfer;
+            warn "WARNING: LIBRARY was not specified, so defaulting to the value of SAMPLE.\n";
+            $warn{LIBRARY} = 1;
+        }
+        $fq1toLib{$fastq1} = $fq1toSm{$fastq1};
+    }
 
     if (defined($fieldname2index{CENTER}))   { $fq1toCn{$fastq1} = $fields[$fieldname2index{CENTER}]; }
-    else { $fq1toCn{$fastq1} = '.'; }
+    else
+    {
+        if(!exists $warn{CENTER})
+        {
+            ++$numInfer;
+            warn "WARNING: CENTER was not specified, so defaulting to 'unknown'.\n";
+            $warn{CENTER} = 1;
+        }
+        $fq1toCn{$fastq1} = 'unknown';
+    }
 
     if (defined($fieldname2index{PLATFORM})) { $fq1toPl{$fastq1} = $fields[$fieldname2index{PLATFORM}]; }
-    else { $fq1toPl{$fastq1} = '.'; }
+    else
+    {
+        if(!exists $warn{PLATFORM})
+        {
+            ++$numInfer;
+            warn "WARNING: PLATFORM was not specified, so defaulting to 'ILLUMINA'.\n";
+            $warn{PLATFORM} = 1;
+        }
+        $fq1toPl{$fastq1} = 'ILLUMINA';
+    }
 
     # Update the list of per sample bams if this is the first
     # appearance of the merge name (mergeToFQ1 has length 1)
@@ -712,12 +841,73 @@ if(($numHdrWarn > 0) || ($numBlanks > 0) || ($numFieldSubs > 0) || ($numFieldSub
 }
 
 
+if($numInfer > 0)
+{
+    # Inferred some values, so output the index used.
+    my $outFastqList = "$out_dir/Makefiles/fastq.list";
+    open(OUT,"> ".($outFastqList || '-')) || die "Cannot open $outFastqList for writing.  $!\n";
+    print OUT join("\t",@fieldnames);
+    foreach my $mergeName (sort (keys %mergeToFq1))
+    {
+        foreach my $fastq1 (@{$mergeToFq1{$mergeName}})
+        {
+            my $sep = "\n";
+            foreach my $field (@fieldnames)
+            {
+                my $val;
+                if($field eq "MERGE_NAME")
+                {
+                    $val = $mergeName;
+                }
+                elsif($field eq "FASTQ1")
+                {
+                    $val = $fastq1;
+                }
+                elsif($field eq "FASTQ2")
+                {
+                    $val = $fq1toFq2{$fastq1};
+                }
+                elsif($field eq "RGID")
+                {
+                    $val = $fq1toRg{$fastq1};
+                }
+                elsif($field eq "SAMPLE")
+                {
+                    $val = $fq1toSm{$fastq1};
+                }
+                elsif($field eq "LIBRARY")
+                {
+                    $val = $fq1toLib{$fastq1};
+                }
+                elsif($field eq "CENTER")
+                {
+                    $val = $fq1toCn{$fastq1};
+                }
+                elsif($field eq "PLATFORM")
+                {
+                    $val = $fq1toPl{$fastq1};
+                }
+                else
+                {
+                    $val = ".";
+                }
+                print OUT "$sep$val";
+                $sep = "\t";
+            }
+        }
+    }
+}
+
 # Output the bam index to the FINAL_BAM_DIR directory
 
 # If the bam index file name is specified, write to it.
-if(getConf('BAM_INDEX'))
+if(getConf('BAM_INDEX') || getConf('BAM_LIST'))
 {
     my $bamIndex = getConf("BAM_INDEX");
+    if(!$bamIndex)
+    {
+        $bamIndex = getConf("BAM_LIST");
+    }
     open(BAM_IDX,">$bamIndex") || die "Cannot open $bamIndex for writing.  $!\n";
 
     my $ext = getConf("recab_EXT");
@@ -728,7 +918,7 @@ if(getConf('BAM_INDEX'))
     # Loop through %smToMerge and print the bam index
     foreach my $key (keys %smToMerge )
     {
-        print BAM_IDX "$key\tALL";
+        print BAM_IDX "$key";
         foreach (@{$smToMerge{$key}})
         {
             print BAM_IDX "\t".&getConf("FINAL_BAM_DIR")."/".$_.".$ext";
@@ -737,6 +927,13 @@ if(getConf('BAM_INDEX'))
     }
     close(BAM_IDX);
 }
+
+# Check that numjobs is not > than the number of merge files
+if ($opts{numjobs} && ($opts{numjobs} > (scalar keys(%smToMerge))))
+{
+    die "ERROR: More jobs ($opts{numjobs}) specified than samples (".scalar keys(%smToMerge).").\n\t--numjobs : number of samples to run concurrently (previously '--numcs').\n\t--threads : number of jobs per sample (previously '--numjobs').\n";
+}
+
 
 #############################################################################
 #   Done reading the index file, now process each merge file separately.
@@ -819,12 +1016,12 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
             if ($rgid ne ".") {
                 if (getConf('MAP_TYPE') eq 'BWA') { $rgCommand = "-r"; }
                 else { $rgCommand = "-R"; }
-                $rgCommand .= " \"\@RG\tID:$rgid";
-                #   Only add the rg fields if they are specified
-                if ($sample ne ".")   { $rgCommand .= "\tSM:$sample"; }
-                if ($library ne ".")  { $rgCommand .= "\tLB:$library"; }
-                if ($center ne '.')   { $rgCommand .= "\tCN:$center"; }
-                if ($platform ne '.') { $rgCommand .= "\tPL:$platform"; }
+                $rgCommand .= " \"\@RG\\tID:$rgid";
+                $rgCommand .= "\\tSM:$sample";
+                #   Only add the optional rg fields if they are specified
+                if ($library ne ".")  { $rgCommand .= "\\tLB:$library"; }
+                if ($center ne '.')   { $rgCommand .= "\\tCN:$center"; }
+                if ($platform ne '.') { $rgCommand .= "\\tPL:$platform"; }
                 $rgCommand .= '"';
             }
             $alnOutFile = mapBwa($fastq1, $fastq2, $rgCommand);
@@ -832,8 +1029,8 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
         elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
             if ($rgid ne ".") {
                 $rgCommand = "-id $rgid";
+                $rgCommand .= " -sam $sample";
                 # only add the rg fields if they are specified.
-                if ($sample ne ".")   { $rgCommand .= " -sam $sample"; }
                 if ($library ne ".")  { $rgCommand .= " -ln $library"; }
                 if ($center ne '.')   { $rgCommand .= " -cn $center"; }
                 if ($platform ne '.') { $rgCommand .= " -st $platform"; }
@@ -846,8 +1043,10 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
         }
 
         my $bam = $fastq1;
-        $bam =~ s/fastq.gz$/bam/;
-        $bam =~ s/fastq$/bam/;
+        if(($bam !~ s/fastq.gz$/bam/) && ($bam !~ s/fastq$/bam/))
+        {
+            $bam .= ".bam";
+        }
 
         # Add the polish step for each fastq/pair.
         print MAK getConf('POL_TMP') . "/$bam.done: $alnOutFile\n";
@@ -885,8 +1084,8 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
     warn "Created $makef\n";
 
     my $s = "make -f $makef " . getConf("MAKE_OPTS");
-    if ($opts{numjobspersample}) {
-        $s .= " -j ".$opts{numjobspersample};
+    if ($opts{threads}) {
+        $s .= " -j ".$opts{threads};
     }
     $s .= " > $makef.log";
     $mkcmds{$mergeName} = $s;
@@ -908,10 +1107,10 @@ warn "Waiting while samples are processed...\n";
 my $t = time();
 
 my $totaljobs = 1;
-if(defined $opts{numconcurrentsamples}){ $totaljobs = $opts{numconcurrentsamples}; }
+if(defined $opts{numjobs}){ $totaljobs = $opts{numjobs}; }
 
 
-if(defined $opts{numjobspersample}) { $totaljobs *= $opts{numjobspersample}; }
+if(defined $opts{threads}) { $totaljobs *= $opts{threads}; }
 if((! defined(getConf('BATCH_TYPE'))) || (getConf('BATCH_TYPE') eq ''))
 {
     setConf('BATCH_TYPE', 'local');
@@ -951,9 +1150,9 @@ foreach my $tgt (sort(keys %mkcmds))
 }
 close ALL_MAK;
 my $allMakeCmd = "make -f $allMakef";
-if ($opts{numconcurrentsamples})
+if ($opts{numjobs})
 {
-    $allMakeCmd .= " -j ".$opts{numconcurrentsamples};
+    $allMakeCmd .= " -j ".$opts{numjobs};
 }
 $allMakeCmd .= " > $allMakef.log 2> $allMakef.err";
 print STDERR "Running $allMakeCmd...\n\n";
@@ -1087,8 +1286,10 @@ sub mapBwa {
     # BWA_MEM is a 1 step process, while the other is a 2 step process.
 
     my $bam = $fastq1;
-    $bam =~ s/fastq.gz$/bam/;
-    $bam =~ s/fastq$/bam/;
+    if(($bam !~ s/fastq.gz$/bam/) && ($bam !~ s/fastq$/bam/))
+    {
+        $bam .= ".bam";
+    }
     my $absFastq1 = getAbsPath($fastq1, 'FASTQ');
     my $absFastq2 = '';
     if($fastq2 ne '.')
@@ -1120,8 +1321,10 @@ sub mapBwa {
         # Regular BWA with 2 steps and sai files.
         # Dependent on the SAI files.
         my $sai1 = $fastq1;
-        $sai1 =~ s/fastq.gz$/sai/;
-        $sai1 =~ s/fastq$/sai/;
+        if(($sai1 !~ s/fastq.gz$/sai/) && ($sai1 !~ s/fastq$/sai/))
+        {
+            $sai1 .= ".sai";
+        }
 
         $saiFiles .=  getConf('SAI_TMP') . "/$sai1 ";
         $allSteps .= ' ' . getConf('SAI_TMP') . "/$sai1.done";
@@ -1131,8 +1334,10 @@ sub mapBwa {
         my $sai2 = "";
         if ($fastq2 ne ".") {
             $sai2 = $fastq2;
-            $sai2 =~ s/fastq.gz$/sai/;
-            $sai2 =~ s/fastq$/sai/;
+            if(($sai2 !~ s/fastq.gz$/sai/) && ($sai2 !~ s/fastq$/sai/))
+            {
+                $sai2 .= ".sai";
+            }
             $saiFiles .=  getConf('SAI_TMP')."/$sai2 ";
             $allSteps .= ' ' . getConf('SAI_TMP') . "/$sai2.done";
             $samsesampe = "sampe";
@@ -1175,8 +1380,10 @@ sub mapMosaik {
     if($fastq2 ne '.') { $absFastq2 = getAbsPath($fastq2, 'FASTQ'); }
 
     my $mkb = $fastq1;
-    $mkb =~ s/fastq.gz$/mkb/;
-    $mkb =~ s/fastq$/mkb/;
+    if(($mkb !~ s/fastq.gz$/mkb/) && ($mkb !~ s/fastq$/mkb/))
+    {
+        $mkb .= ".mkb";
+    }
     my $mkbFiles .= getConf('MKB_TMP') . "/$mkb ";
     my $mosaikBuildDone = getConf('MKB_TMP') . "/$mkb.done";
 
@@ -1338,7 +1545,7 @@ The B<configuration file> consists of a set of keyword = value lines which defin
 These variables can be referenced in the values of other lines.
 This short example will give you an idea of a configuration file:
 
-  INDEX_FILE = indexFile.txt
+  FASTQ_LIST = fastqList.txt
   # References
   REF_DIR = /gotcloud/test/align/chr20Ref
   AS = NCBI37
@@ -1346,7 +1553,7 @@ This short example will give you an idea of a configuration file:
   DBSNP_VCF =  $(REF_DIR)/dbsnp.b130.ncbi37.chr20.vcf.gz
   HM3_VCF = $(REF_DIR)/hapmap_3.3.b37.sites.vcf.gz
 
-The B<index file> file specifies information about individuals and paths to
+The B<list> file specifies information about individuals and paths to
 fastq data for a SNP. The data is tab delimited.
 The first line (#FASTQ_PREFIX=) is optional and will specify a path which is added to the path
 for each FASTQ to provide the complete absolute path to the FASTQ
@@ -1391,7 +1598,7 @@ the commands that would be run.
 
 =item B<--fastq_prefix dir>
 
-This specifies a directory prefix which should be added to relative paths in the fastq index file.
+This specifies a directory prefix which should be added to relative paths in the fastq list file.
 
 =item B<--ref_prefix dir>
 
@@ -1405,9 +1612,9 @@ This specifies a directory prefix which should be added to all relative paths if
 
 Generates this output.
 
-=item B<--index_file str>
+=item B<--list str>
 
-Specifies the name of the index file containing the table of fastqs to process.
+Specifies the name of the file containing the table of fastqs to process.
 This value must be set in the configuration file or specified by this option.
 
 =item B<--keeplog>
@@ -1424,21 +1631,21 @@ The default is to remove the temporary files.
 
 Write the final output files in CRAM, removing the intermediate BAM files (default is to have the final output files in BAM).
 
-=item B<--numconcurrentsamples N>
+=item B<--numjobs N>
 
 Specifies the number of samples to be processed concurrently.
 This effectively defaults to '2'.
 The number of processesors to be used at the same time on the local machine
-or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
+or on the cluster is I<-numjobs> times I<-threads>.
 
-=item B<--numjobspersample N>
+=item B<--threads N>
 
 Specifies the number of jobs to run per sample. In practice this is
 the value of the B<-j> flag for the make command.
 This effectively defaults to '1'.
 If not specified, the flag is not set on the make command to be executed.
 The number of processesors to be used at the same time on the local machine
-or on the cluster is I<-numconcurrentsamples> times I<-numjobspersample>.
+or on the cluster is I<-numjobs> times I<-threads>.
 
 =item B<--out_dir dir>
 
@@ -1446,10 +1653,8 @@ Specifies the toplevel directory where the output is created.
 
 =item B<--ref_dir dir>
 
-Specifies the location of the reference files.
-The default is B</usr/local/gotcloud.ref> but will depend completely
-on where you got the reference files and where they were installed.
-This value must be set in the configuration file or specified by this option.
+Specifies the location of the reference files, overriding the configuration
+value of REF_DIR.
 
 =item B<--runcluster path>
 

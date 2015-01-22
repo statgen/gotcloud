@@ -7,16 +7,17 @@ all: all20
 
 all20: subset20 beagle20
 
-subset20: $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist
+subset20: $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist.OK
 
 $(OUT_DIR)/beagle/chr20/subset.OK: beagle20
 	ln -f -s $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.vcf.gz $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz
 	ln -f -s $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.vcf.gz.tbi $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz.tbi
 	if [ -e  $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz ]; then touch $(OUT_DIR)/beagle/chr20/subset.OK; else exit 1; fi
 
-$(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist: $(OUT_DIR)/beagle/chr20/subset.OK
+$(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist.OK: $(OUT_DIR)/beagle/chr20/subset.OK
 	mkdir --p $(OUT_DIR)/thunder/chr20/ALL/split/
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.beagle.Makefile.cluster,$(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist local 'perl $(GOTCLOUD_ROOT)/scripts/vcfSplit.pl --in $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz --out $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split --nunit 10000 --noverlap 1000 2> $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.err'
+	if [ -e  $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist ]; then touch $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.vcflist.OK; else exit 1; fi
 
 beagle20: $(OUT_DIR)/beagle/chr20/chr20.filtered.PASS.beagled.vcf.gz.tbi
 

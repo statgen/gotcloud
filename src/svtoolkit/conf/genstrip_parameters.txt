@@ -1,0 +1,162 @@
+# Configuration file for Genome STRiP
+
+# optionally restrict the set of genotyping methods applied
+genotyping.modules: depth,pairs,split
+
+# split read model to use
+split.genotypingModel: 2
+
+# enable copy number parity correction
+depth.parityCorrectionThreshold: 0.4
+
+# can be overridden to disable GC-bias normalization
+depth.useGCNormalization: true
+
+# minimum effective length at which to include depth-based genotype likelihoods
+depth.effectiveLengthThreshold: 200
+
+# maximum insert size radius (in standard deviations) for reads used in genotyping by depth
+# not enabled by default (not used except for metadata v2)
+#depth.maximumInsertSizeRadius: 10
+
+# simplified model for read pairs using a fixed error likelihood
+pairs.fixedErrorLikelihood: 0.01
+
+# only count split reads that map to the non-reference allele
+split.ignoreReferenceMatches: false
+
+# optionally output log likelihoods based on read depth only
+output.writeDepthProbs: true
+
+# optionally output log likelihoods based on read pairs only
+output.writeReadPairProbs: true
+
+# optionally output log likelihoods based on split reads only
+output.writeSplitReadProbs: true
+
+# directory containing hapmap genotype data for computing snp heterozygosity
+#metadata.hapmapGenotypeDirectory: /cvar/hapmap/rel27/genotypes_unzipped_sorted
+
+# map file from array IDs to intensity file and corresponding index file (two entries per array)
+#metadata.arrayIntensityFileMap: /humgen/cnp04/bobh/1kg/cnv/superarray/array_intensity_files.map
+
+# R script used to calculate array intensity to depth correlations
+#metadata.arrayCorrelationScript: compute_array_correlation.R
+
+# true to write aux file of aggregated array intensities per cluster per array type
+metadata.writeArrayIntensityFile: true
+
+# fixed cutoff on minimum insert size for read pair selection during discovery
+select.minimumInsertSize: 0
+
+# variable cutoff on minimum insert size based on RSD of insert size distribution for read pair selection
+select.minimumInsertSizeStandardDeviations: 10.0
+
+# min(mapQ) cutoff for read pair selection during discovery
+select.minimumPairMappingQuality: 10
+
+# subset of orientations to cluster (omit or "*" to cluster all orientations)
+cluster.clusterOrientations: LR
+
+# minimum pairs required to form a cluster
+cluster.minimumClusterPairs: 2
+
+# size of the window to search for optimum deletion length dOpt
+coherence.windowSize: 1000
+
+# amount added to dSpan to get dMax (maximum search limit for dOpt)
+coherence.windowOffset: 100
+
+# true to write aux file of the log likelihood values in the measured window
+coherence.writeCoherenceDataFile: true
+
+# minimum span coverage to include a sample in membership test (in input.genomeSize units)
+membership.minimumSampleSpanCoverage: 1.0
+
+# type of mixture model to use for read depth genotyping
+depth.mixtureModel: GMM
+
+# R script to compute mixture model
+#depth.mixtureModelScript: compute_gmm.R
+
+# minimum mapping quality for reads used in genotyping by depth
+depth.minimumMappingQuality: 10
+
+# cache of binned read counts to improve performance
+depth.readCountCacheSize: 1000000
+
+# size of bins in read count cache
+depth.readCountBinSize: 1000
+
+# true to write aux file of read counts per sample during discovery
+depth.writeSampleCountFile: true
+
+# true to write aux file of read depth per sample during discovery
+depth.writeSampleCoverageFile: true
+
+# if set, samples below this span coverage are excluded from discovery depth test unless pairs are observed
+# measured in input.genomeSize units
+depth.minimumUnobservedSampleSpanCoverage: 1.0
+
+# R script used to calculate chi squared p-value for depth ratio
+#depth.pValueScript: compute_depth_pvalue.R
+
+# R script used to calculate rank sum p-value for depth data
+#depth.rankSumScript: compute_ranksum_pvalue.R
+
+# controls caching of read count data between runs
+depth.readReadCounts: false
+
+# generate file containing read count data (but only if it does not already exist)
+depth.writeReadCounts: true
+
+# generate file containing expected count data
+depth.writeExpectedCounts: true
+
+# generate file containing normalization statistics
+depth.writeNormalization: true
+
+# generate file containing mixture model statistics
+depth.writeModels: true
+
+# mapping quality filter applied to read pairs used in genotyping
+pairs.minimumMappingQuality: 10
+
+# threshold for detecting aberrant read pairs against the alternate allele (in standard deviations of insert size)
+pairs.aberrantInsertSizeRadius: 3.0
+
+# whether to exclude reads crossing junctions from read pair analysis to avoid double counting
+pairs.excludeJunctionReads: false
+
+# distance to search for alternative homes (in standard deviations of insert size)
+pairs.alternativeHomeSearchRadius: 5.0
+
+# threshold for rejection of an alternative home (in mismatches per read base)
+pairs.alternativeHomeMismatchThreshold: 0.25
+
+# width of window to use to search for read pairs around event boundaries
+pairs.mateWindowSize: 1000
+
+# generate file containing read pair counts
+pairs.writePairCounts: true
+
+# generate sam file containing aberrant read pairs used in genotyping
+pairs.writeReadPairs: true
+
+# minimum mapping quality for reads used in junction mapping
+split.minimumMappingQuality: 10
+
+# limit on sum of mismatch quality scores to include an unmapped alternate allele read
+split.maximumAlternateAlleleScore: 100
+
+# width of window to use to search for unmapped mates as split read candidates
+split.mateWindowSize: 1000
+
+# mapping quality to assume for unmapped reads that have mapped to the alternative allele
+split.unmappedReadMappingQuality: 30
+
+# generate sam file containing split reads covering breakpoint junctions
+split.writeSplitReads: true
+
+# generate text file containing inforamation about split reads covering breakpoint junctions
+split.writeSplitReadInfoFile: true

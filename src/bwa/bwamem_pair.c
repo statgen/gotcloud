@@ -58,6 +58,7 @@ void mem_pestat(const mem_opt_t *opt, int64_t l_pac, int n, const mem_alnreg_v *
 		if (r[0]->n == 0 || r[1]->n == 0) continue;
 		if (cal_sub(opt, r[0]) > MIN_RATIO * r[0]->a[0].score) continue;
 		if (cal_sub(opt, r[1]) > MIN_RATIO * r[1]->a[0].score) continue;
+		if (r[0]->a[0].rid != r[1]->a[0].rid) continue; // not on the same chr
 		dir = mem_infer_dir(l_pac, r[0]->a[0].rb, r[1]->a[0].rb, &is);
 		if (is && is <= opt->max_ins) kv_push(uint64_t, isize[dir], is);
 	}
@@ -69,6 +70,7 @@ void mem_pestat(const mem_opt_t *opt, int64_t l_pac, int n, const mem_alnreg_v *
 		if (q->n < MIN_DIR_CNT) {
 			fprintf(stderr, "[M::%s] skip orientation %c%c as there are not enough pairs\n", __func__, "FR"[d>>1&1], "FR"[d&1]);
 			r->failed = 1;
+			free(q->a);
 			continue;
 		} else fprintf(stderr, "[M::%s] analyzing insert size distribution for orientation %c%c...\n", __func__, "FR"[d>>1&1], "FR"[d&1]);
 		ks_introsort_64(q->n, q->a);
@@ -106,9 +108,11 @@ void mem_pestat(const mem_opt_t *opt, int64_t l_pac, int n, const mem_alnreg_v *
 		}
 }
 
-int mem_matesw(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const mem_pestat_t pes[4], const mem_alnreg_t *a, int l_ms, const uint8_t *ms, mem_alnreg_v *ma)
+int mem_matesw(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_pestat_t pes[4], const mem_alnreg_t *a, int l_ms, const uint8_t *ms, mem_alnreg_v *ma)
 {
-	int i, r, skip[4], n = 0;
+	extern int mem_sort_dedup_patch(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, uint8_t *query, int n, mem_alnreg_t *a);
+	int64_t l_pac = bns->l_pac;
+	int i, r, skip[4], n = 0, rid;
 	for (r = 0; r < 4; ++r)
 		skip[r] = pes[r].failed? 1 : 0;
 	for (i = 0; i < ma->n; ++i) { // check which orinentation has been found
@@ -120,8 +124,8 @@ int mem_matesw(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const me
 	if (skip[0] + skip[1] + skip[2] + skip[3] == 4) return 0; // consistent pair exist; no need to perform SW
 	for (r = 0; r < 4; ++r) {
 		int is_rev, is_larger;
-		uint8_t *seq, *rev = 0, *ref;
-		int64_t rb, re, len;
+		uint8_t *seq, *rev = 0, *ref = 0;
+		int64_t rb, re;
 		if (skip[r]) continue;
 		is_rev = (r>>1 != (r&1)); // whether to reverse complement the mate
 		is_larger = !(r>>1); // whether the mate has larger coordinate
@@ -139,14 +143,16 @@ int mem_matesw(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const me
 		}
 		if (rb < 0) rb = 0;
 		if (re > l_pac<<1) re = l_pac<<1;
-		ref = bns_get_seq(l_pac, pac, rb, re, &len);
-		if (len == re - rb) { // no funny things happening
+		if (rb < re) ref = bns_fetch_seq(bns, pac, &rb, (rb+re)>>1, &re, &rid);
+		if (a->rid == rid && re - rb >= opt->min_seed_len) { // no funny things happening
 			kswr_t aln;
 			mem_alnreg_t b;
-			int tmp, xtra = KSW_XSUBO | KSW_XSTART | (l_ms * opt->a < 250? KSW_XBYTE : 0) | opt->min_seed_len;
-			aln = ksw_align(l_ms, seq, len, ref, 5, opt->mat, opt->q, opt->r, xtra, 0);
+			int tmp, xtra = KSW_XSUBO | KSW_XSTART | (l_ms * opt->a < 250? KSW_XBYTE : 0) | (opt->min_seed_len * opt->a);
+			aln = ksw_align2(l_ms, seq, re - rb, ref, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, xtra, 0);
 			memset(&b, 0, sizeof(mem_alnreg_t));
-			if (aln.score >= opt->min_seed_len) {
+			if (aln.score >= opt->min_seed_len && aln.qb >= 0) { // something goes wrong if aln.qb < 0
+				b.rid = a->rid;
+				b.is_alt = a->is_alt;
 				b.qb = is_rev? l_ms - (aln.qe + 1) : aln.qb;                                                                                                                                                                              
 				b.qe = is_rev? l_ms - aln.qb : aln.qe + 1; 
 				b.rb = is_rev? (l_pac<<1) - (rb + aln.te + 1) : rb + aln.tb;
@@ -166,22 +172,25 @@ int mem_matesw(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const me
 			}
 			++n;
 		}
+		if (n) ma->n = mem_sort_dedup_patch(opt, 0, 0, 0, ma->n, ma->a);
 		if (rev) free(rev);
 		free(ref);
 	}
 	return n;
 }
 
-int mem_pair(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const mem_pestat_t pes[4], bseq1_t s[2], mem_alnreg_v a[2], int id, int *sub, int *n_sub, int z[2])
+int mem_pair(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_pestat_t pes[4], bseq1_t s[2], mem_alnreg_v a[2], int id, int *sub, int *n_sub, int z[2], int n_pri[2])
 {
 	pair64_v v, u;
 	int r, i, k, y[4], ret; // y[] keeps the last hit
+	int64_t l_pac = bns->l_pac;
 	kv_init(v); kv_init(u);
 	for (r = 0; r < 2; ++r) { // loop through read number
-		for (i = 0; i < a[r].n; ++i) {
+		for (i = 0; i < n_pri[r]; ++i) {
 			pair64_t key;
 			mem_alnreg_t *e = &a[r].a[i];
 			key.x = e->rb < l_pac? e->rb : (l_pac<<1) - 1 - e->rb; // forward position
+			key.x = (uint64_t)e->rid<<32 | (key.x - bns->anns[e->rid].offset);
 			key.y = (uint64_t)e->score << 32 | i << 2 | (e->rb >= l_pac)<<1 | r;
 			kv_push(pair64_t, v, key);
 		}
@@ -217,7 +226,9 @@ int mem_pair(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const mem_
 		y[v.a[i].y&3] = i;
 	}
 	if (u.n) { // found at least one proper pair
-		int tmp = opt->a + opt->b > opt->q + opt->r? opt->a + opt->b : opt->q + opt->r;
+		int tmp = opt->a + opt->b;
+		tmp = tmp > opt->o_del + opt->e_del? tmp : opt->o_del + opt->e_del;
+		tmp = tmp > opt->o_ins + opt->e_ins? tmp : opt->o_ins + opt->e_ins;
 		ks_introsort_128(u.n, u.a);
 		i = u.a[u.n-1].y >> 32; k = u.a[u.n-1].y << 32 >> 32;
 		z[v.a[i].y&1] = v.a[i].y<<32>>34; // index of the best pair
@@ -231,14 +242,29 @@ int mem_pair(const mem_opt_t *opt, int64_t l_pac, const uint8_t *pac, const mem_
 	return ret;
 }
 
+void mem_aln2sam(const mem_opt_t *opt, const bntseq_t *bns, kstring_t *str, bseq1_t *s, int n, const mem_aln_t *list, int which, const mem_aln_t *m);
+
+static inline void mem_reg2sam_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, kstring_t *str, bseq1_t *s, mem_alnreg_t *p, int extra_flag, const mem_aln_t *m)
+{ // a simplified version of mem_reg2sam()
+	mem_aln_t t;
+	if (p->score < opt->T || p->secondary >= 0 || !p->is_alt) return;
+	t = mem_reg2aln(opt, bns, pac, s->l_seq, s->seq, p);
+	t.flag |= extra_flag;
+	t.flag |= (opt->flag&MEM_F_NO_MULTI)? 0x10000 : 0x800;
+	mem_aln2sam(opt, bns, str, s, 1, &t, 0, m);
+	free(t.cigar);
+}
+
+#define raw_mapq(diff, a) ((int)(6.02 * (diff) / (a) + .499))
+
 int mem_sam_pe(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_pestat_t pes[4], uint64_t id, bseq1_t s[2], mem_alnreg_v a[2])
 {
-	extern void mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a);
+	extern int mem_mark_primary_se(const mem_opt_t *opt, int n, mem_alnreg_t *a, int64_t id);
 	extern int mem_approx_mapq_se(const mem_opt_t *opt, const mem_alnreg_t *a);
-	extern void mem_reg2sam_se(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, bseq1_t *s, mem_alnreg_v *a, int extra_flag, const mem_aln_t *m);
-	extern void mem_aln2sam(const bntseq_t *bns, kstring_t *str, bseq1_t *s, int n, const mem_aln_t *list, int which, const mem_aln_t *m);
+	extern void mem_reg2sam(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, bseq1_t *s, mem_alnreg_v *a, int extra_flag, const mem_aln_t *m);
+	extern char **mem_gen_alt(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, const mem_alnreg_v *a, int l_query, const char *query);
 
-	int n = 0, i, j, z[2], o, subo, n_sub, extra_flag = 1;
+	int n = 0, i, j, z[2], o, subo, n_sub, extra_flag = 1, n_pri[2];
 	kstring_t str;
 	mem_aln_t h[2];
 
@@ -252,30 +278,32 @@ int mem_sam_pe(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, co
 					kv_push(mem_alnreg_t, b[i], a[i].a[j]);
 		for (i = 0; i < 2; ++i)
 			for (j = 0; j < b[i].n && j < opt->max_matesw; ++j)
-				n += mem_matesw(opt, bns->l_pac, pac, pes, &b[i].a[j], s[!i].l_seq, (uint8_t*)s[!i].seq, &a[!i]);
+				n += mem_matesw(opt, bns, pac, pes, &b[i].a[j], s[!i].l_seq, (uint8_t*)s[!i].seq, &a[!i]);
 		free(b[0].a); free(b[1].a);
 	}
-	mem_mark_primary_se(opt, a[0].n, a[0].a);
-	mem_mark_primary_se(opt, a[1].n, a[1].a);
+	n_pri[0] = mem_mark_primary_se(opt, a[0].n, a[0].a, id<<1|0);
+	n_pri[1] = mem_mark_primary_se(opt, a[1].n, a[1].a, id<<1|1);
 	if (opt->flag&MEM_F_NOPAIRING) goto no_pairing;
 	// pairing single-end hits
-	if (a[0].n && a[1].n && (o = mem_pair(opt, bns->l_pac, pac, pes, s, a, id, &subo, &n_sub, z)) > 0) {
+	if (n_pri[0] && n_pri[1] && (o = mem_pair(opt, bns, pac, pes, s, a, id, &subo, &n_sub, z, n_pri)) > 0) {
 		int is_multi[2], q_pe, score_un, q_se[2];
+		char **XA[2];
 		// check if an end has multiple hits even after mate-SW
 		for (i = 0; i < 2; ++i) {
-			for (j = 1; j < a[i].n; ++j)
+			for (j = 1; j < n_pri[i]; ++j)
 				if (a[i].a[j].secondary < 0 && a[i].a[j].score >= opt->T) break;
-			is_multi[i] = j < a[i].n? 1 : 0;
+			is_multi[i] = j < n_pri[i]? 1 : 0;
 		}
 		if (is_multi[0] || is_multi[1]) goto no_pairing; // TODO: in rare cases, the true hit may be long but with low score
 		// compute mapQ for the best SE hit
 		score_un = a[0].a[0].score + a[1].a[0].score - opt->pen_unpaired;
 		//q_pe = o && subo < o? (int)(MEM_MAPQ_COEF * (1. - (double)subo / o) * log(a[0].a[z[0]].seedcov + a[1].a[z[1]].seedcov) + .499) : 0;
 		subo = subo > score_un? subo : score_un;
-		q_pe = (o - subo) * 6;
+		q_pe = raw_mapq(o - subo, opt->a);
 		if (n_sub > 0) q_pe -= (int)(4.343 * log(n_sub+1) + .499);
 		if (q_pe < 0) q_pe = 0;
 		if (q_pe > 60) q_pe = 60;
+		q_pe = (int)(q_pe * (1. - .5 * (a[0].a[0].frac_rep + a[1].a[0].frac_rep)) + .499);
 		// the following assumes no split hits
 		if (o > score_un) { // paired alignment is preferred
 			mem_alnreg_t *c[2];
@@ -289,20 +317,46 @@ int mem_sam_pe(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac, co
 			q_se[1] = q_se[1] > q_pe? q_se[1] : q_pe < q_se[1] + 40? q_pe : q_se[1] + 40;
 			extra_flag |= 2;
 			// cap at the tandem repeat score
-			q_se[0] = q_se[0] < (c[0]->score - c[0]->csub) * 6? q_se[0] : (c[0]->score - c[0]->csub) * 6;
-			q_se[1] = q_se[1] < (c[1]->score - c[1]->csub) * 6? q_se[1] : (c[1]->score - c[1]->csub) * 6;
+			q_se[0] = q_se[0] < raw_mapq(c[0]->score - c[0]->csub, opt->a)? q_se[0] : raw_mapq(c[0]->score - c[0]->csub, opt->a);
+			q_se[1] = q_se[1] < raw_mapq(c[1]->score - c[1]->csub, opt->a)? q_se[1] : raw_mapq(c[1]->score - c[1]->csub, opt->a);
 		} else { // the unpaired alignment is preferred
 			z[0] = z[1] = 0;
 			q_se[0] = mem_approx_mapq_se(opt, &a[0].a[0]);
 			q_se[1] = mem_approx_mapq_se(opt, &a[1].a[0]);
 		}
+		// suboptimal hits
+		if (!(opt->flag & MEM_F_ALL)) {
+			for (i = 0; i < 2; ++i) {
+				int k = a[i].a[z[i]].secondary_all;
+				if (k >= 0 && k < n_pri[i]) { // switch secondary and primary if both of them are non-ALT
+					assert(a[i].a[k].secondary_all < 0);
+					for (j = 0; j < a[i].n; ++j)
+						if (a[i].a[j].secondary_all == k || j == k)
+							a[i].a[j].secondary_all = z[i];
+					a[i].a[z[i]].secondary_all = -1;
+				}
+				XA[i] = mem_gen_alt(opt, bns, pac, &a[i], s[i].l_seq, s[i].seq);
+			}
+		} else XA[0] = XA[1] = 0;
 		// write SAM
-		h[0] = mem_reg2aln(opt, bns, pac, s[0].l_seq, s[0].seq, &a[0].a[z[0]]); h[0].mapq = q_se[0]; h[0].flag |= 0x40 | extra_flag;
-		h[1] = mem_reg2aln(opt, bns, pac, s[1].l_seq, s[1].seq, &a[1].a[z[1]]); h[1].mapq = q_se[1]; h[1].flag |= 0x80 | extra_flag;
-		mem_aln2sam(bns, &str, &s[0], 1, &h[0], 0, &h[1]); s[0].sam = strdup(str.s); str.l = 0;
-		mem_aln2sam(bns, &str, &s[1], 1, &h[1], 0, &h[0]); s[1].sam = str.s;
+		h[0] = mem_reg2aln(opt, bns, pac, s[0].l_seq, s[0].seq, &a[0].a[z[0]]); h[0].mapq = q_se[0]; h[0].flag |= 0x40 | extra_flag; h[0].XA = XA[0]? XA[0][z[0]] : 0;
+		h[1] = mem_reg2aln(opt, bns, pac, s[1].l_seq, s[1].seq, &a[1].a[z[1]]); h[1].mapq = q_se[1]; h[1].flag |= 0x80 | extra_flag; h[1].XA = XA[1]? XA[1][z[1]] : 0;
+		mem_aln2sam(opt, bns, &str, &s[0], 1, &h[0], 0, &h[1]); // write the primary hit for read1
+		if (n_pri[0] < a[0].n) mem_reg2sam_alt(opt, bns, pac, &str, &s[0], &a[0].a[n_pri[0]], 0x41|extra_flag, &h[1]);
+		s[0].sam = strdup(str.s); str.l = 0;
+		mem_aln2sam(opt, bns, &str, &s[1], 1, &h[1], 0, &h[0]); // write the primary hit for read2
+		if (n_pri[1] < a[1].n) mem_reg2sam_alt(opt, bns, pac, &str, &s[1], &a[1].a[n_pri[1]], 0x81|extra_flag, &h[0]);
+		s[1].sam = str.s;
 		if (strcmp(s[0].name, s[1].name) != 0) err_fatal(__func__, "paired reads have different names: \"%s\", \"%s\"\n", s[0].name, s[1].name);
-		free(h[0].cigar); free(h[1].cigar);
+		free(h[0].cigar); // h[0].XA will be freed in the following block
+		free(h[1].cigar);
+		// free XA
+		for (i = 0; i < 2; ++i) {
+			if (XA[i]) {
+				for (j = 0; j < a[i].n; ++j) free(XA[i][j]);
+				free(XA[i]);
+			}
+		}
 	} else goto no_pairing;
 	return n;
 
@@ -318,8 +372,8 @@ no_pairing:
 		d = mem_infer_dir(bns->l_pac, a[0].a[0].rb, a[1].a[0].rb, &dist);
 		if (!pes[d].failed && dist >= pes[d].low && dist <= pes[d].high) extra_flag |= 2;
 	}
-	mem_reg2sam_se(opt, bns, pac, &s[0], &a[0], 0x41|extra_flag, &h[1]);
-	mem_reg2sam_se(opt, bns, pac, &s[1], &a[1], 0x81|extra_flag, &h[0]);
+	mem_reg2sam(opt, bns, pac, &s[0], &a[0], 0x41|extra_flag, &h[1]);
+	mem_reg2sam(opt, bns, pac, &s[1], &a[1], 0x81|extra_flag, &h[0]);
 	if (strcmp(s[0].name, s[1].name) != 0) err_fatal(__func__, "paired reads have different names: \"%s\", \"%s\"\n", s[0].name, s[1].name);
 	free(h[0].cigar); free(h[1].cigar);
 	return n;

@@ -1,0 +1,46 @@
+
+Available Options
+                         Recipes : --write-bed, --write-vcf [ON], --upgrade,
+                                   --summarize, --filter [ON], --subset
+               VCF Input options : --in-vcf [vcfs/chr20/chr20.merged.stats.vcf]
+               BED Input options : --in-bfile [], --in-bed [], --in-bim [],
+                                   --in-fam [],
+                                   --ref [/data/local/ref/karma.ref/human.g1k.v37.fa]
+              Subsetting options : --in-subset [], --mono-subset,
+                                   --filt-only-subset
+                  Output Options : --out [vcfs/chr20/chr20.hardfiltered.sites.vcf],
+                                   --qGeno, --print-every [10000]
+      Output compression Options : --plain [ON], --bgzf, --gzip
+   Genotype-level Filter Options : --minGQ, --minGD
+                  Filter Options : --winIndel [5],
+                                   --indelVCF [chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf],
+                                   --minQUAL [5], --minMQ [20],
+                                   --maxDP [60000], --minDP [60],
+                                   --maxABL [70], --winFFRQ, --maxFFRQ,
+                                   --winFVAR, --merFVAR, --maxFVAR,
+                                   --minNS [30], --maxSTP [2147483647],
+                                   --maxTTT [2147483647],
+                                   --minTTT [-2147483648], --maxSTR [20],
+                                   --minSTR [-20], --maxSTZ [5], --minSTZ [-5],
+                                   --maxCBR [20], --minCBR [-100],
+                                   --maxQBR [100], --minQBR [-100],
+                                   --maxCBZ [2147483647], --maxCSR [100],
+                                   --minCSR [-100], --maxLQZ [2147483647],
+                                   --minLQZ [-2147483648],
+                                   --maxRBZ [2147483647],
+                                   --minRBZ [-2147483648],
+                                   --maxIOZ [2147483647],
+                                   --minIOR [-2147483648],
+                                   --maxIOR [2147483647],
+                                   --maxAOZ [2147483647], --maxAOI [5],
+                                   --maxMQ0 [10], --maxMQ10 [100],
+                                   --maxMQ20 [100], --minFIC [-20],
+                                   --minABE [-100], --maxABE [100],
+                                   --maxLQR [30], --minMBR [-100],
+                                   --maxMBR [100], --minABZ [-2147483648],
+                                   --maxABZ [2147483647],
+                                   --maxBCS [2147483647], --keepFilter
+
+vcfCooker 1.1.1 -- Manipulate VCF files
+(c) 2010-2014 Hyun Min Kang, Matthew Flickinger, Matthew Snyder, Paul Anderson, Tom Blackwell, Mary Kate Wing, and Goncalo Abecasis
+

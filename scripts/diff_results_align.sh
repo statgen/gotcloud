@@ -85,6 +85,7 @@ diff -r $RESULTS_DIR/ $EXPECTED_DIR/ $SKIP_FILES \
     -I '^\[bwa_sai2sam_pe_core\] refine gapped alignments\.\.\. ' \
     -I '^\[bwa_sai2sam_pe_core\] print alignments\.\.\. ' \
     -I '^pdf(file=".*QCFiles/Sample[1-3].qplot.pdf", height=12, width=12);$' \
+    -I $'^Sample[ID]*[312]\t.*bams/Sample[123]\.recal\.bam$' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
@@ -108,12 +109,12 @@ diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefile
     -I '@echo .*".* --bam $(basename $<) --out $(basename $@) --verbose --vcf .*  2> $(basename $@).log"$' \
     -I '@.* --bam $(basename $<) --out $(basename $@) --verbose --vcf .*  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/Sample[1-3].qplot.done: .*/Sample[1-3].recal.bam.done$' \
-    -I '@echo .*".* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning 0"$' \
-    -I '@.* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning 0 || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@echo .*".* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning [0-9]*"$' \
+    -I '@.* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning [0-9]* || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R[1-2].bam.done: .*/fastq/Sample_[1-3]/File[1-2]_R1.sai.done.*/fastq/Sample_[1-3]/File[1-2]_R2.sai.done$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R[1-2].sai.done:$' \
     -I '^.*/fastq/Sample_[1-3]/File[1-2]_R1.bam.done: .*/fastq/Sample_[1-3]/File[1-2]_R1.bam.done$' \
-    -I '.* mergeBam --ignorePI --out $(basename $@) $(subst .*,--in .*,$(basename $^)) --phoneHomeThinning 0' \
+    -I '.* mergeBam --ignorePI --out $(basename $@) $(subst .*,--in .*,$(basename $^)) --phoneHomeThinning [0-9]*' \
     -I '^.*/Sample[1-2].merged.bam.done: .*/fastq/Sample_[1-2]/File1_R1.bam.done .*/fastq/Sample_[1-2]/File2_R1.bam.done $' \
     -I '^.*/Sample3.merged.bam.done: .*/fastq/Sample_3/File1_R1.bam.done $' \
     -I '@echo .*".* dedup --in $(basename $^) --out $(basename $@) --log $(basename $@).metrics  2> $(basename $@).log"$' \
@@ -123,8 +124,8 @@ diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefile
     -I '@echo .*".* index $(basename $^) 2> $(basename $@).log"$' \
     -I '@.* index $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed index step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I 'mkdir -p .*$' \
-    -I '@echo .*".* dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile .* --dbsnp .* --storeQualTag OQ  --phoneHomeThinning 0 2> $(basename $@).log"$' \
-    -I '@.* dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile .* --dbsnp .* --storeQualTag OQ  --phoneHomeThinning 0 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@echo .*".* dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile .* --dbsnp .*   --phoneHomeThinning [0-9]* 2> $(basename $@).log"$' \
+    -I '@.* dedup --log $(basename $@).metrics  --recab --in $(basename $^) --out $(basename $@) --refFile .* --dbsnp .*   --phoneHomeThinning [0-9] 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed recab step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/Sample[1-3].recal.bam.done: .*/Sample[1-3].merged.bam.done$' \
     -I '@echo .*".* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal $(basename $^) 2> $(basename $@).log"$' \
     -I '@.* --reference .* --dbsnp .* --stats $(basename $@).stats --Rcode $(basename $@).R --minMapQuality 0 --bamlabel recal $(basename $^) 2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed qplot step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
@@ -136,7 +137,7 @@ if [ "$?" != "0" ]; then
 fi
 
 for file in $QEMPS; do
-    sort $RESULTS_DIR/$QEMP_SUBDIR/$file | diff - $EXPECTED_DIR/$QEMP_SUBDIR/$file >> $DIFFRESULTS
+    diff <(sort $RESULTS_DIR/$QEMP_SUBDIR/$file) <(sort $EXPECTED_DIR/$QEMP_SUBDIR/$file) >> $DIFFRESULTS
     if [ "$?" != "0" ]; then
         echo "$RESULTS_DIR/$QEMP_SUBDIR/$file does not match $EXPECTED_DIR/$QEMP_SUBDIR/$file. See mismatches in $DIFFRESULTS"
         exit 2

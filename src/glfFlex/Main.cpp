@@ -536,7 +536,7 @@ void getRegionInfo(const String& region, String& regionChr,
 
 int main(int argc, char ** argv) {
   printf("glfMultiples -- SNP calls based on .glf or .glz files\n");
-  printf("(c) 2008-2014 Goncalo Abecasis, Sebastian Zoellner, Yun Li, Hyun Min Kang, and Mary Kate Trost\n\n");
+  printf("(c) 2008-2014 Goncalo Abecasis, Sebastian Zoellner, Yun Li, Hyun Min Kang, and Mary Kate Wing\n\n");
   
   String pedfile;
   String positionfile;
@@ -1001,6 +1001,14 @@ int main(int argc, char ** argv) {
 	   if (glf[i].data.recordType != 0)
 	     done = false;
 	 if (done) break;
+       }
+       else
+       {
+           // First time through in this section, read the first entry.
+           for (int i = 0; i < n; i++)
+           {
+               glf[i].NextBaseEntry();
+           }
        }
 
        // Advance to the next position where needed

@@ -1,0 +1,232 @@
+<!--
+  ~ Copyright (c) 2013, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<!--
+  ~ Copyright (c) 2012, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+
+
+        <?php ob_start(); ?>
+        <!DOCTYPE html>
+        <html lang='en'>
+        <head>
+            <meta charset='utf-8'>
+            <title>GenomeStrip documentation index documentation</title>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <meta name='description' content=''>
+
+            <link type="text/css" rel="stylesheet" href="bootstrap.min.css">
+            <script src="jquery.min.js"></script>
+            <script src="bootstrap.min.js"></script>
+            <style>
+                @media (min-width: 980px) {
+                    body {
+                        padding-top : 60px;
+                    }
+                }
+            </style>
+
+        </head>
+        <body>
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container-fluid">
+                    <a class="brand" href="index.html">GenomeSTRiP Documentation</a>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid">
+            <?php
+    // Output Buffering allows for the website to inject a different header
+    ob_clean();
+    include '../include/common.php';
+    printHeader("GenomeStrip documentation index", "Guides");
+    ?>
+
+            <div class="row-fluid">
+                    <?php printGATKDocsNav(); ?>
+                    <div class="span9">
+
+<h1>GenomeStrip documentation index
+    <small>1.04-r1441</small>
+</h1>
+<hr>
+<div class="accordion" id="index">
+    <div class="accordion-group">
+        <div class="accordion-heading">
+            <a class="accordion-toggle" data-toggle="collapse" data-parent="#index" href="#QueueScripts">
+                <h4>Queue Scripts</h4>
+            </a>
+        </div>
+        <div class="accordion-body collapse" id="QueueScripts">
+            <div class="accordion-inner">
+                <p class="lead"></p>
+                <table class="table table-striped table-bordered table-condensed">
+                    <tr>
+                        <th>Name</th>
+                        <th>Summary</th>
+                    </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_qscript_SVDiscovery.html">SVDiscovery</a></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_qscript_SVGenotyper.html">SVGenotyper</a></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_qscript_SVPreprocess.html">SVPreprocess</a></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_qscript_SVQScript.html">SVQScript</a></td>
+                                <td>Queue utilities for writing structural variation discovery/genotyping pipepines.</td>
+                            </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-group">
+        <div class="accordion-heading">
+            <a class="accordion-toggle" data-toggle="collapse" data-parent="#index" href="#VariantAnnotation">
+                <h4>Variant Annotation</h4>
+            </a>
+        </div>
+        <div class="accordion-body collapse" id="VariantAnnotation">
+            <div class="accordion-inner">
+                <p class="lead"></p>
+                <table class="table table-striped table-bordered table-condensed">
+                    <tr>
+                        <th>Name</th>
+                        <th>Summary</th>
+                    </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_main_SVAnnotator.html">SVAnnotator</a></td>
+                                <td>Annotation engine and framework for SV annotation.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_SVVariantAnnotatorWalker.html">SVVariantAnnotatorWalker</a></td>
+                                <td>Walker interface that implements SVAnnotator.</td>
+                            </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-group">
+        <div class="accordion-heading">
+            <a class="accordion-toggle" data-toggle="collapse" data-parent="#index" href="#VariantAnnotators">
+                <h4>Variant Annotators</h4>
+            </a>
+        </div>
+        <div class="accordion-body collapse" id="VariantAnnotators">
+            <div class="accordion-inner">
+                <p class="lead"></p>
+                <table class="table table-striped table-bordered table-condensed">
+                    <tr>
+                        <th>Name</th>
+                        <th>Summary</th>
+                    </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_AlleleFrequencyAnnotator.html">AlleleFrequencyAnnotator</a></td>
+                                <td>Annotator that calculates summary statistics on population allele frequency and Hardy-Weinberg equilibrium.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_ClusterSeparationAnnotator.html">ClusterSeparationAnnotator</a></td>
+                                <td>Annotator that reports on the separation of read depth clusters used in genotyping.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_CopyNumberClassAnnotator.html">CopyNumberClassAnnotator</a></td>
+                                <td>Annotator that report statistics about the distribution of copy number states at each variant.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_GCContentAnnotator.html">GCContentAnnotator</a></td>
+                                <td>Annotator that calculates local GC content for structual variants.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_GeneOverlapAnnotator.html">GeneOverlapAnnotator</a></td>
+                                <td>Annotator used to detect and report overlaps between structural variations and annotated genes.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_IntensityRankSumAnnotator.html">IntensityRankSumAnnotator</a></td>
+                                <td>Annotator for performing "in silico" validation of copy number variants using SNP array intensity data.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_NonVariantAnnotator.html">NonVariantAnnotator</a></td>
+                                <td>Annotator used to detect and filter sites that are likely not polymorphic in the genotyped population.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_ReciprocalOverlapAnnotator.html">ReciprocalOverlapAnnotator</a></td>
+                                <td>Annotator for computing reciprocal overlap between sets of structural variants.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_RedundancyAnnotator.html">RedundancyAnnotator</a></td>
+                                <td>Annotator used to detect and filter redundant structural variation calls with similar coordinates.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_TagVariantsAnnotator.html">TagVariantsAnnotator</a></td>
+                                <td>Annotator that evaluates tagging SNPs (or other markers) based on pairwise r<sup>2</sup>.</td>
+                            </tr>
+                            <tr>
+                                <td><a href="org_broadinstitute_sv_annotation_VariantsPerSampleAnnotator.html">VariantsPerSampleAnnotator</a></td>
+                                <td>Annotator that reports on the distribution of variant calls across samples.</td>
+                            </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <hr>
+        <p class="see-also">See also <a href="index.html">Documentation index</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip">GenomeSTRiP Site</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip/documentation">GenomeSTRiP Support</a></p>
+
+        <p class="version">GenomeSTRiP version 1.04-r1441 built at 2014/07/14 14:26:06.</p>
+        </div><!--/.span-->
+        </div><!--/.row-->
+        </body>
+        <?php printFooter();
+        ob_end_flush();
+        ?>

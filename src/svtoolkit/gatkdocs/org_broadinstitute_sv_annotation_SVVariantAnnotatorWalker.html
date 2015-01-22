@@ -1,0 +1,1375 @@
+<!--
+  ~ Copyright (c) 2013, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+<!--
+  ~ Copyright (c) 2012, The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person
+  ~ obtaining a copy of this software and associated documentation
+  ~ files (the "Software"), to deal in the Software without
+  ~ restriction, including without limitation the rights to use,
+  ~ copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the
+  ~ Software is furnished to do so, subject to the following
+  ~ conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be
+  ~ included in all copies or substantial portions of the Software.
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  ~ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  ~ OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  ~ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  ~ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  ~ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  ~ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  ~ OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
+
+
+<?php $group = 'Variant Annotation'; ?>
+        <?php ob_start(); ?>
+        <!DOCTYPE html>
+        <html lang='en'>
+        <head>
+            <meta charset='utf-8'>
+            <title>SVVariantAnnotatorWalker documentation documentation</title>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <meta name='description' content=''>
+
+            <link type="text/css" rel="stylesheet" href="bootstrap.min.css">
+            <script src="jquery.min.js"></script>
+            <script src="bootstrap.min.js"></script>
+            <style>
+                @media (min-width: 980px) {
+                    body {
+                        padding-top : 60px;
+                    }
+                }
+            </style>
+
+        </head>
+        <body>
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container-fluid">
+                    <a class="brand" href="index.html">GenomeSTRiP Documentation</a>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid">
+            <?php
+    // Output Buffering allows for the website to inject a different header
+    ob_clean();
+    include '../include/common.php';
+    printHeader("SVVariantAnnotatorWalker documentation", "Guides");
+    ?>
+
+            <div class="row-fluid">
+
+<section class="span4">
+    <aside class="well">
+        <h2>Categories</h2>
+        <style>
+            #sidenav .accordion-body a {
+                color : gray;
+            }
+
+            .accordion-body li {
+                list-style : none;
+            }
+        </style>
+        <ul class="nav nav-pills nav-stacked" id="sidenav">
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#QueueScripts">Queue Scripts</a>
+
+                    <div id="QueueScripts"
+                    <?php echo ($group == 'Queue Scripts')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVDiscovery.html">SVDiscovery</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVGenotyper.html">SVGenotyper</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVPreprocess.html">SVPreprocess</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_qscript_SVQScript.html">SVQScript</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#VariantAnnotation">Variant Annotation</a>
+
+                    <div id="VariantAnnotation"
+                    <?php echo ($group == 'Variant Annotation')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_main_SVAnnotator.html">SVAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_SVVariantAnnotatorWalker.html">SVVariantAnnotatorWalker</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+                <li><a data-toggle="collapse" data-parent="#sidenav" href="#VariantAnnotators">Variant Annotators</a>
+
+                    <div id="VariantAnnotators"
+                    <?php echo ($group == 'Variant Annotators')? 'class="accordion-body collapse in"'.chr(62) : 'class="accordion-body collapse"'.chr(62);?>
+                    <ul>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_AlleleFrequencyAnnotator.html">AlleleFrequencyAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_ClusterSeparationAnnotator.html">ClusterSeparationAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_CopyNumberClassAnnotator.html">CopyNumberClassAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_GCContentAnnotator.html">GCContentAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_GeneOverlapAnnotator.html">GeneOverlapAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_IntensityRankSumAnnotator.html">IntensityRankSumAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_NonVariantAnnotator.html">NonVariantAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_ReciprocalOverlapAnnotator.html">ReciprocalOverlapAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_RedundancyAnnotator.html">RedundancyAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_TagVariantsAnnotator.html">TagVariantsAnnotator</a>
+                                </li>
+                                <li>
+                                    <a href="org_broadinstitute_sv_annotation_VariantsPerSampleAnnotator.html">VariantsPerSampleAnnotator</a>
+                                </li>
+                    </ul>
+                    </div>
+                </li>
+        </ul>
+    </aside>
+    <?php getForumPosts( 'SVVariantAnnotatorWalker' ) ?>
+
+</section>
+
+<div class="span8">
+
+    <h1>SVVariantAnnotatorWalker</h1>
+
+    <p class="lead">Walker interface that implements SVAnnotator.</p>
+        <h3>Category
+            <small> Variant Annotation</small>
+        </h3>
+    <br/>
+
+    <h2>Introduction</h2>
+    
+
+ <p>
+ This walker is not normally used directly, but is called through the SVAnnotator command-line interface.
+ This walker documents the union of all arguments for all SV Annotators.
+ </p><p>
+ See the SVAnnotator documentation for a description of the annotator framework and the arguments common to all annotators.
+ </p><p>
+ See the documentation for each specific variant annotators for documentation on the arguments specific to each individual annotator.
+ </p>
+
+            <hr>
+            <h3>SVVariantAnnotatorWalker specific arguments</h3>
+            <table class="table table-striped table-bordered table-condensed">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Default value</th>
+                    <th>Summary</th>
+                </tr>
+                </thead>
+                <tbody>
+        <tr>
+            <th colspan="4" id="row-divider">Optional</th>
+        </tr>
+            <tr>
+                <td><a href="#--annotation">--annotation</a></td>
+                <td>List[String]</td>
+                <td>[]</td>
+                <td>One or more specific annotations to apply to variant calls</td>
+            </tr>
+            <tr>
+                <td><a href="#--arrayIntensityFile">--arrayIntensityFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Path to matrix of array intensity values</td>
+            </tr>
+            <tr>
+                <td><a href="#--bedFile">--bedFile</a></td>
+                <td>List[File]</td>
+                <td>NA</td>
+                <td>List of bed files</td>
+            </tr>
+            <tr>
+                <td><a href="#--bedFileTag">--bedFileTag</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>List of bed file tags</td>
+            </tr>
+            <tr>
+                <td><a href="#--classifyMinimumObservations">--classifyMinimumObservations</a></td>
+                <td>Integer</td>
+                <td>NA</td>
+                <td>Minimum number of confident observations required when classifying copy number variants (default 1)</td>
+            </tr>
+            <tr>
+                <td><a href="#--compareOverlappingVariants">--compareOverlappingVariants</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Special concordance mode to compare SVs to all overlapping variants (e.g. SNPs) (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--comparisonFile">--comparisonFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>VCF file of variants for comparison</td>
+            </tr>
+            <tr>
+                <td><a href="#--configFile">--configFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Configuration parameter file</td>
+            </tr>
+            <tr>
+                <td><a href="#--discordantGenotypeThreshold">--discordantGenotypeThreshold</a></td>
+                <td>Integer</td>
+                <td>NA</td>
+                <td>Maximum number of discordant genotypes allowed for redundant events (default: any)</td>
+            </tr>
+            <tr>
+                <td><a href="#--duplicateOverlapDenonminator">--duplicateOverlapDenonminator</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Denominator for measuring overlap, UNION (reciprocal overlap) or SHORTEST (default, length of shortest event)</td>
+            </tr>
+            <tr>
+                <td><a href="#--duplicateOverlapThreshold">--duplicateOverlapThreshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Minimum overlap required to determine two events are redundant</td>
+            </tr>
+            <tr>
+                <td><a href="#--duplicateScoreThreshold">--duplicateScoreThreshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Concordance LOD score threshold (minimum per-sample LOD score at which events are considered non-redundant)</td>
+            </tr>
+            <tr>
+                <td><a href="#--eventMapFile">--eventMapFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Two column text file mapping event IDs for concordance</td>
+            </tr>
+            <tr>
+                <td><a href="#--filterGenotypes">--filterGenotypes</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to ignore genotypes that have been filtered (default true)</td>
+            </tr>
+            <tr>
+                <td><a href="#--filterVariants">--filterVariants</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to ignore variants that have been filtered (default true)</td>
+            </tr>
+            <tr>
+                <td><a href="#--genderMapFile">--genderMapFile</a></td>
+                <td>List[File]</td>
+                <td>NA</td>
+                <td>Map file(s) containing the gender for each sample</td>
+            </tr>
+            <tr>
+                <td><a href="#--geneDescriptionFile">--geneDescriptionFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Tab-delimited two column file mapping gene names to text gene descriptions</td>
+            </tr>
+            <tr>
+                <td><a href="#--geneTrackFile">--geneTrackFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>File of gene models for gene overlap analysis (GTF format)</td>
+            </tr>
+            <tr>
+                <td><a href="#--geneTypeFilter">--geneTypeFilter</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Set of gene types to consider when analyzing gene overlap</td>
+            </tr>
+            <tr>
+                <td><a href="#--genomeMaskFile">--genomeMaskFile</a></td>
+                <td>List[File]</td>
+                <td>NA</td>
+                <td>Genome mask file(s) for reference sequence</td>
+            </tr>
+            <tr>
+                <td><a href="#--genotypeFilterFile">--genotypeFilterFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>File of filter regions for GenotypeFilter annotator</td>
+            </tr>
+            <tr>
+                <td><a href="#--genotypeQualityThreshold">--genotypeQualityThreshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Ignore genotypes below this genotype quality GQ value (default no threshold)</td>
+            </tr>
+            <tr>
+                <td><a href="#--irsBoundaryPadding">--irsBoundaryPadding</a></td>
+                <td>Integer</td>
+                <td>0</td>
+                <td>Probes within this distance of inner site boundaries are not used</td>
+            </tr>
+            <tr>
+                <td><a href="#--irsPermute">--irsPermute</a></td>
+                <td>String</td>
+                <td>false</td>
+                <td>Whether to permute samples to generate null distribution (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--irsSampleTag">--irsSampleTag</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>VCF INFO tag containing list of carrier samples</td>
+            </tr>
+            <tr>
+                <td><a href="#--irsUseGenotypes">--irsUseGenotypes</a></td>
+                <td>String</td>
+                <td>false</td>
+                <td>Whether to use genotypes or INFO tags to select carrier samples (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--metaDataLocation">--metaDataLocation</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Path to meta-data directory</td>
+            </tr>
+            <tr>
+                <td><a href="#--outputFile">--outputFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>VCF file to which annotated variants should be written</td>
+            </tr>
+            <tr>
+                <td><a href="#--overlapResolverDataFile">--overlapResolverDataFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Tab-delimited file containing metric used to score overlapping variants</td>
+            </tr>
+            <tr>
+                <td><a href="#--overlapResolverMetric">--overlapResolverMetric</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Name of metric used to score overlapping variants (name of column in data file)</td>
+            </tr>
+            <tr>
+                <td><a href="#--overlapResolverMinMax">--overlapResolverMinMax</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Whether to minimize or maximize metric (MIN / MAX)</td>
+            </tr>
+            <tr>
+                <td><a href="#--overlapResolverMode">--overlapResolverMode</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Name of mode for overlap resolution (ONE_PER_CLUSTER)</td>
+            </tr>
+            <tr>
+                <td><a href="#--parameter">--parameter</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Override individual configuration parameters (for advanced use only)</td>
+            </tr>
+            <tr>
+                <td><a href="#--perSampleSummaryFile">--perSampleSummaryFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Summary file for per-sample stratification</td>
+            </tr>
+            <tr>
+                <td><a href="#--ploidyMapFile">--ploidyMapFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Map file containing ploidy information</td>
+            </tr>
+            <tr>
+                <td><a href="#--population">--population</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Population(s) or .list file of populations</td>
+            </tr>
+            <tr>
+                <td><a href="#--populationMapFile">--populationMapFile</a></td>
+                <td>List[File]</td>
+                <td>NA</td>
+                <td>Map file (or files) containing sample to population assignments</td>
+            </tr>
+            <tr>
+                <td><a href="#--reciprocalOverlapCompareIds">--reciprocalOverlapCompareIds</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Use variant IDs to avoid comparing a variant with itself to allow self-overlap comparisons (default true)</td>
+            </tr>
+            <tr>
+                <td><a href="#--reciprocalOverlapRankBy">--reciprocalOverlapRankBy</a></td>
+                <td>String</td>
+                <td>FRACTION</td>
+                <td>How to select between multiple overlapping variants, possible values: LENGTH, FRACTION (default)</td>
+            </tr>
+            <tr>
+                <td><a href="#--repeatTrackFile">--repeatTrackFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Path to UCSC repeat annotation track file</td>
+            </tr>
+            <tr>
+                <td><a href="#--reportDirectory">--reportDirectory</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Directory for reports (default is current directory)</td>
+            </tr>
+            <tr>
+                <td><a href="#--reportFile">--reportFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>File name for report (default is based an annotator name)</td>
+            </tr>
+            <tr>
+                <td><a href="#--reportFileMap">--reportFileMap</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Map of file name for reports, overrides reportFile argument when multiple annotators are run</td>
+            </tr>
+            <tr>
+                <td><a href="#--sample">--sample</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Sample(s) or .list file of sample names</td>
+            </tr>
+            <tr>
+                <td><a href="#--sequenceTranslationMapFile">--sequenceTranslationMapFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Mapping file from sequence name aliases used in annotation files to reference sequence names (e.g. "chr1" to "1")</td>
+            </tr>
+            <tr>
+                <td><a href="#--summaryFile">--summaryFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>File name for summary (default is based an annotator name)</td>
+            </tr>
+            <tr>
+                <td><a href="#--summaryFileMap">--summaryFileMap</a></td>
+                <td>List[String]</td>
+                <td>NA</td>
+                <td>Map of file name for summaries, overrides summaryFile argument when multiple annotators are run</td>
+            </tr>
+            <tr>
+                <td><a href="#--superArrayPermute">--superArrayPermute</a></td>
+                <td>String</td>
+                <td>false</td>
+                <td>Whether to permute samples to generate null distribution (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--superArraySampleTag">--superArraySampleTag</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>VCF INFO tag containing list of affected samples</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagFile">--tagFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Path to vcf file containing potential tagging variants</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagFrequencyThreshold">--tagFrequencyThreshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Minimum frequency of tags to test</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagIncudeOverlapping">--tagIncudeOverlapping</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>True to calculate r2 for overlapping variants (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagPValueIterations">--tagPValueIterations</a></td>
+                <td>Integer</td>
+                <td>1000</td>
+                <td>Number of iterations to use to calculate tag variant p-values</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagPValueSummaryFile">--tagPValueSummaryFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Output file with a report of p-values on the best r2 value for each tag variant</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagR2Threshold">--tagR2Threshold</a></td>
+                <td>Double</td>
+                <td>NA</td>
+                <td>Minimum r2 value to report</td>
+            </tr>
+            <tr>
+                <td><a href="#--tagWindowSize">--tagWindowSize</a></td>
+                <td>Integer</td>
+                <td>1000000</td>
+                <td>Size of window to use for LD evaluation (default 1Mb)</td>
+            </tr>
+            <tr>
+                <td><a href="#--tempDir">--tempDir</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Directory for temporary files</td>
+            </tr>
+            <tr>
+                <td><a href="#--useBestGenotypeEncoding">--useBestGenotypeEncoding</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Use reversed ref/alt alleles in concordance checks if this yield higher concordance (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--useGATKTraversal">--useGATKTraversal</a></td>
+                <td>String</td>
+                <td>false</td>
+                <td>Use normal GATK walker traversal (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--variantIntervalMode">--variantIntervalMode</a></td>
+                <td>String</td>
+                <td>NOMINAL</td>
+                <td>How to measure variant intervals, possible values: NOMINAL (default), MINIMUM, MAXIMUM</td>
+            </tr>
+            <tr>
+                <td><a href="#--vcfFile">--vcfFile</a></td>
+                <td>File</td>
+                <td>NA</td>
+                <td>Input variant file (VCF format)</td>
+            </tr>
+            <tr>
+                <td><a href="#--writeReport">--writeReport</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Whether to write a report (default false)</td>
+            </tr>
+            <tr>
+                <td><a href="#--writeSummary">--writeSummary</a></td>
+                <td>String</td>
+                <td>NA</td>
+                <td>Whether to write a summary (default false)</td>
+            </tr>
+                </tbody>
+            </table>
+
+
+
+                        <hr>
+                            <h2>Argument details</h2>
+    <h3><a name="--annotation">--annotation
+         / -A
+    </a>
+        (
+        
+        List[String]
+         with default value []
+        )
+    </h3>
+    <p class="args">
+        One or more specific annotations to apply to variant calls. 
+            </p>
+    <h3><a name="--arrayIntensityFile">--arrayIntensityFile
+         / -arrayIntensityFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Path to matrix of array intensity values. 
+            </p>
+    <h3><a name="--bedFile">--bedFile
+         / -bedFile
+    </a>
+        (
+        
+        List[File]
+        
+        )
+    </h3>
+    <p class="args">
+        List of bed files. 
+            </p>
+    <h3><a name="--bedFileTag">--bedFileTag
+         / -bedFileTag
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        List of bed file tags. 
+            </p>
+    <h3><a name="--classifyMinimumObservations">--classifyMinimumObservations
+         / -classifyMinimumObservations
+    </a>
+        (
+        
+        Integer
+        
+        )
+    </h3>
+    <p class="args">
+        Minimum number of confident observations required when classifying copy number variants (default 1). 
+            </p>
+    <h3><a name="--compareOverlappingVariants">--compareOverlappingVariants
+         / -compareOverlappingVariants
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Special concordance mode to compare SVs to all overlapping variants (e.g. SNPs) (default false). 
+            </p>
+    <h3><a name="--comparisonFile">--comparisonFile
+         / -comparisonFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        VCF file of variants for comparison. 
+            </p>
+    <h3><a name="--configFile">--configFile
+         / -configFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Configuration parameter file. 
+            </p>
+    <h3><a name="--discordantGenotypeThreshold">--discordantGenotypeThreshold
+         / -discordantGenotypeThreshold
+    </a>
+        (
+        
+        Integer
+        
+        )
+    </h3>
+    <p class="args">
+        Maximum number of discordant genotypes allowed for redundant events (default: any). 
+            </p>
+    <h3><a name="--duplicateOverlapDenonminator">--duplicateOverlapDenonminator
+         / -duplicateOverlapDenominator
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Denominator for measuring overlap, UNION (reciprocal overlap) or SHORTEST (default, length of shortest event). 
+            </p>
+    <h3><a name="--duplicateOverlapThreshold">--duplicateOverlapThreshold
+         / -duplicateOverlapThreshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Minimum overlap required to determine two events are redundant. 
+            </p>
+    <h3><a name="--duplicateScoreThreshold">--duplicateScoreThreshold
+         / -duplicateScoreThreshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Concordance LOD score threshold (minimum per-sample LOD score at which events are considered non-redundant). 
+            </p>
+    <h3><a name="--eventMapFile">--eventMapFile
+         / -eventMapFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Two column text file mapping event IDs for concordance. 
+            </p>
+    <h3><a name="--filterGenotypes">--filterGenotypes
+         / -filterGenotypes
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to ignore genotypes that have been filtered (default true). 
+            </p>
+    <h3><a name="--filterVariants">--filterVariants
+         / -filterVariants
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to ignore variants that have been filtered (default true). 
+            </p>
+    <h3><a name="--genderMapFile">--genderMapFile
+         / -genderMapFile
+    </a>
+        (
+        
+        List[File]
+        
+        )
+    </h3>
+    <p class="args">
+        Map file(s) containing the gender for each sample. 
+            </p>
+    <h3><a name="--geneDescriptionFile">--geneDescriptionFile
+         / -geneDescriptionFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Tab-delimited two column file mapping gene names to text gene descriptions. 
+            </p>
+    <h3><a name="--geneTrackFile">--geneTrackFile
+         / -geneTrackFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        File of gene models for gene overlap analysis (GTF format). 
+            </p>
+    <h3><a name="--geneTypeFilter">--geneTypeFilter
+         / -geneTypeFilter
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Set of gene types to consider when analyzing gene overlap. 
+            </p>
+    <h3><a name="--genomeMaskFile">--genomeMaskFile
+         / -genomeMaskFile
+    </a>
+        (
+        
+        List[File]
+        
+        )
+    </h3>
+    <p class="args">
+        Genome mask file(s) for reference sequence. 
+            </p>
+    <h3><a name="--genotypeFilterFile">--genotypeFilterFile
+         / -genotypeFilterFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        File of filter regions for GenotypeFilter annotator. 
+            </p>
+    <h3><a name="--genotypeQualityThreshold">--genotypeQualityThreshold
+         / -genotypeQualityThreshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Ignore genotypes below this genotype quality GQ value (default no threshold). 
+            </p>
+    <h3><a name="--irsBoundaryPadding">--irsBoundaryPadding
+         / -irsBoundaryPadding
+    </a>
+        (
+        
+        Integer
+         with default value 0
+        )
+    </h3>
+    <p class="args">
+        Probes within this distance of inner site boundaries are not used. 
+            </p>
+    <h3><a name="--irsPermute">--irsPermute
+         / -irsPermute
+    </a>
+        (
+        
+        String
+         with default value false
+        )
+    </h3>
+    <p class="args">
+        Whether to permute samples to generate null distribution (default false). 
+            </p>
+    <h3><a name="--irsSampleTag">--irsSampleTag
+         / -irsSampleTag
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        VCF INFO tag containing list of carrier samples. 
+            </p>
+    <h3><a name="--irsUseGenotypes">--irsUseGenotypes
+         / -irsUseGenotypes
+    </a>
+        (
+        
+        String
+         with default value false
+        )
+    </h3>
+    <p class="args">
+        Whether to use genotypes or INFO tags to select carrier samples (default false). 
+            </p>
+    <h3><a name="--metaDataLocation">--metaDataLocation
+         / -md
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Path to meta-data directory. 
+            </p>
+    <h3><a name="--outputFile">--outputFile
+         / -O
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        VCF file to which annotated variants should be written. 
+            </p>
+    <h3><a name="--overlapResolverDataFile">--overlapResolverDataFile
+         / -overlapResolverDataFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Tab-delimited file containing metric used to score overlapping variants. 
+            </p>
+    <h3><a name="--overlapResolverMetric">--overlapResolverMetric
+         / -overlapResolverMetric
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Name of metric used to score overlapping variants (name of column in data file). 
+            </p>
+    <h3><a name="--overlapResolverMinMax">--overlapResolverMinMax
+         / -overlapResolverMinMax
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Whether to minimize or maximize metric (MIN / MAX). 
+            </p>
+    <h3><a name="--overlapResolverMode">--overlapResolverMode
+         / -overlapResolverMode
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Name of mode for overlap resolution (ONE_PER_CLUSTER). 
+            </p>
+    <h3><a name="--parameter">--parameter
+         / -P
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Override individual configuration parameters (for advanced use only). 
+            </p>
+    <h3><a name="--perSampleSummaryFile">--perSampleSummaryFile
+         / -perSampleSummaryFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Summary file for per-sample stratification. 
+            </p>
+    <h3><a name="--ploidyMapFile">--ploidyMapFile
+         / -ploidyMapFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Map file containing ploidy information. 
+            </p>
+    <h3><a name="--population">--population
+         / -population
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Population(s) or .list file of populations. 
+            </p>
+    <h3><a name="--populationMapFile">--populationMapFile
+         / -populationMapFile
+    </a>
+        (
+        
+        List[File]
+        
+        )
+    </h3>
+    <p class="args">
+        Map file (or files) containing sample to population assignments. 
+            </p>
+    <h3><a name="--reciprocalOverlapCompareIds">--reciprocalOverlapCompareIds
+         / -reciprocalOverlapCompareIds
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Use variant IDs to avoid comparing a variant with itself to allow self-overlap comparisons (default true). 
+            </p>
+    <h3><a name="--reciprocalOverlapRankBy">--reciprocalOverlapRankBy
+         / -reciprocalOverlapRankBy
+    </a>
+        (
+        
+        String
+         with default value FRACTION
+        )
+    </h3>
+    <p class="args">
+        How to select between multiple overlapping variants, possible values: LENGTH, FRACTION (default). 
+            </p>
+    <h3><a name="--repeatTrackFile">--repeatTrackFile
+         / -repeatTrackFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Path to UCSC repeat annotation track file. 
+            </p>
+    <h3><a name="--reportDirectory">--reportDirectory
+         / -reportDirectory
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Directory for reports (default is current directory). 
+            </p>
+    <h3><a name="--reportFile">--reportFile
+         / -reportFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        File name for report (default is based an annotator name). 
+            </p>
+    <h3><a name="--reportFileMap">--reportFileMap
+         / -reportFileMap
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Map of file name for reports, overrides reportFile argument when multiple annotators are run. 
+            </p>
+    <h3><a name="--sample">--sample
+         / -sample
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Sample(s) or .list file of sample names. 
+            </p>
+    <h3><a name="--sequenceTranslationMapFile">--sequenceTranslationMapFile
+         / -sequenceTranslationMapFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Mapping file from sequence name aliases used in annotation files to reference sequence names (e.g. "chr1" to "1"). 
+            </p>
+    <h3><a name="--summaryFile">--summaryFile
+         / -summaryFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        File name for summary (default is based an annotator name). 
+            </p>
+    <h3><a name="--summaryFileMap">--summaryFileMap
+         / -summaryFileMap
+    </a>
+        (
+        
+        List[String]
+        
+        )
+    </h3>
+    <p class="args">
+        Map of file name for summaries, overrides summaryFile argument when multiple annotators are run. 
+            </p>
+    <h3><a name="--superArrayPermute">--superArrayPermute
+         / -superArrayPermute
+    </a>
+        (
+        
+        String
+         with default value false
+        )
+    </h3>
+    <p class="args">
+        Whether to permute samples to generate null distribution (default false). 
+            </p>
+    <h3><a name="--superArraySampleTag">--superArraySampleTag
+         / -superArraySampleTag
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        VCF INFO tag containing list of affected samples. 
+            </p>
+    <h3><a name="--tagFile">--tagFile
+         / -tagFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Path to vcf file containing potential tagging variants. 
+            </p>
+    <h3><a name="--tagFrequencyThreshold">--tagFrequencyThreshold
+         / -tagFrequencyThreshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Minimum frequency of tags to test. 
+            </p>
+    <h3><a name="--tagIncudeOverlapping">--tagIncudeOverlapping
+         / -tagIncludeOverlapping
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        True to calculate r2 for overlapping variants (default false). 
+            </p>
+    <h3><a name="--tagPValueIterations">--tagPValueIterations
+         / -tagPValueIterations
+    </a>
+        (
+        
+        Integer
+         with default value 1000
+        )
+    </h3>
+    <p class="args">
+        Number of iterations to use to calculate tag variant p-values. 
+            </p>
+    <h3><a name="--tagPValueSummaryFile">--tagPValueSummaryFile
+         / -tagPValueSummaryFile
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Output file with a report of p-values on the best r2 value for each tag variant. 
+            </p>
+    <h3><a name="--tagR2Threshold">--tagR2Threshold
+         / -tagR2Threshold
+    </a>
+        (
+        
+        Double
+        
+        )
+    </h3>
+    <p class="args">
+        Minimum r2 value to report. 
+            </p>
+    <h3><a name="--tagWindowSize">--tagWindowSize
+         / -tagWindowSize
+    </a>
+        (
+        
+        Integer
+         with default value 1000000
+        )
+    </h3>
+    <p class="args">
+        Size of window to use for LD evaluation (default 1Mb). 
+            </p>
+    <h3><a name="--tempDir">--tempDir
+         / -tempDir
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Directory for temporary files. 
+            </p>
+    <h3><a name="--useBestGenotypeEncoding">--useBestGenotypeEncoding
+         / -useBestGenotypeEncoding
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Use reversed ref/alt alleles in concordance checks if this yield higher concordance (default false). 
+            </p>
+    <h3><a name="--useGATKTraversal">--useGATKTraversal
+         / -useGATKTraversal
+    </a>
+        (
+        
+        String
+         with default value false
+        )
+    </h3>
+    <p class="args">
+        Use normal GATK walker traversal (default false). 
+            </p>
+    <h3><a name="--variantIntervalMode">--variantIntervalMode
+         / -variantIntervalMode
+    </a>
+        (
+        
+        String
+         with default value NOMINAL
+        )
+    </h3>
+    <p class="args">
+        How to measure variant intervals, possible values: NOMINAL (default), MINIMUM, MAXIMUM. 
+            </p>
+    <h3><a name="--vcfFile">--vcfFile
+         / -vcf
+    </a>
+        (
+        
+        File
+        
+        )
+    </h3>
+    <p class="args">
+        Input variant file (VCF format). 
+            </p>
+    <h3><a name="--writeReport">--writeReport
+         / -writeReport
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Whether to write a report (default false). 
+            </p>
+    <h3><a name="--writeSummary">--writeSummary
+         / -writeSummary
+    </a>
+        (
+        
+        String
+        
+        )
+    </h3>
+    <p class="args">
+        Whether to write a summary (default false). 
+            </p>
+
+        <hr>
+        <p class="see-also">See also <a href="index.html">Documentation index</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip">GenomeSTRiP Site</a> | <a
+                href="http://www.broadinstitute.org/software/genomestrip/documentation">GenomeSTRiP Support</a></p>
+
+        <p class="version">GenomeSTRiP version 1.04-r1441 built at 2014/07/14 14:26:06.</p>
+        </div><!--/.span-->
+        </div><!--/.row-->
+        </body>
+        <?php printFooter();
+        ob_end_flush();
+        ?>

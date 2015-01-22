@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <string.h>
+#include "kstring.h"
 #include "utils.h"
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.7.5a-r405"
+#define PACKAGE_VERSION "0.7.10-r960-dirty"
 #endif
 
 int bwa_fa2pac(int argc, char *argv[]);
@@ -21,9 +22,10 @@ int bwa_bwtsw2(int argc, char *argv[]);
 
 int main_fastmap(int argc, char *argv[]);
 int main_mem(int argc, char *argv[]);
+int main_shm(int argc, char *argv[]);
 
 int main_pemerge(int argc, char *argv[]);
-
+	
 static int usage()
 {
 	fprintf(stderr, "\n");
@@ -40,6 +42,7 @@ static int usage()
 	fprintf(stderr, "         sampe         generate alignment (paired ended)\n");
 	fprintf(stderr, "         bwasw         BWA-SW for long queries\n");
 	fprintf(stderr, "\n");
+	fprintf(stderr, "         shm           manage indices in shared memory\n");
 	fprintf(stderr, "         fa2pac        convert FASTA to PAC format\n");
 	fprintf(stderr, "         pac2bwt       generate BWT from PAC\n");
 	fprintf(stderr, "         pac2bwtgen    alternative algorithm for generating BWT\n");
@@ -54,16 +57,16 @@ static int usage()
 	return 1;
 }
 
-void bwa_print_sam_PG()
-{
-	err_printf("@PG\tID:bwa\tPN:bwa\tVN:%s\n", PACKAGE_VERSION);
-}
-
 int main(int argc, char *argv[])
 {
+	extern char *bwa_pg;
 	int i, ret;
 	double t_real;
+	kstring_t pg = {0,0,0};
 	t_real = realtime();
+	ksprintf(&pg, "@PG\tID:bwa\tPN:bwa\tVN:%s\tCL:%s", PACKAGE_VERSION, argv[0]);
+	for (i = 1; i < argc; ++i) ksprintf(&pg, " %s", argv[i]);
+	bwa_pg = pg.s;
 	if (argc < 2) return usage();
 	if (strcmp(argv[1], "fa2pac") == 0) ret = bwa_fa2pac(argc-1, argv+1);
 	else if (strcmp(argv[1], "pac2bwt") == 0) ret = bwa_pac2bwt(argc-1, argv+1);
@@ -79,6 +82,7 @@ int main(int argc, char *argv[])
 	else if (strcmp(argv[1], "bwasw") == 0) ret = bwa_bwtsw2(argc-1, argv+1);
 	else if (strcmp(argv[1], "fastmap") == 0) ret = main_fastmap(argc-1, argv+1);
 	else if (strcmp(argv[1], "mem") == 0) ret = main_mem(argc-1, argv+1);
+	else if (strcmp(argv[1], "shm") == 0) ret = main_shm(argc-1, argv+1);
 	else if (strcmp(argv[1], "pemerge") == 0) ret = main_pemerge(argc-1, argv+1);
 	else {
 		fprintf(stderr, "[main] unrecognized command '%s'\n", argv[1]);
@@ -93,5 +97,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, " %s", argv[i]);
 		fprintf(stderr, "\n[%s] Real time: %.3f sec; CPU: %.3f sec\n", __func__, realtime() - t_real, cputime());
 	}
+	free(bwa_pg);
 	return ret;
 }

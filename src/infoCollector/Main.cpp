@@ -32,9 +32,9 @@ int main(int argc, char** argv) {
   String sAnchorVcf;
   String sPrefix;
   String sSuffix;
-  String sIndexf;
+  String sListf;
   String sOutVcf;
-  int indexSkip = 2;
+  int listSkip = 2;
   bool bVerbose = true;
 
   ParameterList pl;
@@ -44,14 +44,18 @@ int main(int argc, char** argv) {
     LONG_STRINGPARAMETER("anchor",&sAnchorVcf)
     LONG_STRINGPARAMETER("prefix",&sPrefix)
     LONG_STRINGPARAMETER("suffix",&sSuffix)
-    LONG_STRINGPARAMETER("index",&sIndexf)
+    LONG_STRINGPARAMETER("list",&sListf)
 
     LONG_PARAMETER_GROUP("Output Options")
     LONG_STRINGPARAMETER("outvcf",&sOutVcf)
     LONG_PARAMETER("verbose",&bVerbose)
 
     LONG_PARAMETER_GROUP("Input file formats")
-    LONG_INTPARAMETER("skipIndex",&indexSkip)
+    LONG_INTPARAMETER("skipList",&listSkip)
+
+    BEGIN_LEGACY_PARAMETERS()
+    LONG_STRINGPARAMETER("index",&sListf)
+    LONG_INTPARAMETER("skipIndex",&listSkip)
   END_LONG_PARAMETERS();
 
   pl.Add(new LongParameters("Available Options", longParameters));
@@ -75,15 +79,15 @@ int main(int argc, char** argv) {
   ///////////////////////////////////////////////////////////
   // Check the sanity of input file arguments
   ///////////////////////////////////////////////////////////
-  if ( sAnchorVcf.IsEmpty() || sPrefix.IsEmpty() || sSuffix.IsEmpty() || sIndexf.IsEmpty() ) {
-    Logger::gLogger->error("All the --anchor, --prefix, --suffix, --index option must be present");
+  if ( sAnchorVcf.IsEmpty() || sPrefix.IsEmpty() || sSuffix.IsEmpty() || sListf.IsEmpty() ) {
+    Logger::gLogger->error("All the --anchor, --prefix, --suffix, --list options must be present");
   }
 
-  // Read index file and list the file names to read
-  IFILE indexFile = ifopen( sIndexf.c_str(), "rb" );
+  // Read list file and list the file names to read
+  IFILE listFile = ifopen( sListf.c_str(), "rb" );
   String line;
   std::vector<std::string> inputVcfs;
-  while( line.ReadLine(indexFile) > 0 ) {
+  while( line.ReadLine(listFile) > 0 ) {
     //fprintf(stderr,"line = %s",line.c_str());
     StringArray tok;
     tok.ReplaceTokens(line," \t\r\n");
@@ -92,10 +96,10 @@ int main(int argc, char** argv) {
         // Skip blank line.
         continue;
     }
-    if ( tok.Length() < indexSkip + 1 ) {
-      Logger::gLogger->error("Cannot recognize %s in the index file",line.c_str());
+    if ( tok.Length() < listSkip + 1 ) {
+      Logger::gLogger->error("Cannot recognize %s in the list file",line.c_str());
     }
-    for(int i=indexSkip; i < tok.Length(); ++i) {
+    for(int i=listSkip; i < tok.Length(); ++i) {
       std::string s(sPrefix.c_str());
       StringArray paths;
       paths.ReplaceColumns(tok[i],'/');

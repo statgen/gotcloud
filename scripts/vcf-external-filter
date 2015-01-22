@@ -1,0 +1,107 @@
+#!/usr/bin/perl -w
+
+use strict;
+use POSIX qw(pow log10 sqrt);
+use FindBin;
+use lib "$FindBin::Bin/../bin";
+use hyunlib qw(zopen tofpos wopen initRef);
+use wGetOptions qw(wpod2usage wGetOptions);
+
+## Structure
+## [ [], [], [], [] ] .. 1 - DAD, 2 - MOM, 3,4,5 .. CHILD
+
+my $invcf = "";
+my @exts = ();
+my $outvcf = "";
+my $ref = "/data/local/ref/karma.ref/human.g1k.v37.fa";
+
+wGetOptions(
+    "-VCF filtering software based on predefined external resources",
+    "--Required Options",
+    "in=s" => [\$invcf, "Input VCF file","VCF file as an outcome from a variant calling pipeline. VCF must be sorted in the same chromosomal order"],
+    "ext=s" => [\@exts, "External VCF files with FILTER assigned","VCF file containing filtering results. Multiple VCFs can be assigned. If the filter disagree for the same variant. The file specified earlier will have precedence"],
+    "out=s" => [\$outvcf, "Output VCF file", "Output VCF file with FILTER column assgined by external VCFs. INFO field EXTFILT will specify the filter columns (PASS,FAIL,NA) for each of the external fils"],
+    "--Additional Options",
+    "ref=s" => [\$ref, "Reference FASTA file"],
+    ) || wpod2usage(2);
+
+unless ( ( $invcf ) && ( $outvcf ) && ( $#exts >= 0 ) ) {
+    print STDERR "ERROR: Missing required option\n";
+    wpod2usage(2);
+}
+
+my $in = &zopen($invcf);
+my $out = &wopen($outvcf);
+my @fhs = ();
+my @entries = ();
+
+foreach my $ext (@exts) {
+    my $fh = &zopen($ext);
+    push(@fhs,$fh);
+    push(@entries,[0,0]);
+}
+
+&initRef($ref);
+
+while(<$in>) {
+    if ( /^#/ ) {
+	if ( /^#CHROM/ ) {
+	    print {$out} "##INFO=<ID=EXTFILTER,Number=".($#exts+1).",Type=String,Description=\"Filtering results from external filtering resources\">\n";	    	    
+	    print {$out} "##FILTER=<ID=EXT,Description=\"Filtered by the following external filtering resources ".join(", ",@exts)."\">\n";
+	}
+	
+	if ( /^##FILTER=/ ) {
+	    ## skip writing
+	}
+	else {
+	    print {$out} $_;
+	}
+    }
+    else {
+	my @F = split(/[ \t\r\n]+/);
+
+	print STDERR "Processing $F[0]:$F[1]..\n" if ( $F[1] % 100000 == 0 );
+	
+	my $fpos = &tofpos($F[0],$F[1]);
+	my @matches = ();
+	my @extfilts = ();
+	my $filt = "";
+	for(my $i=0; $i < @entries; ++$i) {
+	    push(@matches,&catchup($fhs[$i],$fpos,\$entries[$i]));
+
+	    #die join("\t",@{$entries[$i]});
+	    
+	    if ( $matches[$#matches] == 1 ) {
+		push(@extfilts,$entries[$i]->[6] eq "PASS" ? "PASS" : "EXT");
+		$filt = $extfilts[$#extfilts] unless ( $filt );
+	    }
+	    else {
+		push(@extfilts,"NA");
+	    }
+	}
+	$filt = $F[6] unless ( $filt );
+	print {$out} join("\t",@F[0..5],$filt,"$F[7];EXTFILTER=".join(",",@extfilts));
+	print {$out} "\t";
+	print {$out} join("\t",@F[8..$#F]) if ( $#F > 7 );
+	print {$out} "\n";
+    }
+}
+
+sub catchup {
+    my ($fh,$fpos,$rEntry) = @_;
+    my $rr = ${$rEntry};
+    my $fpos0 = &tofpos($rr->[0],$rr->[1]);
+    while ( $fpos0 < $fpos ) {
+	my @F = split(/[ \t\r\n]+/,<$fh>);
+	next if ( $F[0] =~ /^#/ );
+	$fpos0 = &tofpos($F[0],$F[1]);
+	if ( defined($F[0]) ) {
+	    $rr = \@F;
+	}
+	else {
+	    $rr = [0,0];
+	}
+    }
+    ${$rEntry} = $rr;
+    return ( $fpos0 == $fpos ? 1 : 0 );
+}

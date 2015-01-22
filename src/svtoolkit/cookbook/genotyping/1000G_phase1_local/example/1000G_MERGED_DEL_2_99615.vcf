@@ -1,0 +1,5 @@
+##fileformat=VCFv4.1
+##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of this variant">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+20	3821195	MERGED_DEL_2_99615	A	<DEL>	.	.	END=3825137;SVTYPE=DEL
