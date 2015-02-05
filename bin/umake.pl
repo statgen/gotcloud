@@ -133,7 +133,7 @@ if(!$gcroot)
     foreach my $file (@configs)
     {
         my $fileContents;
-        open my $openFile, '<', $file or die $!;
+        open my $openFile, '<', $file or die "Cannot open $file file for reading: $!";
         $fileContents = <$openFile>;
         close $openFile;
 
@@ -521,18 +521,14 @@ foreach my $key (keys %deprecatedWarn)
     }
 }
 
-
-if(!getConf("BAM_LIST"))
+if(getConf("BAM_INDEX"))
 {
-    if(getConf("BAM_INDEX"))
-    {
-        setConf("BAM_LIST", getConf("BAM_INDEX"));
-    }
-    else
-    {
-        warn "ERROR: 'BAM_LIST' required, but not set.\n";
-        $failReqFile = "1";
-    }
+    setConf("BAM_LIST", getConf("BAM_INDEX"));
+}
+elsif(!getConf("BAM_LIST"))
+{
+    warn "ERROR: 'BAM_LIST' required, but not set.\n";
+    $failReqFile = "1";
 }
 
 #   These files must exist
@@ -1127,18 +1123,25 @@ if(scalar keys %isCram > 0)
     my %refM5s = ();
     foreach my $cram (sort(keys %isCram))
     {
-        open my $input, "-|", getConf("SAMTOOLS_FOR_OTHERS")." view -H $cram | grep -o \"M5:[0-9a-fA-F]*\""
+        open my $input, "-|", getConf("SAMTOOLS_FOR_OTHERS")." view -H $cram | grep \"^\@SQ\""
         or die "samtools failed to read header from $cram: $!";
         while(my $line = <$input>)
         {
             chomp $line;
-            $line =~ s/M5://;
-            $refM5s{$line} = 1;
+            $line =~ /M5:([0-9a-fA-F]*)/;
+            my $m5 = $1;
+            $line =~ /SN:([^\t]*)/;
+            $refM5s{$m5} = $1;
         }
     }
-    # Look for the ref file.
     foreach my $refM5 (sort (keys %refM5s))
     {
+        # Only validate for chromosomes in the reference.
+        # We already validated that all processed chromosomes are in the reference.
+        if(!exists $hChrSizes{$refM5s{$refM5}})
+        {
+            next;
+        }
         my $refPath = getConf("MD5_DIR");
         while($refPath =~ /([^%]*)%([0-9]*)s(.*)/)
         {
@@ -2603,8 +2606,10 @@ sub runPileup
     }
 
     my $baq = "";
+    my $clipIn = "-.ubam";
     if ( $baqFlag != 0 ) {
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
+        $clipIn = "-.uubam";
     }
 
     my $md5Dir = "";
@@ -2613,7 +2618,7 @@ sub runPileup
         $md5Dir = "REF_PATH=".getConf("MD5_DIR")." ";
     }
 
-    my $cmd = getMosixCmd("($md5Dir".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.uubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
+    my $cmd = getMosixCmd("($md5Dir".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in $clipIn --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);
