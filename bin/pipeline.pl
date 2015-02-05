@@ -724,7 +724,7 @@ for my $bam (sort keys %bam2sample)
     if($allChr)
     {
         # all chromosomes in the BAMs must be in the reference.
-        foreach my $chr (sort(keys $bamChrs{$bam}))
+        foreach my $chr (sort(keys %{$bamChrs{$bam}}))
         {
             if(!exists $hChrSizes{$chr})
             {
