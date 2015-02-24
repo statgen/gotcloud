@@ -10,8 +10,8 @@ $(OUT_DIR)/Sample3.OK: $(QC_DIR)/Sample3.genoCheck.done $(QC_DIR)/Sample3.qplot.
 
 $(QC_DIR)/Sample3.genoCheck.done: $(FINAL_BAM_DIR)/Sample3.recal.bam.done $(FINAL_BAM_DIR)/Sample3.recal.bam.bai.done
 	mkdir -p $(@D)
-	@echo `date +'%F.%H:%M:%S'`" $(VERIFY_BAM_ID_EXE) --bam $(basename $<) --out $(basename $@) --verbose --vcf $(HM3_VCF)   2> $(basename $@).log"
-	@$(VERIFY_BAM_ID_EXE) --bam $(basename $<) --out $(basename $@) --verbose --vcf $(HM3_VCF)   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
+	@echo `date +'%F.%H:%M:%S'`" $(VERIFY_BAM_ID_EXE) --bam $(basename $<) --out $(basename $@) --vcf $(HM3_VCF)   2> $(basename $@).log"
+	@$(VERIFY_BAM_ID_EXE) --bam $(basename $<) --out $(basename $@) --vcf $(HM3_VCF)   2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)
 	rm -f $(basename $@).log
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 
