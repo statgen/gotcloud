@@ -106,8 +106,8 @@ diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefile
     -I '^$(OUT_DIR)/Sample[1-3].OK: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].genoCheck.done .*/Sample[1-3].qplot.done$' \
     -I '^.*/Sample[1-3].recal.bam.bai.done: .*/Sample[1-3].recal.bam.done$' \
     -I '^.*/Sample[1-3].genoCheck.done: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].recal.bam.bai.done$' \
-    -I '@echo .*".* --bam $(basename $<) --out $(basename $@) --verbose --vcf .*  2> $(basename $@).log"$' \
-    -I '@.* --bam $(basename $<) --out $(basename $@) --verbose --vcf .*  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
+    -I '@echo .*".* --bam $(basename $<) --out $(basename $@) --vcf .*  2> $(basename $@).log"$' \
+    -I '@.* --bam $(basename $<) --out $(basename $@) --vcf .*  2> $(basename $@).log || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed verifyBamID step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
     -I '^.*/Sample[1-3].qplot.done: .*/Sample[1-3].recal.bam.done$' \
     -I '@echo .*".* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning [0-9]*"$' \
     -I '@.* polishBam -f .* --AS .* --UR file:.* --checkSQ -i $(basename $^) -o $(basename $@) -l $(basename $@).log --phoneHomeThinning [0-9]* || (echo "`grep -i -e abort -e error -e failed $(basename $@).log`" >&2; echo "Failed polishBam step" >&2; mkdir -p $(OUT_DIR)/failLogs; cp $(basename $@).log $(OUT_DIR)/failLogs/$(notdir $(basename $@).log); echo "See $(OUT_DIR)/failLogs/$(notdir $(basename $@).log) for more details" >&2; exit 1;)$' \
