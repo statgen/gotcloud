@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #################################################################
 #
 # Name: gclogger.pl write to a log file

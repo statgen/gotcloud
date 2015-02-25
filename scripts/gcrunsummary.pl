@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #################################################################
 #
 # Name: gcrunsummary.pl generate summary of a run

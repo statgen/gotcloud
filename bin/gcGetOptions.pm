@@ -1,6 +1,7 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 package gcGetOptions;
 
+use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use File::Basename;

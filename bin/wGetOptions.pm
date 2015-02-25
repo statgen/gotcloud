@@ -1,6 +1,7 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 package wGetOptions;
 
+use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use base qw/Exporter/;

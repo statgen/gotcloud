@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 #################################################################
 # vcf2beagle.pl
@@ -7,6 +7,7 @@
 #################################################################
 
 use strict;
+use warnings;
 use POSIX qw(log exp pow);
 use Getopt::Long;
 use IO::Zlib;

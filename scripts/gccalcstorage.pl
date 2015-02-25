@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #################################################################
 #
 # Name: gccalcstorage.pl process dir indexfile

@@ -1,6 +1,7 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 use strict;
+use warnings;
 
 die "Arguments @ARGV cannot be recognized\n" unless ($#ARGV == 1);
 my ($vcf1,$vcf2) = @ARGV;

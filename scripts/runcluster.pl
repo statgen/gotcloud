@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #################################################################
 #
 # Name: runcluster.pl [-v] engine_type cmd1 cmd2 ...

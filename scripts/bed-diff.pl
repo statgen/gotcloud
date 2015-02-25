@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 ## per-individual plot should include
 ## Average-depth across all chip sites
