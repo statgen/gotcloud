@@ -654,7 +654,7 @@ unless ( $outdir =~ /^\// ) {
 
 system("mkdir -p $outdir") &&
 die "Unable to create directory '$outdir'\n";
-my $makeBase = "$outdir/".getConf("MAKE_BASE_NAME_PIPE").".indel";
+my $makeBase = "$outdir/".getConf("MAKE_BASE_NAME_PIPE").".$opts{name}";
 dumpConf("$makeBase.conf");
 my $makef = "$makeBase.Makefile";
 
