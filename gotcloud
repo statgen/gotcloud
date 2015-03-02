@@ -113,6 +113,19 @@ if ( $fcn eq 'indel') {
     exit $rc>>8;
 }
 
+if ( $fcn eq 'pipe') {
+    foreach my $p ("$bindir/pipeline.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc>>8;
+}
+
 if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
 {
     foreach my $p ("$bindir/umake.pl") {
@@ -245,6 +258,7 @@ gotcloud [command] [options]
    beagle4         Run the Beagle version 4 genotype refinement pipeline
    genomestrip     Run the GenomeSTRiP pipeline.
    vc              Run the variant call steps that are configured on in your configuration file
+   pipe            Run a custom pipeline defined via configuration
 
  Visit http://genome.sph.umich.edu/wiki/GotCloud for more detailed documentation
 
@@ -283,6 +297,10 @@ Run the genomestrip pipeline. Type 'gotcloud genomestrip -help' for more detaile
 =item B<vc>
 
 Run the variant call steps that are configured on in your configuration file.  Type 'gotcloud vc -help' for more detailed information.
+
+=item B<pipe>
+
+Run a custom pipeline defined in configuration, specified using the --name parameter.  Type 'gotcloud pipe -help' for more detailed information.
 
 =item B<ldaware>
 
