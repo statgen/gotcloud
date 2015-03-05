@@ -79,7 +79,7 @@ TODO List:
 =cut
 
 our %CONF_HASH = ();                # Configuration values (hash of hashes)
-our %BASE_SECTION = ();             # Hash of section to its base
+
 #
 #   VERBOSE settings:
 #       0       nothing shown
@@ -198,6 +198,13 @@ sub dumpConf
     foreach my $section (keys %CONF_HASH)
     {
         next if($section eq $defaultSection);
+        # Print section header with dependency
+        my $baseSec = "";
+        if($CONF_HASH{$section}{BASE_SECTION} ne "global")
+        {
+            $baseSec = " : $CONF_HASH{$section}{BASE_SECTION}";
+        }
+        print OUT "[$section]$baseSec\n";
         foreach my $key (keys %{$CONF_HASH{$section}})
         {
             print OUT "$key = $CONF_HASH{$section}{$key}\n";
@@ -283,9 +290,21 @@ sub getConf {
     # if it isn't in this seciton, keep checking base sections
     while(!defined $val && defined $checkSection)
     {
+        if(!exists($CONF_HASH{$checkSection}))
+        {
+            warn "Failed: Section '$checkSection' is referenced in the configuration, but is not defined in the configuration files\n";
+            if ($VERBOSE <= 1) { exit(7); }        # Sometimes do not die (for testing)
+        }
+
         $val = $CONF_HASH{$checkSection}{$key};
-        last if($checkSection eq 'global');
-        $checkSection = $BASE_SECTION{$checkSection};
+        if($checkSection eq 'global')
+        {
+            last;
+        }
+        else
+        {
+            $checkSection = $CONF_HASH{$checkSection}{BASE_SECTION};
+        }
     }
 
     if(!defined $val)
@@ -311,7 +330,7 @@ sub getConf {
             while((defined $checkSection) && ($checkSection ne 'global') &&
                   ($checkSection ne $varSection))
             {
-                $checkSection = $BASE_SECTION{$checkSection};
+                $checkSection = $CONF_HASH{$checkSection}{BASE_SECTION};
             }
             if($checkSection ne $varSection)
             {
@@ -336,7 +355,7 @@ sub getConf {
         # Didn't find it in the section, so check the base if not global.
         while(defined $checkSection && $checkSection ne 'global')
         {
-            $checkSection = $BASE_SECTION{$checkSection};
+            $checkSection = $CONF_HASH{$checkSection}{BASE_SECTION};
             if(exists($CONF_HASH{$checkSection}{$var}))
             {
                 $val = $pre . $CONF_HASH{$checkSection}{$var} . $post;
@@ -388,14 +407,12 @@ sub ReadConfig {
         #   Sections look like [ name ]
         if (/^\[\s*(\w+)\s*\]\s*(?::\s*(\w+)\s*)?$/ ) {
             $section = $1;
+            my $baseSec = 'global';
             if(defined $2)
             {
-                $BASE_SECTION{$section} = $2;
+                $baseSec = $2;
             }
-            else
-            {
-                $BASE_SECTION{$section} = 'global';
-            }
+            $CONF_HASH{$section}{BASE_SECTION} = $baseSec;
             next;
         }
         #   Rest looks like  key=value
