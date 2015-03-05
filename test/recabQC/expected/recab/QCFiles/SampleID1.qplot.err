@@ -1,0 +1,38 @@
+
+
+
+                   References : --reference [human_g1k_v37_chr20.fa],
+                                --dbsnp [dbsnp135_chr20.vcf.gz]
+      GC content file options : --winsize [100]
+                  Region list : --regions [], --invertRegion,
+                                --fraction [-1.0e+00]
+                 Flag filters : --read1_skip, --read2_skip, --paired_skip,
+                                --unpaired_skip
+   Secondary, Dup, and QCFail : --secondary_keep, --dup_keep, --qcfail_keep
+              Mapping filters : --minMapQuality [0.00]
+           Records to process : --first_n_record [-1]
+             Lanes to process : --lanes []
+        Read group to process : --readGroup []
+           Input file options : --noeof
+                 Output files : --plot [],
+                                --stats [SampleID1.qplot.stats],
+                                --Rcode [SampleID1.qplot.R],
+                                --xml []
+                  Plot labels : --label [], --bamLabel [recal]
+       Obsoleted (DO NOT USE) : --gccontent [], --create_gc
+
+QPLOT (Ver: 20130821) started.
+QPLOT Documentation: http://genome.sph.umich.edu/wiki/QPLOT
+
+Reference genome file [ human_g1k_v37_chr20.fa ] is used.
+GC content file [ human_g1k_v37_chr20.winsize100.gc ] is used for window size 100.
+The following files are to be processed...
+
+Sample1.recal.bam
+
+Loading reference... DONE! Total sequence length 63025520
+Sampling whole genome at -1.000000
+DONE!
+Loading dbSNP...DONE!
+Reading GC content......DONE!
+Processing BAM/SAM file Sample1.recal.bam...

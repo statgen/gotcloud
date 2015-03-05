@@ -1,0 +1,131 @@
+
+Available Options
+                             Input Files : --vcf [hapmap_3.3.b37.sites.chr20.vcf.gz],
+                                           --bam [Sample3.recal.bam],
+                                           --subset [], --smID []
+                    VCF analysis options : --genoError [1.0e-03],
+                                           --minAF [0.01],
+                                           --minCallRate [0.50]
+   Individuals to compare with chip data : --site, --self, --best
+          Chip-free optimization options : --free-none, --free-mix [ON],
+                                           --free-refBias, --free-full
+          With-chip optimization options : --chip-none, --chip-mix [ON],
+                                           --chip-refBias, --chip-full
+                    BAM analysis options : --ignoreRG, --ignoreOverlapPair,
+                                           --noEOF, --precise, --minMapQ [10],
+                                           --maxDepth [20], --minQ [13],
+                                           --maxQ [40], --grid [0.05]
+                 Modeling Reference Bias : --refRef [1.00], --refHet [0.50],
+                                           --refAlt [0.00]
+                          Output options : --out [SampleID3.genoCheck],
+                                           --verbose
+                               PhoneHome : --noPhoneHome,
+                                           --phoneHomeThinning [50]
+
+WARNING : Skipping marker 20:67694 with multiple alternative alleles
+WARNING : Skipping marker 20:311760 with multiple alternative alleles
+WARNING : Skipping marker 20:688741 with multiple alternative alleles
+WARNING : Skipping marker 20:1914951 with multiple alternative alleles
+WARNING : Skipping marker 20:3050393 with multiple alternative alleles
+WARNING : Skipping marker 20:3088300 with multiple alternative alleles
+WARNING : Skipping marker 20:3129328 with multiple alternative alleles
+WARNING : Skipping marker 20:3826076 with multiple alternative alleles
+WARNING : Skipping marker 20:5081499 with multiple alternative alleles
+WARNING : Skipping marker 20:5443712 with multiple alternative alleles
+WARNING : Skipping marker 20:7334992 with multiple alternative alleles
+WARNING : Skipping marker 20:8639218 with multiple alternative alleles
+WARNING : Skipping marker 20:13029674 with multiple alternative alleles
+WARNING : Skipping marker 20:13962841 with multiple alternative alleles
+WARNING : Skipping marker 20:14227633 with multiple alternative alleles
+WARNING : Skipping marker 20:14958635 with multiple alternative alleles
+WARNING : Skipping marker 20:15572666 with multiple alternative alleles
+WARNING : Skipping marker 20:18118956 with multiple alternative alleles
+WARNING : Skipping marker 20:20096712 with multiple alternative alleles
+WARNING : Skipping marker 20:21503997 with multiple alternative alleles
+WARNING : Skipping marker 20:23533878 with multiple alternative alleles
+WARNING : Skipping marker 20:23654689 with multiple alternative alleles
+WARNING : Skipping marker 20:23809681 with multiple alternative alleles
+WARNING : Skipping marker 20:23958677 with multiple alternative alleles
+WARNING : Skipping marker 20:23959982 with multiple alternative alleles
+WARNING : Skipping marker 20:24151801 with multiple alternative alleles
+WARNING : Skipping marker 20:24964558 with multiple alternative alleles
+WARNING : Skipping marker 20:25556801 with multiple alternative alleles
+WARNING : Skipping marker 20:26102104 with multiple alternative alleles
+WARNING : Skipping marker 20:26288197 with multiple alternative alleles
+WARNING : Skipping marker 20:29619497 with multiple alternative alleles
+WARNING : Skipping marker 20:30071349 with multiple alternative alleles
+WARNING : Skipping marker 20:30082488 with multiple alternative alleles
+WARNING : Skipping marker 20:30310433 with multiple alternative alleles
+WARNING : Skipping marker 20:30457739 with multiple alternative alleles
+WARNING : Skipping marker 20:30701513 with multiple alternative alleles
+WARNING : Skipping marker 20:31169623 with multiple alternative alleles
+WARNING : Skipping marker 20:31317270 with multiple alternative alleles
+WARNING : Skipping marker 20:31680234 with multiple alternative alleles
+WARNING : Skipping marker 20:32015507 with multiple alternative alleles
+WARNING : Skipping marker 20:32168299 with multiple alternative alleles
+WARNING : Skipping marker 20:32191540 with multiple alternative alleles
+WARNING : Skipping marker 20:32590430 with multiple alternative alleles
+WARNING : Skipping marker 20:32883308 with multiple alternative alleles
+WARNING : Skipping marker 20:32938194 with multiple alternative alleles
+WARNING : Skipping marker 20:33303095 with multiple alternative alleles
+WARNING : Skipping marker 20:33448728 with multiple alternative alleles
+WARNING : Skipping marker 20:34328756 with multiple alternative alleles
+WARNING : Skipping marker 20:34473568 with multiple alternative alleles
+WARNING : Skipping marker 20:34758199 with multiple alternative alleles
+WARNING : Skipping marker 20:35145972 with multiple alternative alleles
+WARNING : Skipping marker 20:35348150 with multiple alternative alleles
+WARNING : Skipping marker 20:35526283 with multiple alternative alleles
+WARNING : Skipping marker 20:35533965 with multiple alternative alleles
+WARNING : Skipping marker 20:35565114 with multiple alternative alleles
+WARNING : Skipping marker 20:36639968 with multiple alternative alleles
+WARNING : Skipping marker 20:36640643 with multiple alternative alleles
+WARNING : Skipping marker 20:36751726 with multiple alternative alleles
+WARNING : Skipping marker 20:39308821 with multiple alternative alleles
+WARNING : Skipping marker 20:39791310 with multiple alternative alleles
+WARNING : Skipping marker 20:42674456 with multiple alternative alleles
+WARNING : Skipping marker 20:43104944 with multiple alternative alleles
+WARNING : Skipping marker 20:43109405 with multiple alternative alleles
+WARNING : Skipping marker 20:43126745 with multiple alternative alleles
+WARNING : Skipping marker 20:43143667 with multiple alternative alleles
+WARNING : Skipping marker 20:43448448 with multiple alternative alleles
+WARNING : Skipping marker 20:43536455 with multiple alternative alleles
+WARNING : Skipping marker 20:43629046 with multiple alternative alleles
+WARNING : Skipping marker 20:44272298 with multiple alternative alleles
+WARNING : Skipping marker 20:44419688 with multiple alternative alleles
+WARNING : Skipping marker 20:44552107 with multiple alternative alleles
+WARNING : Skipping marker 20:44636364 with multiple alternative alleles
+WARNING : Skipping marker 20:44688665 with multiple alternative alleles
+WARNING : Skipping marker 20:44833487 with multiple alternative alleles
+WARNING : Skipping marker 20:45158310 with multiple alternative alleles
+WARNING : Skipping marker 20:45435281 with multiple alternative alleles
+WARNING : Skipping marker 20:46431392 with multiple alternative alleles
+WARNING : Skipping marker 20:47131021 with multiple alternative alleles
+WARNING : Skipping marker 20:47679756 with multiple alternative alleles
+WARNING : Skipping marker 20:47730270 with multiple alternative alleles
+WARNING : Skipping marker 20:48160902 with multiple alternative alleles
+WARNING : Skipping marker 20:48163126 with multiple alternative alleles
+WARNING : Skipping marker 20:48164549 with multiple alternative alleles
+WARNING : Skipping marker 20:48523294 with multiple alternative alleles
+WARNING : Skipping marker 20:49373221 with multiple alternative alleles
+WARNING : Skipping marker 20:49505824 with multiple alternative alleles
+WARNING : Skipping marker 20:52073116 with multiple alternative alleles
+WARNING : Skipping marker 20:52192974 with multiple alternative alleles
+WARNING : Skipping marker 20:52767628 with multiple alternative alleles
+WARNING : Skipping marker 20:52786273 with multiple alternative alleles
+WARNING : Skipping marker 20:53108359 with multiple alternative alleles
+WARNING : Skipping marker 20:54566060 with multiple alternative alleles
+WARNING : Skipping marker 20:55028088 with multiple alternative alleles
+WARNING : Skipping marker 20:55042742 with multiple alternative alleles
+WARNING : Skipping marker 20:55089586 with multiple alternative alleles
+WARNING : Skipping marker 20:56305785 with multiple alternative alleles
+WARNING : Skipping marker 20:56591604 with multiple alternative alleles
+WARNING : Skipping marker 20:57435506 with multiple alternative alleles
+WARNING : Skipping marker 20:57900658 with multiple alternative alleles
+WARNING : Skipping marker 20:57933730 with multiple alternative alleles
+WARNING : Skipping marker 20:58631326 with multiple alternative alleles
+WARNING : Skipping marker 20:60264337 with multiple alternative alleles
+WARNING : Skipping marker 20:60988010 with multiple alternative alleles
+WARNING : Skipping marker 20:61339184 with multiple alternative alleles
+WARNING : Skipping marker 20:61513446 with multiple alternative alleles
+WARNING : Skipping marker 20:62164726 with multiple alternative alleles
+WARNING : Skipping marker 20:62566353 with multiple alternative alleles
