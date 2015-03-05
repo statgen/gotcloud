@@ -81,7 +81,7 @@ Getopt::Long::GetOptions( \%opts,qw(
 #   Simple help if requested, sanity check input options
 if ($opts{help}) {
     warn "$me$mesuffix [options]\n" .
-        "Use this to generate a makefile for indel calling.\n" .
+        "Use this to generate a makefile for the pipeline specified via --name.\n" .
         "More details available by entering: perldoc $0\n\n";
     if ($opts{help}) { system("perldoc $0"); }
     exit 1;
@@ -139,19 +139,24 @@ if ($opts {test}) {
     system("rm -rf $testoutdir") &&
         die "Unable to clear the test output directory '$testoutdir'\n";
     print "Running GOTCLOUD TEST, test log in: $testoutdir.log\n";
-    my $testdir = $gotcloudRoot . "/test/umake";
+    my $testdir = $gotcloudRoot . "/test/$opts{name}";
     if(! -r $testdir)
     {
         die "ERROR, '$testdir' does not exist, please download the test data to that directory\n";
     }
-    my $cmd = "$0 --name $opts{name} -conf $testdir/umake_test.conf -out $testoutdir --numjobs 2";
+    my $cmd = "$0 --name $opts{name} -conf $testdir/$opts{name}.conf -out $testoutdir --numjobs 2";
     if($opts{gotcloudroot})
     {
         $cmd .= " --gotcloudRoot $gotcloudRoot";
     }
     system($cmd) &&
         die "Failed to generate test data. Not a good thing.\nCMD=$cmd\n";
-    $cmd = "$gotcloudRoot/scripts/diff_results_indel.sh $outdir $gotcloudRoot/test/indel/expected";
+    my $diffScript = "$gotcloudRoot/scripts/diff_results_$opts{name}.sh";
+    if(! -r $diffScript)
+    {
+        $diffScript = "$gotcloudRoot/scripts/diff_results_pipeline.sh";
+    }
+    $cmd = "$diffScript $testoutdir $gotcloudRoot/test/$opts{name}/expected $opts{name}";
     system($cmd) &&
         die "Comparison failed, test case FAILED.\nCMD=$cmd\n";
     print "Successfully ran the test case, congratulations!\n";
@@ -507,74 +512,97 @@ foreach my $bed (@uniqBeds) {
 }
 
 ############################################################################
+# Get the steps for this pipeline.
+############################################################################
+my @steps = split(' ', getStepConf($opts{name},"STEPS", 1));
+
+############################################################################
 # DETERMINE THE CHR REGIONS
 ############################################################################
+# Check if any of the steps are broken down by CHR.
+my $byChr = 0;
+foreach my $step (@steps)
+{
+    if(getStepType($step) =~ /PerChr/)
+    {
+        $byChr = 1;
+        last;
+    }
+}
+
+
 my %regions = ();
 
 my @chrs = split(/\s+/,getConf("CHRS"));
 my $unitChunk = getStepConf($opts{name},"UNIT_CHUNK");
-foreach my $chr (@chrs)
+
+# Only need to set the chromsomes and regions if $byChr is set.
+if($byChr == 1)
 {
-    if(! defined $hChrSizes{$chr})
+    foreach my $chr (@chrs)
     {
-        if($chr =~ /^chr/)
+        if(! defined $hChrSizes{$chr})
         {
-            my $tmpChr = $chr;
-            $tmpChr =~ s/^chr//;
-            if(defined($hChrSizes{$tmpChr}))
+            if($chr =~ /^chr/)
             {
-                die "ERROR: Cannot find chromosome name, '$chr', in the reference file (ref has '$tmpChr').  Set 'CHRS' consistent with the reference file.\n";
+                my $tmpChr = $chr;
+                $tmpChr =~ s/^chr//;
+                if(defined($hChrSizes{$tmpChr}))
+                {
+                    die "ERROR: Cannot find chromosome name, '$chr', in the reference file (ref has '$tmpChr').  Set 'CHRS' consistent with the reference file.\n";
+                }
             }
+            else
+            {
+                if(defined($hChrSizes{"chr".$chr}))
+                {
+                    die "ERROR: Cannot find chromosome name, '$chr', in the reference file (ref has 'chr$chr').  Set 'CHRS' consistent with the reference file.\n";
+                }
+            }
+            warn "skipping $chr, since it is not in the reference\n";
+            # add no regions.
+            my @tmpReg;
+            push(@{$regions{$chr}}, @tmpReg);
+            next;
         }
-        else
+        for(my $j=0; $j < $hChrSizes{$chr}; $j += $unitChunk)
         {
-            if(defined($hChrSizes{"chr".$chr}))
-            {
-                die "ERROR: Cannot find chromosome name, '$chr', in the reference file (ref has 'chr$chr').  Set 'CHRS' consistent with the reference file.\n";
-            }
-        }
-        warn "skipping $chr, since it is not in the reference\n";
-        # add no regions.
-        my @tmpReg;
-        push(@{$regions{$chr}}, @tmpReg);
-        next;
-    }
-    for(my $j=0; $j < $hChrSizes{$chr}; $j += $unitChunk)
-    {
-        my $start = sprintf("%d",$j+1);
-        my $end = ($j+$unitChunk > $hChrSizes{$chr}) ? $hChrSizes{$chr} : sprintf("%d",$j+$unitChunk);
+            my $start = sprintf("%d",$j+1);
+            my $end = ($j+$unitChunk > $hChrSizes{$chr}) ? $hChrSizes{$chr} : sprintf("%d",$j+$unitChunk);
 
-        ## if --region was specified, check overlap and skip if necessary
-        next if ( defined($callstart) && ( ( $start > $callend ) || ( $end < $callstart ) ) );
+            ## if --region was specified, check overlap and skip if necessary
+            next if ( defined($callstart) && ( ( $start > $callend ) || ( $end < $callstart ) ) );
 
-        # if targeted sequencing, check if the region overlaps
-        # with any of the known targets
-        my $inTarget = ($#uniqBeds < 0) ? 1 : 0;
-        if ( $inTarget == 0 ) {
-            for(my $k=0; ($k < @uniqBeds) && ( $inTarget == 0) ; ++$k) {
-                foreach my $p (@{$targetIntervals[$k]->{$chr}}) {
-                    # check if any of target overlaps
-                    unless ( ( $p->[1] < $start ) || ( $p->[0] > $end ) ) {
-                        $inTarget = 1;
-                        last;
+            # if targeted sequencing, check if the region overlaps
+            # with any of the known targets
+            my $inTarget = ($#uniqBeds < 0) ? 1 : 0;
+            if ( $inTarget == 0 ) {
+                for(my $k=0; ($k < @uniqBeds) && ( $inTarget == 0) ; ++$k) {
+                    foreach my $p (@{$targetIntervals[$k]->{$chr}}) {
+                        # check if any of target overlaps
+                        unless ( ( $p->[1] < $start ) || ( $p->[0] > $end ) ) {
+                            $inTarget = 1;
+                            last;
+                        }
                     }
                 }
             }
+            if ( $inTarget == 1 ) {
+                my @tmpReg = [$start, $end];
+                push(@{$regions{$chr}}, @tmpReg);
+            }
         }
-        if ( $inTarget == 1 ) {
-            my @tmpReg = [$start, $end];
-            push(@{$regions{$chr}}, @tmpReg);
-        }
-    }
-    if(! exists $regions{$chr})
-    {
-        if($#uniqBeds < 0)
+        if(! exists $regions{$chr})
         {
-            die "ERROR: no regions in chromosome, $chr.  Fix the problem or remove it from CHRS & rerun.\n";
+            if($#uniqBeds < 0)
+            {
+                die "ERROR: no regions in chromosome, $chr.  Fix the problem or remove it from CHRS & rerun.\n";
+            }
+            die "ERROR: no regions in the BED files for chromosome, $chr.  Fix the problem or remove it from CHRS & rerun.\n";
         }
-        die "ERROR: no regions in the BED files for chromosome, $chr.  Fix the problem or remove it from CHRS & rerun.\n";
     }
 }
+
 
 #----------------------------------------------------------------------------
 # Get BAM chromosome names.
@@ -677,10 +705,8 @@ my %tmpVals = ();
 my %allowedTmpVals = (BAM=>1, SAMPLE=>1);
 
 #############################################################################
-#   Start INDEL specific part.
+#   Start the Pipeline specific part.
 my $stepTargets = "";
-
-my @steps = split(' ', getStepConf($opts{name},"STEPS", 1));
 
 my %allDirs = ();
 my %allStepInfo;
@@ -688,27 +714,29 @@ my %allStepInfo;
 my %allFileLists = ();
 
 my $needbai = 0;
-my $allChr = 0;
+my $allBamChr = 0;
 
 print MAK "all: @steps\n";
 foreach my $step (@steps)
 {
     setupStepSettings($step);
 
-    if(($needbai != 1) || ($allChr != 1))
+    if(($needbai != 1) || ($allBamChr != 1))
     {
         foreach my $depend (@{$allStepInfo{$step}{DEPEND}})
         {
             if(($depend eq "BAM") || ($depend eq "PER_SAMPLE_BAM"))
             {
-                # Depends on BAMs, check if it just runs by region.
-                if(getStepInfo($step, "TYPE") =~ /PerChr/)
+                # Depends on BAMs, check if it just runs by region or
+                # requires BAM BAI.
+                if((getStepInfo($step, "TYPE") =~ /PerChr/) ||
+                   (getStepConf($step, "NEED_BAI")))
                 {
                     $needbai = 1;
                 }
                 else
                 {
-                    $allChr = 1;
+                    $allBamChr = 1;
                 }
                 last;
             }
@@ -716,12 +744,11 @@ foreach my $step (@steps)
     }
 }
 
-
 my %numBamWarn = ();
 for my $bam (sort keys %bam2sample)
 {
     # Validate all BAM chromosomes are in the reference.
-    if($allChr)
+    if($allBamChr)
     {
         # all chromosomes in the BAMs must be in the reference.
         foreach my $chr (sort(keys %{$bamChrs{$bam}}))
@@ -745,31 +772,35 @@ for my $bam (sort keys %bam2sample)
     }
     if($needbai)
     {
-        # Only check that all of the chromosomes in CHRS are in the BAM.
-        foreach my $chr (@chrs)
+        # Only if breaking up by chromosome, check that all of the
+        #  chromosomes in CHRS are in the BAM.
+        if($byChr == 1)
         {
-            if(!exists $bamChrs{$bam}{$chr})
+            foreach my $chr (@chrs)
             {
-                if($chr =~ /^chr/)
+                if(!exists $bamChrs{$bam}{$chr})
                 {
-                    my $tmpChr = $chr;
-                    $tmpChr =~ s/^chr//;
-                    if(exists $bamChrs{$bam}{$tmpChr})
+                    if($chr =~ /^chr/)
                     {
-                        die "ERROR: Cannot find chromosome name, '$chr', in BAM file, '$bam', instead it has '$tmpChr'.  The BAM file, CHRS, and the reference file must have consistent chromosome names.\n";
+                        my $tmpChr = $chr;
+                        $tmpChr =~ s/^chr//;
+                        if(exists $bamChrs{$bam}{$tmpChr})
+                        {
+                            die "ERROR: Cannot find chromosome name, '$chr', in BAM file, '$bam', instead it has '$tmpChr'.  The BAM file, CHRS, and the reference file must have consistent chromosome names.\n";
+                        }
                     }
-                }
-                else
-                {
-                    if(exists $bamChrs{$bam}{"chr".$chr})
+                    else
                     {
-                        die "ERROR: Cannot find chromosome name, '$chr', in BAM file, '$bam', instead it has 'chr$chr'.  The BAM file, CHRS, and the reference file must have consistent chromosome names.\n";
+                        if(exists $bamChrs{$bam}{"chr".$chr})
+                        {
+                            die "ERROR: Cannot find chromosome name, '$chr', in BAM file, '$bam', instead it has 'chr$chr'.  The BAM file, CHRS, and the reference file must have consistent chromosome names.\n";
+                        }
                     }
-                }
-                ++$numBamWarn{$chr};
-                if($numBamWarn{$chr} == 1)
-                {
-                    warn "Warning: $chr in 'CHRS' was not found in BAM, $bam.\n";
+                    ++$numBamWarn{$chr};
+                    if($numBamWarn{$chr} == 1)
+                    {
+                        warn "Warning: $chr in 'CHRS' was not found in BAM, $bam.\n";
+                    }
                 }
             }
         }
@@ -1040,6 +1071,10 @@ sub handleDepends
                     # Only this sample
                     if($depend eq "PER_SAMPLE_BAM")
                     {
+                        if(!defined $sample2SingleBam{$sample})
+                        {
+                            die "ERROR Step, $step, only works for 1 BAM per sample, but $sample has multiple BAMs.\nFix bam.list, modify your steps to merge the BAMs, or limit the samples for this step.\n";
+                        }
                         @depBams = $sample2SingleBam{$sample};
                     }
                     else
