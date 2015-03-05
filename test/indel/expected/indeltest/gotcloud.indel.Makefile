@@ -1,7 +1,7 @@
 .DELETE_ON_ERROR:
 .DEFAULT_GOAL := all
 
-all: mergeBam indexBam singleBamDiscover multiBamDiscover indexD merge indexM probes indexP singleBamGenotype multiBamGenotype indexG concatG indexCG mergeG indexMG concat indexC
+all: indel_mergeBam indel_indexMBam singleBamDiscover multiBamDiscover indexD merge indexM probes indexP singleBamGenotype multiBamGenotype indexG concatG indexCG mergeG indexMG concat indexC
 mergedBams/NA12045.bam.OK: | mergedBams/
 	scripts/runcluster.pl local 'bin/bam mergeBam --in test/umake/bams/NA12045.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam --in test/umake/bams/NA12045.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam --out mergedBams/NA12045.bam'
 	touch mergedBams/NA12045.bam.OK
@@ -22,7 +22,7 @@ mergedBams/NA12043.bam.OK: | mergedBams/
 	scripts/runcluster.pl local 'bin/bam mergeBam --in test/umake/bams/NA12043.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam --in test/umake/bams/NA12043.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam --out mergedBams/NA12043.bam'
 	touch mergedBams/NA12043.bam.OK
 
-mergeBam: mergedBams/NA12045.bam.OK mergedBams/NA12249.bam.OK mergedBams/NA11931.bam.OK mergedBams/NA11918.bam.OK mergedBams/NA12043.bam.OK
+indel_mergeBam: mergedBams/NA12045.bam.OK mergedBams/NA12249.bam.OK mergedBams/NA11931.bam.OK mergedBams/NA11918.bam.OK mergedBams/NA12043.bam.OK
 
 mergedBams/NA12045.bam.bai.OK: mergedBams/NA12045.bam.OK | mergedBams/
 	scripts/runcluster.pl local 'bin/samtools index mergedBams/NA12045.bam 2> mergedBams/NA12045.bam.bai.log'
@@ -44,7 +44,7 @@ mergedBams/NA12043.bam.bai.OK: mergedBams/NA12043.bam.OK | mergedBams/
 	scripts/runcluster.pl local 'bin/samtools index mergedBams/NA12043.bam 2> mergedBams/NA12043.bam.bai.log'
 	touch mergedBams/NA12043.bam.bai.OK
 
-indexBam: mergedBams/NA12045.bam.bai.OK mergedBams/NA12249.bam.bai.OK mergedBams/NA11931.bam.bai.OK mergedBams/NA11918.bam.bai.OK mergedBams/NA12043.bam.bai.OK
+indel_indexMBam: mergedBams/NA12045.bam.bai.OK mergedBams/NA12249.bam.bai.OK mergedBams/NA11931.bam.bai.OK mergedBams/NA11918.bam.bai.OK mergedBams/NA12043.bam.bai.OK
 
 indelvcf/NA12272/NA12272.sites.bcf.OK: | indelvcf/NA12272/
 	scripts/runcluster.pl local 'vt discover -b test/umake/bams/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam -o + -v indels -r test/chr20Ref/human_g1k_v37_chr20.fa -s NA12272  2> indelvcf/NA12272/discover.log | vt normalize + -r test/chr20Ref/human_g1k_v37_chr20.fa -o + 2> indelvcf/NA12272/normalize.log | vt mergedups + -o indelvcf/NA12272/NA12272.sites.bcf 2> indelvcf/NA12272/mergedups.log'
