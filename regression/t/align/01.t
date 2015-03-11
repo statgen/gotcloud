@@ -3,7 +3,7 @@
 #   Regression testing for the aligner
 #
 ###################################################################
-use Test::More tests => 12;
+use Test::More tests => 13;
 use strict;
 use Cwd;
 
@@ -65,7 +65,7 @@ system("rm -rf $tmpdir");
 $f = '/dev/null';
 $aref = run_align($f);
 #warn "\n" . $f . "\n";
-like ($aref->[0], qr/INDEX_FILE was not specified/, 'must specify INDEX_FILE');
+like ($aref->[0], qr/FASTQ_LIST was not specified/, 'must specify FASTQ_LIST');
 show(0);
 
 $f = '01.conf';
@@ -95,10 +95,12 @@ show(0);
 $f = '06.conf';
 $aref = run_align($f);
 #warn "\n" . $f . "\n";
-like ($aref->[0], qr/Created .+align_Sample2.Makefile/, 'Makefile 2 created');
+like ($aref->[0], qr/Created .+align_Sample1.Makefile/, 'Makefile 1 created');
 show(0);
-like ($aref->[1], qr/Created .+align_Sample3.Makefile/, 'Makefile 3 created');
+like ($aref->[1], qr/Created .+align_Sample2.Makefile/, 'Makefile 2 created');
 show(1);
+like ($aref->[2], qr/Created .+align_Sample3.Makefile/, 'Makefile 3 created');
+show(2);
 
 $f = '08.conf';
 $aref = run_align($f);
