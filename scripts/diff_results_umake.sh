@@ -178,7 +178,7 @@ done
 
 set +e                          # Do not fail on errors
 for file in $EXPECTED_VCF_GZS; do
-    zdiff -I"^##filedate=.*$" -I"^#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	.*$" $file ${file/$EXPECTED_DIR/$RESULTS_DIR} >> $DIFFRESULTS;
+    zdiff -I"^##filedate=.*$" -I"^#CHROM\sPOS\sID\sREF\sALT\sQUAL\sFILTER\sINFO\sFORMAT\s.*$" $file ${file/$EXPECTED_DIR/$RESULTS_DIR} >> $DIFFRESULTS;
     if [ $? -ne 0 ] ; then
         echo "$file failed. See mismatches in $DIFFRESULTS"
         status=2
