@@ -11,7 +11,7 @@ split20: $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK
 
 $(OUT_DIR)/split/chr20/subset.OK: $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK
 	mkdir --p $(OUT_DIR)/split/chr20
-	bash -c "set -e -o pipefail; zcat $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz | grep -E \"\sPASS\s|^#\" | $(GOTCLOUD_ROOT)/bin/bgzip -c > $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz"
+	bash -c "set -e -o pipefail; zcat $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz | grep -E \"[[:space:]]PASS[[:space:]]|^#\" | $(GOTCLOUD_ROOT)/bin/bgzip -c > $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz"
 	if [ -e  $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz ]; then touch $(OUT_DIR)/split/chr20/subset.OK; else exit 1; fi
 
 $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK: $(OUT_DIR)/split/chr20/subset.OK
