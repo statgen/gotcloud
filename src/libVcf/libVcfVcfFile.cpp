@@ -628,7 +628,7 @@ void VcfMarker::setInfo(const String& s, bool upgrade, bool updateAC) {
 	asInfoValues[i] = "";
       }
       else {
-	if ( strncmp(tmpTokens[i].c_str(),asInfoKeys[i].c_str(),equalsPos-1) != 0 )  {
+	if ( strncmp(tmpTokens[i].c_str(),asInfoKeys[i].c_str(),equalsPos) != 0 )  {//remove minus 1, bug shows up when comparing like AF=0.01 against AVG etc.
 	  bPreserved = false;
 	  asInfoKeys[i] = tmpTokens[i].Mid(0,equalsPos-1);
 	}
