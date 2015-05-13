@@ -53,6 +53,7 @@ GenMatrixBinary::GenMatrixBinary(const char* vcfFile, bool siteOnly, std::vector
     bytesPerMarker = (indids.size() + 3)/4;
   }
 
+  int numNonAutoWarn = 0;
   // read each marker and stores genotype
   while( vcf.iterateMarker() ) {
     // set per-marker level information
@@ -61,6 +62,15 @@ GenMatrixBinary::GenMatrixBinary(const char* vcfFile, bool siteOnly, std::vector
     }
 
     pMarker = vcf.getLastMarker();
+
+    // Non-autosomal chromosomes must be discarded
+    if ( atoi(pMarker->sChrom.c_str()) == 0 ) {
+        if(++numNonAutoWarn <= 5)
+        {
+            Logger::gLogger->warning("Skipping no-autosomal marker %s:%d",pMarker->sChrom.c_str(),pMarker->nPos);
+        }
+        continue;
+    }    
 
     // get allele frequency information from VCF file
     // if site-only is set
