@@ -209,12 +209,12 @@ void ReportGenotypes(FullLikelihood & lk, glfHandler * glf, int n,
      ploidies[1] = 2;
    }
    if (lk.chromosomeType == CT_CHRX) {
-     ploidies[0] = 1;
-     ploidies[1] = 2;
+     ploidies[0] = 2;
+     ploidies[1] = 1;
    }
    else if ( lk.chromosomeType == CT_CHRY) {
-     ploidies[0] = 1;
-     ploidies[1] = 0;
+     ploidies[0] = 0;
+     ploidies[1] = 1;
    }
    else if (lk.chromosomeType == CT_MITO)
      ploidies[0] = ploidies[1] = 1;
@@ -259,7 +259,7 @@ void ReportGenotypes(FullLikelihood & lk, glfHandler * glf, int n,
 
 
    for (int i = 0; i < n; i++)  {
-      int sex = lk.sexes[i] == SEX_MALE ? 1 : 0;
+     int ismale = (lk.sexes[i] == SEX_MALE ? 1 : 0);  // sex=1 indicates males, sex=0 indicates 
 
       const unsigned char * llks = glf[i].GetLogLikelihoods(position);
 
@@ -271,7 +271,7 @@ void ReportGenotypes(FullLikelihood & lk, glfHandler * glf, int n,
 	error("ref = %d, alt = %d, best = %d, best2idx[best] = %d, GPs=%.6lg,%.6lg,%.6lg,%.6lg,%.6lg,%.6lg,%.6lg,%.6lg,%.6lg,%.6lg",refAllele,altBases[0],best,best2idx[best],lk.GPs[i*10+0],lk.GPs[i*10+1],lk.GPs[i*10+2],lk.GPs[i*10+3],lk.GPs[i*10+4],lk.GPs[i*10+5],lk.GPs[i*10+6],lk.GPs[i*10+7],lk.GPs[i*10+8],lk.GPs[i*10+9]);
       }
 
-      if ( ploidies[sex] == 2 ) {
+      if ( ploidies[ismale] == 2 ) {
 	genotypes.catprintf("\t%s:%d:%d",labels[best2idx[best]],depth,quality);
 	++acs[allele1s[best]];
 	++acs[allele2s[best]];
@@ -280,7 +280,7 @@ void ReportGenotypes(FullLikelihood & lk, glfHandler * glf, int n,
 	  ++ns;
 	}
       }
-      else if ( ploidies[sex] == 1 ) {
+      else if ( ploidies[ismale] == 1 ) {
 	genotypes.catprintf("\t%s:%d:%d",labelsH[best2idx[best]],depth,quality);
 	++acs[allele1s[best]];
 	if ( depth > 0 ) {
@@ -543,11 +543,12 @@ int main(int argc, char ** argv) {
   String callfile;
   String glfAliases;
   String region;
-  String sfsfile;  // custom site frequency spectrum
-  bool afprior = false;    // use AF prior from site vcf
-  bool skipDetect = false; // skip variant detection
-  bool printMono = true;  // print monomorphic variants
-  bool glfsingle = false;  // use glfsingle model
+  String sfsfile;            // custom site frequency spectrum
+  bool afprior = false;      // use AF prior from site vcf
+  bool skipDetect = false;   // skip variant detection
+  bool printMono = true;     // print monomorphic variants
+  bool glfsingle = false;    // use glfsingle model
+  bool fastsingle = false;   // turn on fast glfsingle model (do not run multiples mode)
   ParameterList pl;
   
   bool   uniformTsTv = false;
@@ -575,6 +576,7 @@ int main(int argc, char ** argv) {
     LONG_DOUBLEPARAMETER("heterozygosity", &theta)
     LONG_STRINGPARAMETER("sfs",&sfsfile)
     LONG_PARAMETER("glfsingle", &glfsingle)
+    LONG_PARAMETER("fastsingle", &fastsingle)    
 
     LONG_PARAMETER_GROUP("Map Quality Filter")
     LONG_INTPARAMETER("minMapQuality", &minMapQuality)
@@ -1164,7 +1166,7 @@ int main(int argc, char ** argv) {
 	 newPos0 >= xStart && newPos0 <= xStop ? CT_CHRX : CT_AUTOSOME;
        
        if ( altBases[0] == 0 ) { // need to determine alternate allele
-	 if ( glfsingle ) {  // use glfSingle model to detect variants
+	 if ( glfsingle || fastsingle ) {  // use glfSingle model to detect variants
 	   // consider alleles with supporting evidence
 	   //double lRef, lHet, lHom;
 	   double sum, threshold;
@@ -1234,9 +1236,12 @@ int main(int argc, char ** argv) {
 	     }
 	   }
 
-	   if ( altBases[0] == 0 ) continue;
+	   //if ( altBases[0] == 0 ) continue;
 	 }
-	 else {
+
+	 // run glfMultiples mode
+	 if ( ( altBases[0] == 0 ) && ( !fastsingle ) ) {
+	   //else {
 	   // Calculate maximum likelihood for a variant
 	   if (smartFilter) {
 	     double anyVariant = log(prior) + FilteringLikelihood(lkFilter, n, newPos0, refBase);

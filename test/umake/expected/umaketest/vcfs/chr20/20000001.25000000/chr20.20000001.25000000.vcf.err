@@ -4,7 +4,7 @@
 Additional Options
         Pedigree File : --ped [vcfs/chr20/20000001.25000000/glfIndex.ped]
                 Model : --uniformTsTv [ON], --heterozygosity [1.0e-03],
-                        --sfs [], --glfsingle
+                        --sfs [], --glfsingle, --fastsingle
    Map Quality Filter : --minMapQuality, --strict
    Total Depth Filter : --minDepth [1], --maxDepth [10000000]
       Position Filter : --positionFile [], --skipDetect, --afPrior
