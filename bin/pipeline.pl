@@ -1370,7 +1370,7 @@ sub writeTarget {
     }
 
     $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
-    my $newcmd = $opts{runcluster}." ";
+    my $newcmd = $opts{runcluster}." -bashdir $outdir/jobfiles ";
     if($opts{batchopts})
     {
         $newcmd .= "-opts '".$opts{batchopts}."' ";
