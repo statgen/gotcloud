@@ -39,6 +39,7 @@ mandir       = @mandir@
 CC     = @CC@
 RANLIB = @RANLIB@
 
+CPPFLAGS = @CPPFLAGS@
 CFLAGS   = @CFLAGS@
 LDFLAGS  = @LDFLAGS@
 LDLIBS   = @LIBS@
@@ -64,8 +65,6 @@ LDFLAGS += -L$(IRODS_HOME)/lib/core/obj
 LDLIBS  += -lRodsAPIs -lgssapi_krb5
 
 LIBHTS_OBJS += hfile_irods.o
-
-hfile.o hfile.pico: CPPFLAGS += -DHAVE_IRODS
 
 hfile_irods.o hfile_irods.pico: CPPFLAGS += $(EXTRA_CPPFLAGS_IRODS)
 

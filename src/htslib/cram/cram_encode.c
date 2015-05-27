@@ -28,9 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifdef HAVE_CONFIG_H
-#include "io_lib_config.h"
-#endif
+#include <config.h>
 
 #include <stdio.h>
 #include <errno.h>
@@ -45,7 +43,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "cram/cram.h"
 #include "cram/os.h"
-#include "cram/md5.h"
+#include "htslib/hts.h"
 
 #define Z_CRAM_STRAT Z_FILTERED
 //#define Z_CRAM_STRAT Z_RLE
@@ -915,7 +913,8 @@ static int cram_encode_slice_read(cram_fd *fd,
 				      (char *)&cr->mqual, 1);
     } else {
 	char *seq = (char *)BLOCK_DATA(s->seqs_blk) + cr->seq;
-	r |= h->codecs[DS_BA]->encode(s, h->codecs[DS_BA], seq, cr->len);
+	if (cr->len)
+	    r |= h->codecs[DS_BA]->encode(s, h->codecs[DS_BA], seq, cr->len);
     }
 
     return r ? -1 : 0;
@@ -1304,7 +1303,8 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
 		}
 	    }
 
-	    process_one_read(fd, c, s, cr, b, r2);
+	    if (process_one_read(fd, c, s, cr, b, r2) != 0)
+		return -1;
 
 	    if (first_base > cr->apos)
 		first_base = cr->apos;
@@ -1358,12 +1358,14 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
 	
 	if (CRAM_MAJOR_VERS(fd->version) != 1) {
 	    if (s->hdr->ref_seq_id >= 0 && c->multi_seq == 0 && !fd->no_ref) {
-		MD5_CTX md5;
-		MD5_Init(&md5);
-		MD5_Update(&md5,
+		hts_md5_context *md5 = hts_md5_init();
+		if (!md5)
+		    return -1;
+		hts_md5_update(md5,
 			   c->ref + s->hdr->ref_seq_start - c->ref_start,
 			   s->hdr->ref_seq_span);
-		MD5_Final(s->hdr->md5, &md5);
+		hts_md5_final(s->hdr->md5, md5);
+		hts_md5_destroy(md5);
 	    } else {
 		memset(s->hdr->md5, 0, 16);
 	    }
@@ -2034,25 +2036,34 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
 	uint32_t i32;
 	int r;
 
+	// RG:Z
 	if (aux[0] == 'R' && aux[1] == 'G' && aux[2] == 'Z') {
 	    rg = &aux[3];
 	    while (*aux++);
 	    continue;
 	}
+
+	// MD:Z
 	if (aux[0] == 'M' && aux[1] == 'D' && aux[2] == 'Z') {
-	    while (*aux++);
-	    continue;
-	}
-	if (aux[0] == 'N' && aux[1] == 'M') {
-	    switch(aux[2]) {
-	    case 'A': case 'C': case 'c': aux+=4; break;
-	    case 'S': case 's':           aux+=5; break;
-	    case 'I': case 'i': case 'f': aux+=7; break;
-	    default:
-		fprintf(stderr, "Unhandled type code for NM tag\n");
-		return NULL;
+	    if (cr->len && !fd->no_ref && !(cr->flags & BAM_FUNMAP)) {
+		while (*aux++);
+		continue;
 	    }
-	    continue;
+	}
+
+	// NM:i
+	if (aux[0] == 'N' && aux[1] == 'M') {
+	    if (cr->len && !fd->no_ref && !(cr->flags & BAM_FUNMAP)) {
+		switch(aux[2]) {
+		case 'A': case 'C': case 'c': aux+=4; break;
+		case 'S': case 's':           aux+=5; break;
+		case 'I': case 'i': case 'f': aux+=7; break;
+		default:
+		    fprintf(stderr, "Unhandled type code for NM tag\n");
+		    return NULL;
+		}
+		continue;
+	    }
 	}
 
 	BLOCK_APPEND(td_b, aux, 3);
@@ -2437,7 +2448,8 @@ static int process_one_read(cram_fd *fd, cram_container *c,
     // FIXME: multi-ref containers
 
     ref = c->ref;
-    cr->len         = bam_seq_len(b); cram_stats_add(c->stats[DS_RL], cr->len);
+    cr->flags       = bam_flag(b);
+    cr->len         = bam_seq_len(b);
 
     //fprintf(stderr, "%s => %d\n", rg ? rg : "\"\"", cr->rg);
 
@@ -2469,9 +2481,6 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
     
     cr->ref_id      = bam_ref(b);  cram_stats_add(c->stats[DS_RI], cr->ref_id);
-    cr->flags       = bam_flag(b);
-    if (bam_cigar_len(b) == 0)
-	cr->flags |= BAM_FUNMAP;
     cram_stats_add(c->stats[DS_BF], fd->cram_flag_swap[cr->flags & 0xfff]);
 
     // Non reference based encoding means storing the bases verbatim as features, which in
@@ -2480,6 +2489,9 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	cr->cram_flags = CRAM_FLAG_PRESERVE_QUAL_SCORES;
     else
 	cr->cram_flags = 0;
+
+    if (cr->len <= 0 && CRAM_MAJOR_VERS(fd->version) >= 3)
+	cr->cram_flags |= CRAM_FLAG_NO_SEQ;
     //cram_stats_add(c->stats[DS_CF], cr->cram_flags);
 
     c->num_bases   += cr->len;
@@ -2612,6 +2624,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 		    char *sp = &seq[spos];
 		    char *rp = &ref[apos];
 		    char *qp = &qual[spos];
+		    if (end > cr->len) {
+			fprintf(stderr, "CIGAR and query sequence are of "
+				"different length\n");
+			return -1;
+		    }
 		    for (l = 0; l < end; l++) {
 			if (rp[l] != sp[l]) {
 			    if (!sp[l])
@@ -2732,6 +2749,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 		break;
 	    }
 	}
+	if (cr->len && spos != cr->len) {
+	    fprintf(stderr, "CIGAR and query sequence are of different "
+		    "length\n");
+	    return -1;
+	}
 	fake_qual = spos;
 	cr->aend = MIN(apos, c->ref_end);
 	cram_stats_add(c->stats[DS_FN], cr->nfeature);
@@ -2744,6 +2766,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	cr->aend = cr->apos;
 	for (i = 0; i < cr->len; i++)
 	    cram_stats_add(c->stats[DS_BA], seq[i]);
+	fake_qual = 0;
     }
 
     /*
@@ -2754,7 +2777,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
     if (cr->cram_flags & CRAM_FLAG_PRESERVE_QUAL_SCORES) {
 	/* Special case of seq "*" */
 	if (cr->len == 0) {
-	    cram_stats_add(c->stats[DS_RL], cr->len = fake_qual);
+	    cr->len = fake_qual;
 	    BLOCK_GROW(s->qual_blk, cr->len);
 	    cp = (char *)BLOCK_END(s->qual_blk);
 	    memset(cp, 255, cr->len);
@@ -2768,11 +2791,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	}
 	BLOCK_SIZE(s->qual_blk) += cr->len;
     } else {
-	if (cr->len == 0) {
+	if (cr->len == 0)
 	    cr->len = fake_qual >= 0 ? fake_qual : cr->aend - cr->apos + 1;
-	    cram_stats_add(c->stats[DS_RL], cr->len);
-	}
     }
+
+    cram_stats_add(c->stats[DS_RL], cr->len);
 
     /* Now we know apos and aend both, update mate-pair information */
     {

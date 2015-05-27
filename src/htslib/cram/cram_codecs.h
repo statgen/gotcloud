@@ -31,11 +31,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _CRAM_ENCODINGS_H_
 #define _CRAM_ENCODINGS_H_
 
+#include <inttypes.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <inttypes.h>
 
 struct cram_codec;
 
@@ -150,6 +150,22 @@ cram_codec *cram_encoder_init(enum cram_encoding codec, cram_stats *st,
 //#define GET_BIT_MSB(b,v) (void)(v<<=1, v|=(b->data[b->byte] >> b->bit)&1, (--b->bit == -1) && (b->bit = 7, b->byte++))
 
 #define GET_BIT_MSB(b,v) (void)(v<<=1, v|=(b->data[b->byte] >> b->bit)&1, b->byte += (--b->bit<0), b->bit&=7)
+
+/*
+ * Check that enough bits are left in a block to satisy a bit-based decoder.
+ * Return  0 if there are enough
+ *         1 if not.
+ */
+
+static inline int cram_not_enough_bits(cram_block *blk, int nbits) {
+    if (nbits < 0 ||
+	blk->byte >= blk->uncomp_size ||
+	(blk->uncomp_size - blk->byte <= INT32_MAX / 8 + 1 &&
+	 (blk->uncomp_size - blk->byte) * 8 + blk->bit - 7 < nbits)) {
+        return 1;
+    }
+    return 0;
+}
 
 /*
  * Returns the content_id used by this codec, also in id2 if byte_array_len.
