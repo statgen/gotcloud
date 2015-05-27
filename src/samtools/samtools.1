@@ -41,6 +41,8 @@ samtools merge out.bam in1.bam in2.bam in3.bam
 .PP
 samtools faidx ref.fasta
 .PP
+samtools dict -a GRCh38 -s "Homo sapiens" ref.fasta
+.PP
 samtools fixmate in.namesorted.sam out.bam
 .PP
 samtools mpileup -C50 -gf ref.fasta -r chr3:1,000-2,000 in1.bam in2.bam
@@ -738,7 +740,7 @@ newer style of invocation.
 
 .TP
 .B merge
-samtools merge [-nur1f] [-h inh.sam] [-R reg] [-b <list>] <out.bam> <in1.bam> <in2.bam> [<in3.bam> ... <inN.bam>]
+samtools merge [-nur1f] [-h inh.sam] [-R reg] [-b <list>] <out.bam> <in1.bam> [<in2.bam> <in3.bam> ... <inN.bam>]
 
 Merge multiple sorted alignment files, producing a single sorted output file
 that contains all the input records and maintains the existing sort order.
@@ -865,10 +867,46 @@ indexed reference sequence. If no region is specified,
 will index the file and create
 .I <ref.fasta>.fai
 on the disk. If regions are specified, the subsequences will be
-retrieved and printed to stdout in the FASTA format. The input file can
-be compressed in the
+retrieved and printed to stdout in the FASTA format.
+
+The input file can be compressed in the
 .B BGZF
 format.
+
+The sequences in the input file should all have different names.
+If they do not, indexing will emit a warning about duplicate sequences and
+retrieval will only produce subsequences from the first sequence with the
+duplicated name.
+
+.TP
+.B dict
+samtools dict <ref.fasta|ref.fasta.gz>
+
+Create a sequence dictionary file from a fasta file.
+
+.B OPTIONS:
+.RS
+.TP 11
+.BI -a,\ --assembly \ STR
+Specify the assembly for the AS tag.
+.TP
+.B -H,\ --no-header
+Do not print the @HD header line.
+.TP
+.BI -o,\ --output \ FILE
+Output to
+.I FILE
+[stdout].
+.TP
+.BI -s,\ --species \ STR
+Specify the species for the SP tag.
+.TP
+.BI -u,\ --uri \ STR
+Specify the URI for the UR tag. Defaults to
+the absolute path of
+.I ref.fasta
+unless reading from stdin.
+.RE
 
 .TP
 .B fixmate
@@ -902,8 +940,8 @@ Write the final output as
 By default, samtools tries to select a format based on the output
 filename extension; if output is to standard output or no format can be
 deduced,
-.B -O
-must be used.
+.B bam
+is selected.
 .RE
 
 .TP
@@ -1041,7 +1079,7 @@ l l l .
 
 .TP
 .B bam2fq
-samtools bam2fq [-nO] [-s <outSE.fq>] <in.bam>
+samtools bam2fq [-nOt] [-s <outSE.fq>] <in.bam>
 
 Converts a bam into FASTQ format.
 
@@ -1061,6 +1099,9 @@ if available.
 .TP 8
 .B -s FILE
 Write singleton reads in FASTQ format to FILE instead of outputting them.
+.TP 8
+.B -t
+Copy RG, BC and QT tags to the FASTQ header line, if they exist.
 .RE
 
 

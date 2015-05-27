@@ -22,10 +22,11 @@
 # DEALINGS IN THE SOFTWARE.
 
 CC       = gcc
-CPPFLAGS = $(DFLAGS) $(INCLUDES)
+CPPFLAGS =
 CFLAGS   = -g -Wall -O2
 LDFLAGS  =
-LDLIBS   =
+LIBS     =
+
 DFLAGS=     -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_CURSES_LIB=1
 LOBJS=      bam_aux.o bam.o bam_import.o sam.o \
             sam_header.o bam_plbuf.o
@@ -34,9 +35,10 @@ AOBJS=      bam_index.o bam_plcmd.o sam_view.o \
             bam_rmdup.o bam_rmdupse.o bam_mate.o bam_stat.o bam_color.o \
             bamtk.o bam2bcf.o bam2bcf_indel.o errmod.o sample.o \
             cut_target.o phase.o bam2depth.o padding.o bedcov.o bamshuf.o \
-            faidx.o stats.o stats_isize.o bam_flags.o bam_split.o \
+            faidx.o dict.o stats.o stats_isize.o bam_flags.o bam_split.o \
             bam_tview.o bam_tview_curses.o bam_tview_html.o bam_lpileup.o
-INCLUDES=   -I. -I$(HTSDIR)
+
+EXTRA_CPPFLAGS = $(DFLAGS) -I. -I$(HTSDIR)
 LIBCURSES=  -lcurses # -lXCurses
 
 prefix      = /usr/local
@@ -113,7 +115,7 @@ version.h:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(EXTRA_CPPFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 
 lib:libbam.a
@@ -122,7 +124,7 @@ libbam.a:$(LOBJS)
 	$(AR) -csru $@ $(LOBJS)
 
 samtools: $(AOBJS) libbam.a $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ $(AOBJS) libbam.a $(HTSLIB) $(LDLIBS) $(LIBCURSES) -lm -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ $(AOBJS) libbam.a $(HTSLIB) $(LIBCURSES) -lm -lz $(LIBS)
 
 bam_h = bam.h $(htslib_bgzf_h) $(htslib_sam_h)
 bam2bcf_h = bam2bcf.h $(htslib_vcf_h) errmod.h
@@ -151,7 +153,7 @@ bam_reheader.o: bam_reheader.c $(htslib_bgzf_h) $(bam_h)
 bam_rmdup.o: bam_rmdup.c $(sam_h) $(HTSDIR)/htslib/khash.h
 bam_rmdupse.o: bam_rmdupse.c $(sam_h) $(HTSDIR)/htslib/khash.h $(HTSDIR)/htslib/klist.h
 bam_sort.o: bam_sort.c $(HTSDIR)/htslib/ksort.h $(HTSDIR)/htslib/khash.h $(HTSDIR)/htslib/klist.h $(HTSDIR)/htslib/kstring.h $(htslib_sam_h)
-bam_stat.o: bam_stat.c $(bam_h) samtools.h
+bam_stat.o: bam_stat.c $(htslib_sam_h) samtools.h
 bam_tview.o: bam_tview.c $(bam_tview_h) $(htslib_faidx_h) $(htslib_sam_h) $(htslib_bgzf_h)
 bam_tview_curses.o: bam_tview_curses.c $(bam_tview_h)
 bam_tview_html.o: bam_tview_html.c $(bam_tview_h)
@@ -161,6 +163,7 @@ bamtk.o: bamtk.c $(htslib_hts_h) version.h samtools.h
 bedcov.o: bedcov.c $(HTSDIR)/htslib/kstring.h $(htslib_sam_h) $(HTSDIR)/htslib/kseq.h
 bedidx.o: bedidx.c $(HTSDIR)/htslib/ksort.h $(HTSDIR)/htslib/kseq.h $(HTSDIR)/htslib/khash.h
 cut_target.o: cut_target.c $(bam_h) errmod.h $(htslib_faidx_h)
+dict.o: dict.c $(htslib_kseq_h) $(htslib_hts_h)
 errmod.o: errmod.c errmod.h $(HTSDIR)/htslib/ksort.h
 kprobaln.o: kprobaln.c kprobaln.h
 padding.o: padding.c sam_header.h $(sam_h) $(bam_h) $(htslib_faidx_h)
@@ -184,7 +187,8 @@ check test: samtools $(BGZIP) $(BUILT_TEST_PROGRAMS)
 	test/merge/test_pretty_header
 	test/merge/test_rtrans_build
 	test/merge/test_trans_tbl_init
-	cd test/mpileup && ./regression.sh
+	cd test/mpileup && ./regression.sh mpileup.reg
+	cd test/mpileup && ./regression.sh depth.reg
 	test/split/test_count_rg
 	test/split/test_expand_format_string
 	test/split/test_filter_header_rg
@@ -192,31 +196,31 @@ check test: samtools $(BGZIP) $(BUILT_TEST_PROGRAMS)
 
 
 test/merge/test_bam_translate: test/merge/test_bam_translate.o test/test.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_bam_translate.o test/test.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_bam_translate.o test/test.o $(HTSLIB) -lz $(LIBS)
 
 test/merge/test_pretty_header: test/merge/test_pretty_header.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_pretty_header.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_pretty_header.o $(HTSLIB) -lz $(LIBS)
 
 test/merge/test_rtrans_build: test/merge/test_rtrans_build.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_rtrans_build.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_rtrans_build.o $(HTSLIB) -lz $(LIBS)
 
 test/merge/test_trans_tbl_init: test/merge/test_trans_tbl_init.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_trans_tbl_init.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/merge/test_trans_tbl_init.o $(HTSLIB) -lz $(LIBS)
 
 test/split/test_count_rg: test/split/test_count_rg.o test/test.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_count_rg.o test/test.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_count_rg.o test/test.o $(HTSLIB) -lz $(LIBS)
 
 test/split/test_expand_format_string: test/split/test_expand_format_string.o test/test.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_expand_format_string.o test/test.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_expand_format_string.o test/test.o $(HTSLIB) -lz $(LIBS)
 
 test/split/test_filter_header_rg: test/split/test_filter_header_rg.o test/test.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_filter_header_rg.o test/test.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_filter_header_rg.o test/test.o $(HTSLIB) -lz $(LIBS)
 
 test/split/test_parse_args: test/split/test_parse_args.o test/test.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_parse_args.o test/test.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/split/test_parse_args.o test/test.o $(HTSLIB) -lz $(LIBS)
 
 test/vcf-miniview: test/vcf-miniview.o $(HTSLIB)
-	$(CC) -pthread $(LDFLAGS) -o $@ test/vcf-miniview.o $(HTSLIB) $(LDLIBS) -lz
+	$(CC) -pthread $(LDFLAGS) -o $@ test/vcf-miniview.o $(HTSLIB) -lz $(LIBS)
 
 test_test_h = test/test.h $(htslib_sam_h)
 
@@ -235,36 +239,33 @@ test/vcf-miniview.o: test/vcf-miniview.c $(htslib_vcf_h)
 # misc programs
 
 misc/ace2sam: misc/ace2sam.o
-	$(CC) $(LDFLAGS) -o $@ misc/ace2sam.o $(LDLIBS) -lz
+	$(CC) $(LDFLAGS) -o $@ misc/ace2sam.o -lz $(LIBS)
 
 misc/maq2sam-short: misc/maq2sam-short.o
-	$(CC) $(LDFLAGS) -o $@ misc/maq2sam-short.o $(LDLIBS) -lz
+	$(CC) $(LDFLAGS) -o $@ misc/maq2sam-short.o -lz $(LIBS)
 
 misc/maq2sam-long: misc/maq2sam-long.o
-	$(CC) $(LDFLAGS) -o $@ misc/maq2sam-long.o $(LDLIBS) -lz
+	$(CC) $(LDFLAGS) -o $@ misc/maq2sam-long.o -lz $(LIBS)
 
-misc/md5fa: misc/md5fa.o misc/md5.o
-	$(CC) $(LDFLAGS) -o $@ misc/md5fa.o misc/md5.o $(LDLIBS) -lz
+misc/md5fa: misc/md5fa.o $(HTSLIB)
+	$(CC) $(LDFLAGS) -o $@ misc/md5fa.o $(HTSLIB) -lz $(LIBS)
 
-misc/md5sum-lite: misc/md5sum-lite.o
-	$(CC) $(LDFLAGS) -o $@ misc/md5sum-lite.o $(LDLIBS)
+misc/md5sum-lite: misc/md5sum-lite.o $(HTSLIB)
+	$(CC) $(LDFLAGS) -o $@ misc/md5sum-lite.o $(HTSLIB) $(LIBS)
 
 misc/wgsim: misc/wgsim.o
-	$(CC) $(LDFLAGS) -o $@ misc/wgsim.o $(LDLIBS) -lm -lz
+	$(CC) $(LDFLAGS) -o $@ misc/wgsim.o -lm -lz $(LIBS)
 
 misc/ace2sam.o: misc/ace2sam.c $(HTSDIR)/htslib/kstring.h $(HTSDIR)/htslib/kseq.h
-misc/md5.o: misc/md5.c misc/md5.h
-misc/md5fa.o: misc/md5fa.c misc/md5.h $(HTSDIR)/htslib/kseq.h
+misc/md5fa.o: misc/md5fa.c $(htslib_hts_h) $(HTSDIR)/htslib/kseq.h
+misc/md5sum-lite.o: misc/md5sum-lite.c $(htslib_hts_h)
 misc/wgsim.o: misc/wgsim.c $(HTSDIR)/htslib/kseq.h
 
 misc/maq2sam-short.o: misc/maq2sam.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ misc/maq2sam.c
+	$(CC) $(CFLAGS) $(EXTRA_CPPFLAGS) $(CPPFLAGS) -c -o $@ misc/maq2sam.c
 
 misc/maq2sam-long.o: misc/maq2sam.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DMAQ_LONGREADS -c -o $@ misc/maq2sam.c
-
-misc/md5sum-lite.o: misc/md5.c misc/md5.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DMD5SUM_MAIN -c -o $@ misc/md5.c
+	$(CC) $(CFLAGS) -DMAQ_LONGREADS $(EXTRA_CPPFLAGS) $(CPPFLAGS) -c -o $@ misc/maq2sam.c
 
 
 install: $(PROGRAMS) $(BUILT_MISC_PROGRAMS)
@@ -275,7 +276,8 @@ install: $(PROGRAMS) $(BUILT_MISC_PROGRAMS)
 
 testclean:
 	-rm -f test/*.new test/*.tmp test/*/*.new test/*/*.tmp
-	-cd test/mpileup && rm -f FAIL-*.out* PASS-*.out* anomalous.[bc]*am indels.[bc]*am mpileup.*.[cs]*am mpileup.*.crai overlap50.[bc]*am expected/1.out
+	-cd test/dat && rm -f test_input_*.bam.bai
+	-cd test/mpileup && rm -f FAIL-*.out* PASS-*.out* anomalous.[bc]*am indels.[bc]*am mpileup.*.[cs]*am mpileup.*.crai overlap50.[bc]*am expected/1.out xx#depth[12].bam*
 
 mostlyclean: testclean
 	-rm -f *.o misc/*.o test/*.o test/*/*.o version.h

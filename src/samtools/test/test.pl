@@ -35,6 +35,7 @@ my $opts = parse_params();
 
 test_bgzip($opts);
 test_faidx($opts);
+test_dict($opts);
 test_index($opts);
 test_mpileup($opts);
 test_usage($opts, cmd=>'samtools');
@@ -422,6 +423,15 @@ sub test_faidx
     }
 }
 
+sub test_dict
+{
+    my ($opts,%args) = @_;
+    cmd("cat $$opts{path}/dat/dict.fa | $$opts{bgzip} -c > $$opts{tmp}/dict.fa.gz");
+    test_cmd($opts,out=>'dat/dict.out',cmd=>"$$opts{bin}/samtools dict -a hf37d5 -s 'Homo floresiensis' -u ftp://orthanc.org/hf37d5.fa.gz $$opts{path}/dat/dict.fa");
+    test_cmd($opts,out=>'dat/dict.out',cmd=>"$$opts{bin}/samtools dict -a hf37d5 -s 'Homo floresiensis' -u ftp://orthanc.org/hf37d5.fa.gz $$opts{tmp}/dict.fa.gz");
+    test_cmd($opts,out=>'dat/dict.out',cmd=>"cat $$opts{path}/dat/dict.fa | $$opts{bin}/samtools dict -a hf37d5 -s 'Homo floresiensis' -u ftp://orthanc.org/hf37d5.fa.gz");
+}
+
 sub test_index
 {
     my ($opts,%args) = @_;
@@ -430,6 +440,7 @@ sub test_index
     cmd("$$opts{bin}/samtools index -c $$opts{tmp}/large_chrom.bam");
     test_cmd($opts,out=>'dat/large_chrom.out',cmd=>"$$opts{bin}/samtools view $$opts{tmp}/large_chrom.bam ref2");
     test_cmd($opts,out=>'dat/large_chrom.out',cmd=>"$$opts{bin}/samtools view $$opts{tmp}/large_chrom.bam ref2:1-541556283");
+    test_cmd($opts,out=>'dat/test_input_1_a.bam.bai.expected',cmd=>"$$opts{bin}/samtools index $$opts{path}/dat/test_input_1_a.bam && cat $$opts{path}/dat/test_input_1_a.bam.bai");
 }
 
 sub test_mpileup
@@ -1106,7 +1117,9 @@ sub sam_compare
     close($f2) || die "Error reading $sam2: $!\n";
 
     if ($l1 || $l2) {
-        print "\n\tSAM files differ at $sam1 : $lno1 / $sam2 : $lno2\n";
+        print "\n"; STDOUT->flush();
+        print STDERR "\tSAM files differ at $sam1 line $lno1 / $sam2 line $lno2\n";
+        print STDERR "$l1\n$l2\n";
         return 1;
     }
 
@@ -2195,6 +2208,8 @@ sub test_merge
     }
     close($tmpfile_fh);
     test_cmd($opts,out=>'merge/3.merge.expected.bam', err=>'merge/3.merge.expected.err',cmd=>"$$opts{bin}/samtools merge -s 1 -b $tmpfile_filename - $$opts{path}/dat/test_input_1_a.bam");
+    # Merge 4 - 1 file BAM merge with file presented on the command line
+    test_cmd($opts,out=>'merge/4.merge.expected.bam',cmd=>"$$opts{bin}/samtools merge -s 1 - $$opts{path}/dat/test_input_1_b.bam");
 }
 
 sub test_fixmate

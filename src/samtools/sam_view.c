@@ -419,8 +419,12 @@ int main_samview(int argc, char *argv[])
         for (i = optind + 1; i < argc; ++i) {
             int result;
             hts_itr_t *iter = sam_itr_querys(idx, header, argv[i]); // parse a region in the format like `chr2:100-200'
-            if (iter == NULL) { // reference name is not found
-                fprintf(stderr, "[main_samview] region \"%s\" specifies an unknown reference name. Continue anyway.\n", argv[i]);
+            if (iter == NULL) { // region invalid or reference name not found
+                int beg, end;
+                if (hts_parse_reg(argv[i], &beg, &end))
+                    fprintf(stderr, "[main_samview] region \"%s\" specifies an unknown reference name. Continue anyway.\n", argv[i]);
+                else
+                    fprintf(stderr, "[main_samview] region \"%s\" could not be parsed. Continue anyway.\n", argv[i]);
                 continue;
             }
             // fetch alignments
@@ -469,65 +473,68 @@ view_end:
 
 static int usage(int is_long_help)
 {
-    fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:   samtools view [options] <in.bam>|<in.sam>|<in.cram> [region ...]\n\n");
-    // output options
-    fprintf(stderr, "Options: -b       output BAM\n");
-    fprintf(stderr, "         -C       output CRAM (requires -T)\n");
-    fprintf(stderr, "         -1       use fast BAM compression (implies -b)\n");
-    fprintf(stderr, "         -u       uncompressed BAM output (implies -b)\n");
-    fprintf(stderr, "         -h       include header in SAM output\n");
-    fprintf(stderr, "         -H       print SAM header only (no alignments)\n");
-    fprintf(stderr, "         -c       print only the count of matching records\n");
-    fprintf(stderr, "         -o FILE  output file name [stdout]\n");
-    fprintf(stderr, "         -U FILE  output reads not selected by filters to FILE [null]\n");
-    // extra input
-    fprintf(stderr, "         -t FILE  FILE listing reference names and lengths (see long help) [null]\n");
-    fprintf(stderr, "         -T FILE  reference sequence FASTA FILE [null]\n");
-    // read filters
-    fprintf(stderr, "         -L FILE  only include reads overlapping this BED FILE [null]\n");
-    fprintf(stderr, "         -r STR   only include reads in read group STR [null]\n");
-    fprintf(stderr, "         -R FILE  only include reads with read group listed in FILE [null]\n");
-    fprintf(stderr, "         -q INT   only include reads with mapping quality >= INT [0]\n");
-    fprintf(stderr, "         -l STR   only include reads in library STR [null]\n");
-    fprintf(stderr, "         -m INT   only include reads with number of CIGAR operations\n");
-    fprintf(stderr, "                  consuming query sequence >= INT [0]\n");
-    fprintf(stderr, "         -f INT   only include reads with all bits set in INT set in FLAG [0]\n");
-    fprintf(stderr, "         -F INT   only include reads with none of the bits set in INT\n");
-    fprintf(stderr, "                  set in FLAG [0]\n");
-    // read processing
-    fprintf(stderr, "         -x STR   read tag to strip (repeatable) [null]\n");
-    fprintf(stderr, "         -B       collapse the backward CIGAR operation\n");
-    fprintf(stderr, "         -s FLOAT integer part sets seed of random number generator [0];\n");
-    fprintf(stderr, "                  rest sets fraction of templates to subsample [no subsampling]\n");
-    // general options
-    fprintf(stderr, "         -@ INT   number of BAM compression threads [0]\n");
-    fprintf(stderr, "         -?       print long help, including note about region specification\n");
-    fprintf(stderr, "         -S       ignored (input format is auto-detected)\n");
-    fprintf(stderr, "\n");
+    fprintf(stderr,
+"\n"
+"Usage: samtools view [options] <in.bam>|<in.sam>|<in.cram> [region ...]\n"
+"\n"
+"Options:\n"
+// output options
+"  -b       output BAM\n"
+"  -C       output CRAM (requires -T)\n"
+"  -1       use fast BAM compression (implies -b)\n"
+"  -u       uncompressed BAM output (implies -b)\n"
+"  -h       include header in SAM output\n"
+"  -H       print SAM header only (no alignments)\n"
+"  -c       print only the count of matching records\n"
+"  -o FILE  output file name [stdout]\n"
+"  -U FILE  output reads not selected by filters to FILE [null]\n"
+// extra input
+"  -t FILE  FILE listing reference names and lengths (see long help) [null]\n"
+"  -T FILE  reference sequence FASTA FILE [null]\n"
+// read filters
+"  -L FILE  only include reads overlapping this BED FILE [null]\n"
+"  -r STR   only include reads in read group STR [null]\n"
+"  -R FILE  only include reads with read group listed in FILE [null]\n"
+"  -q INT   only include reads with mapping quality >= INT [0]\n"
+"  -l STR   only include reads in library STR [null]\n"
+"  -m INT   only include reads with number of CIGAR operations consuming\n"
+"           query sequence >= INT [0]\n"
+"  -f INT   only include reads with all bits set in INT set in FLAG [0]\n"
+"  -F INT   only include reads with none of the bits set in INT set in FLAG [0]\n"
+// read processing
+"  -x STR   read tag to strip (repeatable) [null]\n"
+"  -B       collapse the backward CIGAR operation\n"
+"  -s FLOAT integer part sets seed of random number generator [0];\n"
+"           rest sets fraction of templates to subsample [no subsampling]\n"
+// general options
+"  -@ INT   number of BAM compression threads [0]\n"
+"  -?       print long help, including note about region specification\n"
+"  -S       ignored (input format is auto-detected)\n"
+"\n");
     if (is_long_help)
-        fprintf(stderr, "Notes:\n\
-\n\
-  1. This command now auto-detects the input format (BAM/CRAM/SAM).\n\
-\n\
-  2. The file supplied with `-t' is SPACE/TAB delimited with the first\n\
-     two fields of each line consisting of the reference name and the\n\
-     corresponding sequence length. The `.fai' file generated by \n\
-     `samtools faidx' is suitable for use as this file. This may be an\n\
-     empty file if reads are unaligned.\n\
-\n\
-  3. SAM->BAM conversion: `samtools view -bT ref.fa in.sam.gz'.\n\
-\n\
-  4. BAM->SAM conversion: `samtools view -h in.bam'.\n\
-\n\
-  5. A region should be presented in one of the following formats:\n\
-     `chr1', `chr2:1,000' and `chr3:1000-2,000'. When a region is\n\
-     specified, the input alignment file must be a sorted and indexed\n\
-     alignment (BAM/CRAM) file.\n\
-\n\
-  6. Option `-u' is preferred over `-b' when the output is piped to\n\
-     another samtools command.\n\
-\n");
+        fprintf(stderr,
+"Notes:\n"
+"\n"
+"  1. This command now auto-detects the input format (BAM/CRAM/SAM).\n"
+"\n"
+"  2. The file supplied with `-t' is SPACE/TAB delimited with the first\n"
+"     two fields of each line consisting of the reference name and the\n"
+"     corresponding sequence length. The `.fai' file generated by \n"
+"     `samtools faidx' is suitable for use as this file. This may be an\n"
+"     empty file if reads are unaligned.\n"
+"\n"
+"  3. SAM->BAM conversion: `samtools view -bT ref.fa in.sam.gz'.\n"
+"\n"
+"  4. BAM->SAM conversion: `samtools view -h in.bam'.\n"
+"\n"
+"  5. A region should be presented in one of the following formats:\n"
+"     `chr1', `chr2:1,000' and `chr3:1000-2,000'. When a region is\n"
+"     specified, the input alignment file must be a sorted and indexed\n"
+"     alignment (BAM/CRAM) file.\n"
+"\n"
+"  6. Option `-u' is preferred over `-b' when the output is piped to\n"
+"     another samtools command.\n"
+"\n");
     return 1;
 }
 
@@ -548,13 +555,15 @@ int main_import(int argc, char *argv[])
 }
 
 int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
+static const char *copied_tags[] = { "RG", "BC", "QT", NULL };
 
 static void bam2fq_usage(FILE *to)
 {
-    fprintf(to, "\nUsage:   samtools bam2fq [-nO] [-s <outSE.fq>] <in.bam>\n\n");
+    fprintf(to, "\nUsage:   samtools bam2fq [-nOt] [-s <outSE.fq>] <in.bam>\n\n");
     fprintf(to, "Options: -n        don't append /1 and /2 to the read name\n");
     fprintf(to, "         -O        output quality in the OQ tag if present\n");
     fprintf(to, "         -s FILE   write singleton reads to FILE [assume single-end]\n");
+    fprintf(to, "         -t        copy RG, BC and QT tags to the FASTQ header line\n");
     fprintf(to, "\n");
 }
 
@@ -569,13 +578,14 @@ int main_bam2fq(int argc, char *argv[])
     FILE* fpse;
     // Parse args
     char* fnse = NULL;
-    bool has12 = true, use_oq = false;
+    bool has12 = true, use_oq = false, copy_tags = false;
     int c;
-    while ((c = getopt(argc, argv, "nOs:")) > 0) {
+    while ((c = getopt(argc, argv, "nOts:")) > 0) {
         switch (c) {
             case 'n': has12 = false; break;
             case 'O': use_oq = true; break;
             case 's': fnse = optarg; break;
+            case 't': copy_tags = true; break;
             default: bam2fq_usage(stderr); return 1;
         }
     }
@@ -660,12 +670,21 @@ int main_bam2fq(int argc, char *argv[])
         kputs(bam_get_qname(b), &linebuf);
         // Add the /1 /2 if requested
         if (has12) {
-            if ((b->core.flag & BAM_FREAD1) && !(b->core.flag & BAM_FREAD2)) kputs("/1\n", &linebuf);
-            else if ((b->core.flag & BAM_FREAD2) && !(b->core.flag & BAM_FREAD1)) kputs("/2\n", &linebuf);
-            else kputc('\n', &linebuf);
-        } else {
-            kputc('\n', &linebuf);
+            if ((b->core.flag & BAM_FREAD1) && !(b->core.flag & BAM_FREAD2)) kputs("/1", &linebuf);
+            else if ((b->core.flag & BAM_FREAD2) && !(b->core.flag & BAM_FREAD1)) kputs("/2", &linebuf);
         }
+        if (copy_tags) {
+            for (i = 0; copied_tags[i]; ++i) {
+                uint8_t *s;
+                if ((s = bam_aux_get(b, copied_tags[i])) != NULL) {
+                    kputc('\t', &linebuf);
+                    kputsn(copied_tags[i], 2, &linebuf);
+                    kputsn(":Z:", 3, &linebuf);
+                    kputs(bam_aux2Z(s), &linebuf);
+                }
+            }
+        }
+        kputc('\n', &linebuf);
 
         if (max_buf < qlen + 1) {
             max_buf = qlen + 1;
