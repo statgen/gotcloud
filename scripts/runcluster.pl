@@ -352,6 +352,7 @@ sub waitforcommand {
     #   query for the batch system and see if the job is still there
     while (1) {
         foreach (1 .. $opts{waittries}) {
+            sleep($opts{waitinterval});
             if (-r "$shell.err") {
                 unlink("$shell.err");
                 if ($opts{verbose}) { print "Found $shell.err\n"; }
@@ -363,7 +364,6 @@ sub waitforcommand {
                 return 0;
             }
             if ($opts{verbose}) { print "Wait $_\n"; }
-            sleep($opts{waitinterval});
         }
         if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
         my $qout = "/tmp/$$.queryoutput";
