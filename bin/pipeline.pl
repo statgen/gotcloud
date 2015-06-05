@@ -52,6 +52,7 @@ my %opts = (
     verbose => 0,
     maxlocaljobs => 10,
     ignoreSmCheck => '',
+    ignoreRefChrCheck => '',
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
@@ -71,6 +72,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     keeptmp
     keeplog
     ignoreSmCheck
+    ignoreRefChrCheck
     verbose=i
     numjobs|numjobs=i
     maxlocaljobs=i
@@ -236,14 +238,22 @@ if (loadConf(\@confSettings, \@configs, $opts{verbose})) {
     die "Failed to read configuration files\n";
 }
 
+#--------------------------------------------------------------
+#   Check pipeline name setting
+#--------------------------------------------------------------
+if((!defined $opts{name}) || ($opts{name} eq ""))
+{
+    die "ERROR: '--name' is required, but not set.\n";
+}
+
 #-------------
 # Handle cluster setup.
 # Pull batch info from config if not on command line.
 if ((!defined $opts{batchopts}) || ( $opts{batchopts} eq "" )) {
-    $opts{batchopts} = getConf("BATCH_OPTS");
+    $opts{batchopts} = getStepConf($opts{name},"BATCH_OPTS");
 }
 if ((!defined $opts{batchtype}) || ( $opts{batchtype} eq "" )) {
-    $opts{batchtype} = getConf("BATCH_TYPE");
+    $opts{batchtype} = getStepConf($opts{name},"BATCH_TYPE");
 }
 if ((!defined $opts{batchtype}) || ($opts{batchtype} eq ""))
 {
@@ -256,17 +266,25 @@ if ($opts{batchtype} eq 'flux') { $opts{batchtype} = 'pbs'; }
 #--------------------------------------------------------------
 if(!$opts{ignoreSmCheck})
 {
-    $opts{ignoreSmCheck} = getConf("IGNORE_SM_CHECK");
+    $opts{ignoreSmCheck} = getStepConf($opts{name}, "IGNORE_SM_CHECK");
 }
+
+if(!$opts{ignoreRefChrCheck})
+{
+    $opts{ignoreRefChrCheck} = getStepConf($opts{name}, "IGNORE_REF_CHR_CHECK");
+}
+my $outdir = getStepConf($opts{name},"OUT_DIR");
+unless ( $outdir =~ /^\// ) {
+    $outdir = getcwd()."/".$outdir;
+    setConf("$opts{name}/OUT_DIR", $outdir);
+}
+setConf("OUT_DIR", $outdir);
+
+
 
 #--------------------------------------------------------------
 #   Check required settings
 #--------------------------------------------------------------
-
-if((!defined $opts{name}) || ($opts{name} eq ""))
-{
-    die "ERROR: '--name' is required, but not set.\n";
-}
 
 my $failReqFile = "0";
 my %deprecatedWarn = (
@@ -275,17 +293,18 @@ my %deprecatedWarn = (
 
 foreach my $key (keys %deprecatedWarn)
 {
-    if(getConf("$key"))
+    if(getStepConf($opts{name}, "$key"))
     {
         warn "WARNING: '$key' is deprecated and has been replaced by '$deprecatedWarn{$key}'\n";
     }
 }
 
-if(!getConf("BAM_LIST"))
+if(!getStepConf($opts{name}, "BAM_LIST"))
 {
-    if(getConf("BAM_INDEX"))
+    if(getStepConf($opts{name}, "BAM_INDEX"))
     {
-        setConf("BAM_LIST", getConf("BAM_INDEX"));
+        setConf("$opts{name}/BAM_LIST", getStepConf($opts{name}, "BAM_INDEX"));
+        setConf("BAM_LIST", getStepConf($opts{name}, "BAM_INDEX"));
     }
     else
     {
@@ -299,7 +318,8 @@ if($failReqFile eq "1")
     die "Exiting pipeline due to required file(s) missing\n";
 }
 
-my $newpath = getAbsPath(getConf("REF"), "REF");
+my $newpath = getAbsPath(getStepConf($opts{name},"REF"), "REF");
+setConf("$opts{name}/REF", $newpath);
 setConf("REF", $newpath);
 
 # TODO check for file existence
@@ -308,7 +328,7 @@ setConf("REF", $newpath);
 #############################################################################
 ## STEP  : Parse BAM LIST FILE
 ############################################################################
-my $bamList = getAbsPath(getConf("BAM_LIST"));
+my $bamList = getAbsPath(getStepConf($opts{name},"BAM_LIST"));
 my %sample2bams = ();  # hash mapping sample IDs to bams
 my %sample2SingleBam = ();  # hash mapping sample IDs to a single per sample bam
 my %bam2sample = ();  # hash mapping bams to sample IDs
@@ -374,7 +394,7 @@ while (<LIST>)
             while($bam =~ /\$\(([^\s)]+)\)/ )
             {
                 my $key = $1;
-                my $val = getConf($key);
+                my $val = getStepConf($opts{name},$key);
                 $bam =~ s/\$\($key\)/$val/;
             }
 
@@ -426,11 +446,11 @@ if(($noPop ne 0) && ($noPop ne $numSamples))
 ## STEP 4 : Read FASTA INDEX file to determine chromosome size
 ############################################################################
 my %hChrSizes = ();
-my $ref = getConf("REF");
+my $ref = getStepConf($opts{name},"REF");
 my $fai = $ref.".fai";
-if(getConf("REF_FAI"))
+if(getStepConf($opts{name},"REF_FAI"))
 {
-    $fai = getConf("REF_FAI");
+    $fai = getStepConf($opts{name},"REF_FAI");
 }
 
 open(IN,$fai) || die "Cannot open $fai file for reading";
@@ -458,8 +478,8 @@ if ( $opts{region} ) {
 ############################################################################
 # PARSE TARGET INFORMATION if specified
 ############################################################################
-my $multiTargetMap = getConf("MULTIPLE_TARGET_MAP");
-my $uniformTargetBed = getConf("UNIFORM_TARGET_BED");
+my $multiTargetMap = getStepConf($opts{name},"MULTIPLE_TARGET_MAP");
+my $uniformTargetBed = getStepConf($opts{name},"UNIFORM_TARGET_BED");
 
 
 my %hBedIndices = ();
@@ -507,7 +527,7 @@ elsif ( $multiTargetMap ne "" ) {
 }
 
 foreach my $bed (@uniqBeds) {
-    my $r = parseTarget($bed,getConf("OFFSET_OFF_TARGET"));
+    my $r = parseTarget($bed,getStepConf($opts{name},"OFFSET_OFF_TARGET"));
     push(@targetIntervals,$r);
 }
 
@@ -533,7 +553,7 @@ foreach my $step (@steps)
 
 my %regions = ();
 
-my @chrs = split(/\s+/,getConf("CHRS"));
+my @chrs = split(/\s+/,getStepConf($opts{name},"CHRS"));
 my $unitChunk = getStepConf($opts{name},"UNIT_CHUNK");
 
 # Only need to set the chromsomes and regions if $byChr is set.
@@ -674,15 +694,10 @@ for my $bam (sort keys %bam2sample)
 #############################################################################
 ## Create MAKEFILE
 ############################################################################
-my $outdir = getConf("OUT_DIR");
-unless ( $outdir =~ /^\// ) {
-    $outdir = getcwd()."/".$outdir;
-    setConf('OUT_DIR', $outdir);
-}
 
 system("mkdir -p $outdir") &&
 die "Unable to create directory '$outdir'\n";
-my $makeBase = "$outdir/".getConf("MAKE_BASE_NAME_PIPE").".$opts{name}";
+my $makeBase = "$outdir/".getStepConf($opts{name},"MAKE_BASE_NAME_PIPE").".$opts{name}";
 dumpConf("$makeBase.conf");
 my $makef = "$makeBase.Makefile";
 
@@ -748,7 +763,7 @@ my %numBamWarn = ();
 for my $bam (sort keys %bam2sample)
 {
     # Validate all BAM chromosomes are in the reference.
-    if($allBamChr)
+    if($allBamChr && !$opts{ignoreRefChrCheck})
     {
         # all chromosomes in the BAMs must be in the reference.
         foreach my $chr (sort(keys %{$bamChrs{$bam}}))
@@ -869,7 +884,7 @@ print STDERR "Finished creating makefile $makef\n\n";
 
 my $rc = 0;
 if($opts{numjobs} && ($opts{numjobs} != 0)) {
-    my $cmd = "make -k -f $makef -j $opts{numjobs} ". getConf("MAKE_OPTS") . " > $makef.log";
+    my $cmd = "make -k -f $makef -j $opts{numjobs} ". getStepConf($opts{name},"MAKE_OPTS") . " > $makef.log";
     if(($opts{batchtype} eq 'local') && ($opts{numjobs} > $opts{maxlocaljobs}))
     {
         die "ERROR: can't run $opts{numjobs} jobs with 'BATCH_TYPE = local', " .
@@ -895,8 +910,8 @@ if($opts{numjobs} && ($opts{numjobs} != 0)) {
     #    die "Makefile, $makef failed d=$cmd\n";
 }
 else {
-    print STDERR "Try 'make -f $makef ". getConf("MAKE_OPTS") . " -n | less' for a sanity check before running\n";
-    print STDERR "Run 'make -k -f $makef ". getConf("MAKE_OPTS") . " -j [#parallele jobs]'\n";
+    print STDERR "Try 'make -f $makef ". getStepConf($opts{name},"MAKE_OPTS") . " -n | less' for a sanity check before running\n";
+    print STDERR "Run 'make -k -f $makef ". getStepConf($opts{name},"MAKE_OPTS") . " -j [#parallele jobs]'\n";
 }
 print STDERR "--------------------------------------------------------------------\n";
 
@@ -1407,7 +1422,7 @@ sub isBamMakeDepend {
 
     my $tmpVal = getStepConf($step, "BAM_DEPEND");
     if ((($tmpVal ne '') && ($tmpVal eq "TRUE")) ||
-        (($tmpVal eq '') && (getConf("BAM_DEPEND") eq "TRUE")))
+        (($tmpVal eq '') && (getStepConf($opts{name},"BAM_DEPEND") eq "TRUE")))
     {
         return(1);
     }
