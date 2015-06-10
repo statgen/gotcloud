@@ -32,6 +32,7 @@ Bam2FastQ::Bam2FastQ()
       mySamHeader(),
       myPool(),
       myMateMap(true),
+      myCompression(InputFile::DEFAULT),
       myUnpairedFile(NULL),
       myFirstFile(NULL),
       mySecondFile(NULL),
@@ -91,6 +92,7 @@ void Bam2FastQ::usage()
               << "\t\t                  default is \"" << DEFAULT_SECOND_EXT << "\"\n";
     std::cerr << "\t\t--rnPlus        : Add the Read Name/extension to the '+' line of the fastq records\n";
     std::cerr << "\t\t--noReverseComp : Do not reverse complement reads marked as reverse\n";
+    std::cerr << "\t\t--gzip          : Compress the output FASTQ files using gzip\n";
     std::cerr << "\t\t--noeof         : Do not expect an EOF block on a bam file." << std::endl;
     std::cerr << "\t\t--params        : Print the parameter settings to stderr" << std::endl;
     std::cerr << "\tOptional OutputFile Names:" << std::endl;
@@ -117,6 +119,7 @@ int Bam2FastQ::execute(int argc, char **argv)
 
     bool interleave = false;
     bool noeof = false;
+    bool gzip = false;
     bool params = false;
 
     myOutBase = "";
@@ -128,6 +131,7 @@ int Bam2FastQ::execute(int argc, char **argv)
     myRNPlus = false;
     myFirstRNExt = DEFAULT_FIRST_EXT;
     mySecondRNExt = DEFAULT_SECOND_EXT;
+    myCompression = InputFile::DEFAULT;
 
     ParameterList inputParameters;
     BEGIN_LONG_PARAMETERS(longParameterList)
@@ -142,6 +146,7 @@ int Bam2FastQ::execute(int argc, char **argv)
         LONG_STRINGPARAMETER("secondRNExt", &mySecondRNExt)
         LONG_PARAMETER("rnPlus", &myRNPlus)
         LONG_PARAMETER("noReverseComp", &myReverseComp)
+        LONG_PARAMETER("gzip", &gzip)
         LONG_PARAMETER("noeof", &noeof)
         LONG_PARAMETER("params", &params)
         LONG_PARAMETER_GROUP("Optional OutputFile Names")
@@ -164,6 +169,11 @@ int Bam2FastQ::execute(int argc, char **argv)
     {
         // Set that the eof block is not required.
         BgzfFileType::setRequireEofBlock(false);
+    }
+
+    if(gzip)
+    {
+        myCompression = InputFile::GZIP;
     }
 
     // Check to see if the in file was specified, if not, report an error.
@@ -235,8 +245,8 @@ int Bam2FastQ::execute(int argc, char **argv)
     {
         std::string fqList = myOutBase.c_str();
         fqList += ".list";
-        myFqList = ifopen(fqList.c_str(), "w");
-        ifprintf(myFqList, "SAMPLE\tFASTQ1\tFASTQ2\tRGID\tLIBRARY\tCENTER\tPLATFORM\n");
+        myFqList = ifopen(fqList.c_str(), "w", myCompression);
+        ifprintf(myFqList, "SAMPLE\tFASTQ1\tFASTQ2\tRG\n");
     }
 
     // Check to see if the first/second/single-ended were specified and
@@ -269,12 +279,12 @@ int Bam2FastQ::execute(int argc, char **argv)
     // Open the output files if not splitting RG
     if(!mySplitRG)
     {
-        myUnpairedFile = ifopen(unpairedOut, "w");
+        myUnpairedFile = ifopen(unpairedOut, "w", myCompression);
 
         // Only open the first file if it is different than an already opened file.
         if(firstOut != unpairedOut)
         {
-            myFirstFile = ifopen(firstOut, "w");
+            myFirstFile = ifopen(firstOut, "w", myCompression);
         }
         else
         {
@@ -292,7 +302,7 @@ int Bam2FastQ::execute(int argc, char **argv)
         }
         else
         {
-            mySecondFile = ifopen(secondOut, "w");
+            mySecondFile = ifopen(secondOut, "w", myCompression);
         }
     
         if(myUnpairedFile == NULL)
@@ -544,7 +554,9 @@ void Bam2FastQ::writeFastQ(SamRecord& samRec, IFILE filePtr,
     static String quality;
     static std::string rg;
     static std::string rgFastqExt;
+    static std::string rgListStr;
     static std::string fileName;
+    static std::string fq2;
     if(mySplitRG)
     {
         rg = samRec.getString("RG").c_str();
@@ -556,9 +568,16 @@ void Bam2FastQ::writeFastQ(SamRecord& samRec, IFILE filePtr,
         {
             // New file.
             fileName = myOutBase.c_str();
-            fileName += '.';
+            if(rg != "")
+            {
+                fileName += '.';
+            }
+            else
+            {
+                rg = ".";
+            }
             fileName += rgFastqExt;
-            filePtr = ifopen(fileName.c_str(), "w");
+            filePtr = ifopen(fileName.c_str(), "w", myCompression);
             myOutFastqs[rgFastqExt] = filePtr;
 
             if(fileNameExt != mySecondFileNameExt)
@@ -566,24 +585,29 @@ void Bam2FastQ::writeFastQ(SamRecord& samRec, IFILE filePtr,
                 // first end.
                 const char* sm = mySamHeader.getRGTagValue("SM", rg.c_str());
                 if(strcmp(sm, "") == 0){sm = myOutBase.c_str();}
-                const char* lib = mySamHeader.getRGTagValue("LB", rg.c_str());
-                if(strcmp(lib, "") == 0){lib = sm;}
-                const char* pl = mySamHeader.getRGTagValue("PL", rg.c_str());
-                if(strcmp(pl, "") == 0){pl = "ILLUMINA";}
-                const char* cn = mySamHeader.getRGTagValue("CN", rg.c_str());
-                if(strcmp(cn, "") == 0){cn = "unknown";}
-                std::string fq2 = ".";
+
+                rgListStr.clear();
+                SamHeaderRG* rgPtr = mySamHeader.getRG(rg.c_str());
+                if((rgPtr == NULL) || (!rgPtr->appendString(rgListStr)))
+                {
+                    // No RG info for this record.
+                    rgListStr = ".\n";
+                }
+                fq2 = ".";
                 if(fileNameExt == myFirstFileNameExt)
                 {
                     fq2 = myOutBase.c_str();
-                    fq2 += '.';
-                    fq2 += rg;
+                    if(rg != ".")
+                    {
+                        fq2 += '.';
+                        fq2 += rg;
+                    }
                     fq2 += mySecondFileNameExt;
                 }
-                ifprintf(myFqList, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+                ifprintf(myFqList, "%s\t%s\t%s\t%s",
                          sm, fileName.c_str(), fq2.c_str(),
-                         rg.c_str(), lib, cn, pl);
-            }            
+                         rgListStr.c_str());
+            }
         }
         else
         {

@@ -42,7 +42,6 @@
 #include "PolishBam.h"
 #include "GapInfo.h"
 #include "Dedup.h"
-#include "Dedup_LowMem.h"
 #include "Recab.h"
 #include "Bam2FastQ.h"
 #include "PhoneHome.h"
@@ -67,7 +66,6 @@ void Usage()
     MergeBam::mergeBamDescription();
     PolishBam::polishBamDescription();
     Dedup::dedupDescription();
-    Dedup_LowMem::dedup_LowMemDescription();
     Recab::recabDescription();
 
     std::cerr << "\nInformational Tools\n";
@@ -198,10 +196,6 @@ int main(int argc, char ** argv)
     else if(cmd.SlowCompare("dedup") == 0)
     {
         bamExe = new Dedup();
-    }
-    else if(cmd.SlowCompare("dedup_LowMem") == 0)
-    {
-        bamExe = new Dedup_LowMem();
     }
     else if(cmd.SlowCompare("recab") == 0)
     {
