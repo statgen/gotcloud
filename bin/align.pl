@@ -321,12 +321,19 @@ foreach my $step (@perMergeStep)
 #   Check for the required sub REF files.
 my @mapExtensions;
 my $removeExt = 0;
+my $oneBwa = 0;
+my $prevBwa = "";
 
 # Ensure the map type is in all caps.
 setConf('MAP_TYPE', uc(getConf('MAP_TYPE')));
 
 if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') ) {
     @mapExtensions = qw(.amb .ann .bwt .pac .sa);
+    if(defined getConf("ONE_BWA") && getConf("ONE_BWA") ne 0 && getConf("ONE_BWA") ne "")
+    {
+        $oneBwa = 1;
+        print "ONE BWA!, ".getConf("ONE_BWA")."\n";
+    }
 }
 elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
     @mapExtensions = qw(.dat _15_keys.jmp _15_meta.jmp _15_positions.jmp);
@@ -1304,8 +1311,14 @@ sub logCatchFailure {
 sub alignBwa {
     my ($fastq, $sai) = @_;
 
-    my $alnTarget = getConf('SAI_TMP') . '/' . $sai . ".done:\n";
-    $alnTarget .= "\tmkdir -p \$(\@D)\n";
+    my $alnTarget = getConf('SAI_TMP') . '/' . $sai . ".done:";
+    if($oneBwa)
+    {
+        $alnTarget .= "$prevBwa";
+        $prevBwa = getConf('SAI_TMP') . '/' . $sai . ".done";
+    }
+
+    $alnTarget .= "\n\tmkdir -p \$(\@D)\n";
 
     my $alnCmd = getConf('BWA_EXE') . ' aln ' . getConf('BWA_QUAL') . ' ' .
         getConf('BWA_THREADS') . ' ' . getConf('REF') .
@@ -1388,6 +1401,11 @@ sub mapBwa {
     if(getConf('MAP_TYPE') eq 'BWA_MEM')
     {
         # No dependencies.
+        if($oneBwa)
+        {
+            $allSteps .= $prevBwa;
+            $prevBwa = $finalBwaBam;
+        }
         $allSteps .= "\n";
         $allSteps .= "\tmkdir -p \$(\@D)\n";
         # BWA_MEM command.
