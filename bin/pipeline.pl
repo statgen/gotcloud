@@ -1037,7 +1037,9 @@ sub processTarget
         my $output = resolveTmp(getStepInfo($step,"OUTPUT"));
         # Write the Makefile Target for this step.
         writeTarget($output, $makeDepends,
-                    resolveTmp(getStepInfo($step, "CMD")));
+                    resolveTmp(getStepInfo($step, "CMD")),
+                    getStepConf($step, "LOCAL"));
+
         $stepTargets .= " ".$output.".OK";
 
         # if we are generating a file containing the outputs, write to it.
@@ -1366,11 +1368,11 @@ sub setStepInfo
 ###############################################################
 
 #--------------------------------------------------------------
-#   writeTarget(step)
+#   writeTarget()
 #
 #--------------------------------------------------------------
 sub writeTarget {
-    my ($output, $depend, $cmd) = @_;
+    my ($output, $depend, $cmd, $local) = @_;
 
     my $okExt = "OK";
 
@@ -1384,14 +1386,22 @@ sub writeTarget {
         $allDirs{$dir} = undef;
     }
 
-    $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
-    my $newcmd = $opts{runcluster}." ";
-    if($opts{batchopts})
-    {
-        $newcmd .= "-opts '".$opts{batchopts}."' ";
-    }
-    $newcmd .= "$opts{batchtype} '$cmd'";
+    my $newcmd;
 
+    if(defined $local && $local ne "" && $local ne "0" )
+    {
+        $newcmd = $cmd;
+    }
+    else
+    {
+        $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
+        $newcmd = $opts{runcluster}." ";
+        if($opts{batchopts})
+        {
+            $newcmd .= "-opts '".$opts{batchopts}."' ";
+        }
+        $newcmd .= "$opts{batchtype} '$cmd'";
+    }
 
     writeMake("$output.$okExt:${depend}${dirDep}");
     writeMake("\n\t$newcmd\n");
