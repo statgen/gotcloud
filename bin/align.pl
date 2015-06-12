@@ -332,7 +332,6 @@ if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') ) {
     if(defined getConf("ONE_BWA") && getConf("ONE_BWA") ne 0 && getConf("ONE_BWA") ne "")
     {
         $oneBwa = 1;
-        print "ONE BWA!, ".getConf("ONE_BWA")."\n";
     }
 }
 elsif (getConf('MAP_TYPE') eq 'MOSAIK') {
