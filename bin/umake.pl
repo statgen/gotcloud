@@ -2609,7 +2609,7 @@ sub runPileup
     my $clipIn = "-.ubam";
     if ( $baqFlag != 0 ) {
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
-        $clipIn = "-.uubam";
+        $clipIn = "-.ubam";
     }
 
     my $md5Dir = "";
