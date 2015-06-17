@@ -29,7 +29,7 @@ Sorting the indices of 72 duplicated records
 Total # Reads skipped for building recab table: 4643
 Total # Reads used for building recab table: 5357
 # Bases observed: 186326 - #match: 184387; #mismatch: 1939
-# Bases Skipped for DBSNP: 7057, for BaseQual < 5: 388
+# Bases Skipped for DBSNP: 7057, for BaseQual < 5: 388, ref 'N': 0
 Writing recalibration table aligntest/bams/Sample1.recal.bam.qemp
 
 Writing aligntest/bams/Sample1.recal.bam
