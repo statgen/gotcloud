@@ -1047,6 +1047,7 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
     $saiFiles = '';
     $alnFiles = '';
     $polFiles = '';
+    $prevBwa = '';
 
     #----------------------------------------------------------------------------
     #   Create Makefile for this mergeFile
