@@ -5,7 +5,7 @@ SHELL := /bin/bash -o pipefail
 
 all: $(OUT_DIR)/Sample3.OK
 
-$(OUT_DIR)/Sample3.OK: $(FINAL_BAM_DIR)/Sample3.recal.bam.done $(QC_DIR)/Sample3.genoCheck.done $(QC_DIR)/Sample3.qplot.done
+$(OUT_DIR)/Sample3.OK: $(QC_DIR)/Sample3.genoCheck.done $(QC_DIR)/Sample3.qplot.done $(FINAL_BAM_DIR)/Sample3.recal.bam.bai.done $(FINAL_BAM_DIR)/Sample3.recal.bam.done
 	@echo `date +'%F.%H:%M:%S'` touch $@; touch $@
 
 $(QC_DIR)/Sample3.genoCheck.done: $(FINAL_BAM_DIR)/Sample3.recal.bam.done $(FINAL_BAM_DIR)/Sample3.recal.bam.bai.done

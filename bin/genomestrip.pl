@@ -339,7 +339,11 @@ while(<IN>) {
 	    $bam = &getAbsPath($bam, "BAM");
 	}
     }
-    
+    if($bam =~ /.cram$/)
+    {
+        die "ERROR: $bam is a CRAM file, but genomestrip does not currently support CRAM.\n";
+    }
+
     push(@ids,$id);
     push(@bams,$bam);
     push(@fns,$F[$#F]);

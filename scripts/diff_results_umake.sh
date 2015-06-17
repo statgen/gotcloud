@@ -86,6 +86,8 @@ status=0
 
 echo "Results from DIFF will be in $DIFFRESULTS"
 
+#    -I '^.*vcfPileup.*$' \
+
 diff -r $RESULTS_DIR $EXPECTED_DIR \
     $SKIP_GZS $SKIP_TBIS -x $DIFF_FILE $SKIP_LOGS -x jobfiles -x 20.20000001.25000000.txt $DIR_EXCLUDE\
     -I "^Analysis completed on " \
@@ -103,11 +105,13 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^Opening /.*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \
     -I '^[^[:space:]]*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.gz$' \
     -I '^[^[:space:]]*pvcfs/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.bam\.20\.[0-9]*\.[0-9]*\.vcf\.gz$' \
+    -I '^[^[:space:]]*pvcfs/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.cram\.20\.[0-9]*\.[0-9]*\.vcf\.gz$' \
     -I '^[^[:space:]]*glfs/samples/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.20\.[0-9]*\.[0-9]*\.glf$' \
-    -I '^bam file\s* : .*bams/[^/ \n\t]*\.bam$' \
+    -I '^bam file\s* : .*bam$' \
     -I '^input VCF file\s*: .*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.sites\.vcf$' \
     -I '^bam index file\s*: .*bams/[^/ \n\t]*\.bam\.bai$' \
     -I '^output VCF file\s*: .*pvcfs/chr20/[0-9]*.[0-9]*/[^/ \n\t]*\.bam\.20\.[0-9]*.[0-9]*\.vcf\.gz (gzip)$' \
+    -I '^output VCF file\s*: .*pvcfs/chr20/[0-9]*.[0-9]*/[^/ \n\t]*\.cram\.20\.[0-9]*.[0-9]*\.vcf\.gz (gzip)$' \
     -I '^[^/ \n\t]*\s*[^/ \n\t]*\s*0\s*0\s*2\s*.*glfs/samples/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.20\.[0-9]*\.[0-9]*\.glf$' \
     -I '^OUT_DIR=.*$' \
     -I '^GOTCLOUD_ROOT=.*$' \
@@ -140,6 +144,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^End time: ' \
     -I '^\s*Output : --outfile \[.*glfs/samples/chr20/[0-9]*\.[0-9]*/.*\.[0-9]*\.[0-9]*\.glf\],$' \
     -I '^  .*glfs/bams/.*/chr20/.*\.bam\.[0-9]*\.[0-9]*\.glf$' \
+    -I '^  .*glfs/bams/.*/chr20/.*\.cram\.[0-9]*\.[0-9]*\.glf$' \
     -I '^.*/bin/invNorm --in .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.raw --out .*vcfs/chr20/chr20\.filtered\.sites\.vcf\.norm$' \
     -I '^\s*Input options : --in \[.*vcfs/chr20/chr20\.filtered\.sites\.vcf\.raw\],$' \
     -I '^\s*Output Options : --out \[.*vcfs/chr20/chr20\.filtered\.sites\.vcf\.norm\],$' \

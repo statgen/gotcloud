@@ -37,6 +37,9 @@ push @INC,$scriptdir;                   # Use lib is a BEGIN block and does not 
 #   Global Variables
 ############################################################################
 
+# Track if any of the "bams" are crams.
+my %isCram = ();
+
 #--------------------------------------------------------------
 #   Initialization - Sort out the options and parameters
 #--------------------------------------------------------------
@@ -359,7 +362,7 @@ while (<LIST>)
         # Population is optional, so check pop to see if it looks like a BAM/CRAM.
         if($pop =~ /(bam|BAM|cram|CRAM)$/)
         {
-            # No population, just a BAM/CRAM, add it to the list of bams, and 
+            # No population, just a BAM/CRAM, add it to the list of bams, and
             # set population to ALL.
             unshift(@bams,$pop);
             $pop = "ALL";
@@ -639,6 +642,33 @@ for my $bam (sort keys %bam2sample)
     read(BAM, $buffer, 4);
     if($buffer ne "BAM\1")
     {
+        # Check if it is a CRAM file.
+        if($buffer eq "CRAM")
+        {
+            # This bam is a cram.
+            $isCram{$bam} = 1;
+            if(getStepConf($opts{name},"NO_CRAM") &&
+               getStepConf($opts{name},"NO_CRAM") ne 0)
+            {
+                die "ERROR: $bam is a CRAM file, but the '$opts{name}' pipeline does not support CRAM.\n";
+            }
+
+            # Read the header to get the chromosome names.
+            open my $input, "-|", getConf("SAMTOOLS_EXE")." view -H $bam | grep \"^\@SQ\""
+            or die "samtools failed to read header from $bam: $!";
+            while(my $line = <$input>)
+            {
+                chomp $line;
+                $line =~ /M5:([0-9a-fA-F]*)/;
+                my $m5 = $1;
+                $line =~ /SN:([^\t]*)/;
+                $bamChrs{$bam}{$1} = 1;
+              #  $refM5s{$m5} = $1;
+            }
+            close $input;
+            # TODO, validate CRAM.
+            next;
+        }
         #use bytes;
         #printf '%02x ', ord substr $buffer, 3, 1;
         die "$bam is not a proper BAM file, magic != BAM\\1, instead it is ".$buffer."\n";
@@ -788,7 +818,7 @@ for my $bam (sort keys %bam2sample)
     if($needbai)
     {
         # Only if breaking up by chromosome, check that all of the
-        #  chromosomes in CHRS are in the BAM.
+        #  chromosomes in CHRS are in the BAM/CRAM.
         if($byChr == 1)
         {
             foreach my $chr (@chrs)
@@ -820,12 +850,22 @@ for my $bam (sort keys %bam2sample)
             }
         }
 
-        # Validate the BAI files.
-        my $bai = "$bam.bai";
-        my $bai2 = $bam;
-        $bai2 =~ s/\.bam$/.bai/;
-        unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read .bai file, '$bai'\n"; }
-        unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+        if(exists $isCram{$bam})
+        {
+            # Cram - die if cram index is not readable
+            my $crai = "$bam.crai";
+            unless ( -r $crai ) { die "ERROR: Cannot read CRAM.crai file, '$crai'\n"; }
+            unless ( -s $crai ) { die "ERROR: $crai' is empty.\n"; }
+        }
+        else
+        {
+            # Validate the BAI files.
+            my $bai = "$bam.bai";
+            my $bai2 = $bam;
+            $bai2 =~ s/\.bam$/.bai/;
+            unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read .bai file, '$bai'\n"; }
+            unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+        }
     }
 }
 

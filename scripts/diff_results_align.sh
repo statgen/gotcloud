@@ -103,7 +103,7 @@ diff -r -x align.conf -x jobfiles $RESULTS_DIR/Makefiles/ $EXPECTED_DIR/Makefile
     -I '(.* sampe -r .* $(basename $^) .*fastq/Sample_[1-3]/File[1-2]_R1.fastq.gz .*fastq/Sample_[1-3]/File[1-2]_R2.fastq.gz | .* view -uhS - | .* sort -m .* - $(basename $(basename $@))) 2> $(basename $(basename $@)).sampe.log' \
     -I '^[A-Z_][A-Z_]* = '\
     -I '^OUT_DIR=.*$'\
-    -I '^$(OUT_DIR)/Sample[1-3].OK: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].genoCheck.done .*/Sample[1-3].qplot.done$' \
+    -I '^$(OUT_DIR)/Sample[1-3].OK: .*/Sample[1-3].genoCheck.done .*/Sample[1-3].qplot.done .*/Sample[1-3].recal.bam.bai.done .*/Sample[1-3].recal.bam.done$' \
     -I '^.*/Sample[1-3].recal.bam.bai.done: .*/Sample[1-3].recal.bam.done$' \
     -I '^.*/Sample[1-3].genoCheck.done: .*/Sample[1-3].recal.bam.done .*/Sample[1-3].recal.bam.bai.done$' \
     -I '@echo .*".* --bam $(basename $<) --out $(basename $@) --vcf .*  2> $(basename $@).log"$' \

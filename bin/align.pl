@@ -89,6 +89,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     base_prefix|baseprefix=s
     keeptmp
     keeplog
+    cram
     noPhoneHome
     verbose=i
     threads=i
@@ -235,6 +236,7 @@ if ($opts{fastq_prefix}) { push(@confSettings, "FASTQ_PREFIX = $opts{fastq_prefi
 if ($opts{base_prefix})  { push(@confSettings, "BASE_PREFIX = $opts{base_prefix}"); }
 if ($opts{keeptmp})      { push(@confSettings, "KEEP_TMP = $opts{keeptmp}"); }
 if ($opts{keeplog})      { push(@confSettings, "KEEP_LOG = $opts{keeplog}"); }
+if (exists $opts{cram})  { push(@confSettings, "ALIGN_CRAM_OUTPUT = TRUE"); }
 if ($opts{list})         { push(@confSettings, "FASTQ_LIST = $opts{list}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
 if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
@@ -249,6 +251,12 @@ if (loadConf(\@confSettings, \@configs, $opts{verbose})) {
 }
 
 my @perMergeStep = split(' ', getConf("PER_MERGE_STEPS"));
+my @cramSteps = split(' ', getConf("ALIGN_CRAM_OUTPUT_STEPS"));
+my @allSteps = @perMergeStep;
+if(uc(getConf("ALIGN_CRAM_OUTPUT")) eq "TRUE")
+{
+    push(@allSteps, @cramSteps);
+}
 
 
 if(!getConf("FASTQ_LIST"))
@@ -456,7 +464,7 @@ foreach my $exe (@reqExes)
     $missingExe++;
 }
 # Loop through the defined steps & check for required exes.
-foreach my $step (@perMergeStep)
+foreach my $step (@allSteps)
 {
     my $exes = getConf($step."_REQ_EXES");
     if(defined $exes)
@@ -1000,13 +1008,19 @@ if(getConf('BAM_INDEX') || getConf('BAM_LIST'))
         $bamIndex = getConf("BAM_LIST");
     }
     open(BAM_IDX,">$bamIndex") || die "Cannot open $bamIndex for writing.  $!\n";
+
+    my $ext = getConf("recab_EXT");
+    if(uc(getConf("ALIGN_CRAM_OUTPUT")) eq "TRUE")
+    {
+        $ext = getConf("cram_EXT");
+    }
     # Loop through %smToMerge and print the bam index
     foreach my $key (keys %smToMerge )
     {
         print BAM_IDX "$key";
         foreach (@{$smToMerge{$key}})
         {
-            print BAM_IDX "\t".&getConf("FINAL_BAM_DIR")."/".$_.".recal.bam";
+            print BAM_IDX "\t".&getConf("FINAL_BAM_DIR")."/".$_.".$ext";
         }
         print BAM_IDX "\n";
     }
@@ -1048,12 +1062,16 @@ foreach my $tmpmerge (sort (keys %mergeToFq1)) {
 
     #   Start
     print MAK "all: \$(OUT_DIR)/$mergeName.OK\n\n";
-    print MAK "\$(OUT_DIR)/$mergeName.OK: " . getConf('FINAL_BAM_DIR') . "/$mergeName.recal.bam.done " .
-        getConf('QC_DIR') . "/$mergeName.genoCheck.done " . getConf('QC_DIR') . "/$mergeName.qplot.done\n";
+    print MAK "\$(OUT_DIR)/$mergeName.OK:";
+    foreach my $step (@allSteps)
+    {
+        print MAK " ".getConf($step."_DIR") . "/$mergeName." . getConf($step."_EXT",1).".done";
+    }
+    print MAK "\n";
     print MAK doneTarget();
 
     # Loop through the defined steps.
-    foreach my $step (@perMergeStep)
+    foreach my $step (@allSteps)
     {
         print MAK getConf($step."_DIR") . "/$mergeName." . getConf($step."_EXT",1).".done:";
 
@@ -1726,6 +1744,10 @@ The default is to remove the log files.
 
 If specified, the temporary files used in this process will not be deleted.
 The default is to remove the temporary files.
+
+=item B<--cram>
+
+Write the final output files in CRAM, removing the intermediate BAM files (default is to have the final output files in BAM).
 
 =item B<--numjobs N>
 

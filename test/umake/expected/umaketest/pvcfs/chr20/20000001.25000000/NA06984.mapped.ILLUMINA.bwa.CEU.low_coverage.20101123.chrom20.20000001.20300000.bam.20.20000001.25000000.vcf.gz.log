@@ -1,6 +1,0 @@
-Running gpileup version 0.577
-bam file                : bams/NA06984.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam
-input VCF file          : /net/wonderland/home/mktrost/umake/test/NEWTEST/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf
-bam index file          : bams/NA06984.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.bai
-output VCF file         : /net/wonderland/home/mktrost/umake/test/NEWTEST/pvcfs/chr20/20000001.25000000/NA06984.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20.20000001.25000000.vcf.gz (gzip)
-add deletions as bases  : no

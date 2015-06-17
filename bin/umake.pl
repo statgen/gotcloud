@@ -73,6 +73,9 @@ my $noPhoneHome = '';
 my $bamList = '';
 my $refdir = '';
 
+# Track if any of the "bams" are crams.
+my %isCram = ();
+
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
                            "outdir|out_dir=s",\$outdir,
@@ -130,7 +133,7 @@ if(!$gcroot)
     foreach my $file (@configs)
     {
         my $fileContents;
-        open my $openFile, '<', $file or die $!;
+        open my $openFile, '<', $file or die "Cannot open $file file for reading: $!";
         $fileContents = <$openFile>;
         close $openFile;
 
@@ -518,18 +521,14 @@ foreach my $key (keys %deprecatedWarn)
     }
 }
 
-
-if(!getConf("BAM_LIST"))
+if(getConf("BAM_INDEX"))
 {
-    if(getConf("BAM_INDEX"))
-    {
-        setConf("BAM_LIST", getConf("BAM_INDEX"));
-    }
-    else
-    {
-        warn "ERROR: 'BAM_LIST' required, but not set.\n";
-        $failReqFile = "1";
-    }
+    setConf("BAM_LIST", getConf("BAM_INDEX"));
+}
+elsif(!getConf("BAM_LIST"))
+{
+    warn "ERROR: 'BAM_LIST' required, but not set.\n";
+    $failReqFile = "1";
 }
 
 #   These files must exist
@@ -852,18 +851,6 @@ while(<IN>) {
             unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
             unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
         }
-
-        if ( (getConf("RUN_PILEUP") eq "TRUE") ||
-             (getConf("RUN_VCFPILEUP") eq "TRUE") )
-        {
-            # die if bai is not readable
-            my $bai = "$bam.bai";
-            my $bai2 = $bam;
-            $bai2 =~ s/\.bam$/.bai/;
-
-            unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
-            unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
-        }
     }
     push(@allSMs,$smID);
     push(@allbams,@bams);
@@ -977,10 +964,42 @@ for my $bam (@allbams)
     read(BAM, $buffer, 4);
     if($buffer ne "BAM\1")
     {
+        # Check if it is a CRAM file.
+        if($buffer eq "CRAM")
+        {
+            # This bam is a cram.
+            $isCram{$bam} = 1;
+
+            # Check for cram index.
+            if ( (getConf("RUN_PILEUP") eq "TRUE") ||
+                 (getConf("RUN_VCFPILEUP") eq "TRUE") )
+            {
+                # die if cram index is not readable
+                my $crai = "$bam.crai";
+                unless ( -r $crai ) { die "ERROR: Cannot read CRAM.crai file, '$crai'\n"; }
+                unless ( -s $crai ) { die "ERROR: $crai' is empty.\n"; }
+            }
+
+            # TODO, validate CRAM.
+            next;
+        }
         #use bytes;
         #printf '%02x ', ord substr $buffer, 3, 1;
         die "$bam is not a proper BAM file, magic != BAM\\1, instead it is ".$buffer."\n";
     }
+    # Check for BAM index.
+    if ( (getConf("RUN_PILEUP") eq "TRUE") ||
+         (getConf("RUN_VCFPILEUP") eq "TRUE") )
+    {
+        # die if bai is not readable
+        my $bai = "$bam.bai";
+        my $bai2 = $bam;
+        $bai2 =~ s/\.bam$/.bai/;
+        unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
+        unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+    }
+
+
     # Read the length of the header text.
     read(BAM, $buffer, 4);
     my $hdrLen = unpack("V", $buffer);
@@ -1091,6 +1110,55 @@ foreach my $chr (@chrs)
 }
 
 
+#############################################################################
+## Check MD5 files for CRAM.
+############################################################################
+# If there are any CRAM files, set REF_PATH.
+if(scalar keys %isCram > 0)
+{
+    # There is at least one CRAM file, so check the MD5 files.
+    genMD5Files();
+
+    # Check each CRAM and see if it's MD5 file exists.
+    my %refM5s = ();
+    foreach my $cram (sort(keys %isCram))
+    {
+        open my $input, "-|", getConf("SAMTOOLS_FOR_OTHERS")." view -H $cram | grep \"^\@SQ\""
+        or die "samtools failed to read header from $cram: $!";
+        while(my $line = <$input>)
+        {
+            chomp $line;
+            $line =~ /M5:([0-9a-fA-F]*)/;
+            my $m5 = $1;
+            $line =~ /SN:([^\t]*)/;
+            $refM5s{$m5} = $1;
+        }
+    }
+    foreach my $refM5 (sort (keys %refM5s))
+    {
+        # Only validate for chromosomes in the reference.
+        # We already validated that all processed chromosomes are in the reference.
+        if(!exists $hChrSizes{$refM5s{$refM5}})
+        {
+            next;
+        }
+        my $refPath = getConf("MD5_DIR");
+        while($refPath =~ /([^%]*)%([0-9]*)s(.*)/)
+        {
+            my $sub = $refM5;
+            if($2)
+            {
+               $sub = substr($refM5, 0, $2);
+               $sub = substr($refM5, 0, $2, "");
+            }
+            $refPath = $1.$sub.$3;
+        }
+        if(! -e $refPath)
+        {
+            die "ERROR: unable to find MD5 file at $refPath expected for a CRAM file, ensure 'REF' matches the one used to generate the CRAMs.\n";
+        }
+    }
+}
 #############################################################################
 ## STEP 5 : CONFIGURE PARAMETERS
 ############################################################################
@@ -1791,7 +1859,15 @@ foreach my $chr (@chrs) {
                 my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
                 push(@pvcfs,$pvcf);
                 #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+                my $cmd;
+                my $vcfInBam = $bam;
+                if(exists $isCram{$bam})
+                {
+                    # Cram has to be converted to bam and streamed to vcfPileup
+                    $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr | ";
+                    $vcfInBam = "-.ubam";
+                }
+                $cmd .= getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
             }
@@ -1891,7 +1967,16 @@ foreach my $chr (@chrs) {
                     my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
                     push(@pvcfs,$pvcf);
                     #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                    my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+                    my $cmd;
+                    my $vcfInBam = $bam;
+                    if(exists $isCram{$bam})
+                    {
+                        # Cram has to be converted to bam and streamed to vcfPileup
+#                        $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam | ";
+                        $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                        $vcfInBam = "-.ubam";
+                    }
+                    $cmd .= getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
                     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
                 }
@@ -2521,11 +2606,19 @@ sub runPileup
     }
 
     my $baq = "";
+    my $clipIn = "-.ubam";
     if ( $baqFlag != 0 ) {
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
+        $clipIn = "-.ubam";
     }
 
-    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
+    my $md5Dir = "";
+    if(exists $isCram{$bamIn})
+    {
+        $md5Dir = "REF_PATH=".getConf("MD5_DIR")." ";
+    }
+
+    my $cmd = getMosixCmd("($md5Dir".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in $clipIn --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
     return($cmd);

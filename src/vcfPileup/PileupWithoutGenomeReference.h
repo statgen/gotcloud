@@ -7,6 +7,7 @@
 struct Region
 {
     std::string chrom;
+    int chromID;
     uint32_t start;
     uint32_t end;
     vector<uint32_t> *positions;
@@ -127,11 +128,40 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
     vector<Region> regions;
     Region currentRegion;
     currentRegion.chrom = "0";
+    currentRegion.chromID = 0;
     currentRegion.start = 0;
     currentRegion.end = 0;
     currentRegion.positions = new vector<uint32_t>();
     currentRegion.currentPosition = 0;
 
+    SamFile samIn;
+    SamFileHeader header;
+    SamRecord record;
+    
+    if(!samIn.OpenForRead(bamFileName.c_str()))
+    {
+        fprintf(stderr, "%s\n", samIn.GetStatusMessage());
+        return(samIn.GetStatus());
+    }
+    samIn.SetReadFlags(includeFlag, excludeFlag);
+
+    if(!samIn.ReadHeader(header))
+    {
+        fprintf(stderr, "%s\n", samIn.GetStatusMessage());
+        return(samIn.GetStatus());
+    }
+
+    // read index file if not reading from a stream.
+    if (!samIn.IsStream() && !samIn.ReadBamIndex())
+    {
+        fprintf(stderr, "%s\n", samIn.GetStatusMessage());
+        return(samIn.GetStatus());  	
+    }
+	
+    // The file needs to be sorted by coordinate.
+    samIn.setSortedValidation(SamFile::COORDINATE);
+
+    // Iterate over selected regions
     while(!ifeof(vcfIn))
     {
         if((c=ifgetc(vcfIn))!='#')
@@ -160,48 +190,72 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
             //decide to include region or not
             if(chromosome!=currentRegion.chrom)
 	    {
-                //add current region
-                Region newRegion;
-                newRegion.chrom = currentRegion.chrom;
-                newRegion.start = currentRegion.start;
-                newRegion.end = currentRegion.end;
-                newRegion.positions = currentRegion.positions;
-                newRegion.currentPosition = currentRegion.currentPosition;
-                regions.push_back(newRegion);
-				
-                //create new current region
-                currentRegion.chrom=chromosome;
-                currentRegion.start=position;
-                currentRegion.end=position;
-                currentRegion.positions = new vector<uint32_t>();
-                currentRegion.positions->push_back(position);
-                currentRegion.currentPosition = 0;		
+                int chromID = header.getReferenceID(chromosome.c_str());
+                if(chromID == SamReferenceInfo::NO_REF_ID)
+                {
+                    // This chromosome is not found in the BAM, so  do not add it to the region list.
+                    fprintf(stderr, "chromosome %s, not in BAM\n", chromosome.c_str());
+                    exit(1);
+                }
+                else
+                {
+                    //add current region
+                    Region newRegion;
+                    newRegion.chrom = currentRegion.chrom;
+                    newRegion.chromID = currentRegion.chromID;
+                    newRegion.start = currentRegion.start;
+                    newRegion.end = currentRegion.end;
+                    newRegion.positions = currentRegion.positions;
+                    newRegion.currentPosition = currentRegion.currentPosition;
+                    regions.push_back(newRegion);
+                    
+                    //create new current region
+                    currentRegion.chrom=chromosome;
+                    currentRegion.chromID=chromID;
+                    currentRegion.start=position;
+                    currentRegion.end=position;
+                    currentRegion.positions = new vector<uint32_t>();
+                    currentRegion.positions->push_back(position);
+                    currentRegion.currentPosition = 0;		
+                }
 	    }
             else
 	    {
-                //extend region
-                if(position-currentRegion.end < 300)
+                //extend region - always extend for streaming (1 region per chr)
+                if(samIn.IsStream() || (position-currentRegion.end < 300))
 		{
                     currentRegion.end = position;
                     currentRegion.positions->push_back(position);
 		}
                 else
 		{
-                    //add current region
-                    Region newRegion;
-                    newRegion.chrom = currentRegion.chrom;
-                    newRegion.start = currentRegion.start;
-                    newRegion.end = currentRegion.end;
-                    newRegion.positions = currentRegion.positions;
-                    regions.push_back(newRegion);
-					
-                    //create new current region
-                    currentRegion.chrom=chromosome;
-                    currentRegion.start=position;
-                    currentRegion.end=position;
-                    currentRegion.positions = new vector<uint32_t>();
-                    currentRegion.positions->push_back(position);
-					
+                    int chromID = header.getReferenceID(chromosome.c_str());
+                    if(chromID == SamReferenceInfo::NO_REF_ID)
+                    {
+                        // This chromosome is not found in the BAM, so  do not add it to the region list.
+                        fprintf(stderr, "chromosome %s, not in BAM\n", chromosome.c_str());
+                        exit(1);
+                    }
+                    else
+                    {
+                        //add current region
+                        Region newRegion;
+                        newRegion.chrom = currentRegion.chrom;
+                        newRegion.chromID = currentRegion.chromID;
+                        newRegion.start = currentRegion.start;
+                        newRegion.end = currentRegion.end;
+                        newRegion.positions = currentRegion.positions;
+                        newRegion.currentPosition = 0;
+                        regions.push_back(newRegion);
+                        
+                        //create new current region
+                        currentRegion.chrom=chromosome;
+                        currentRegion.chromID=chromID;
+                        currentRegion.start=position;
+                        currentRegion.end=position;
+                        currentRegion.positions = new vector<uint32_t>();
+                        currentRegion.positions->push_back(position);
+                    }		
 		}	
 	    }		
         }
@@ -212,80 +266,77 @@ int PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processFile(const std
 	}
     }
 
-    // add the last region
-    if(currentRegion.end-currentRegion.start > 0) 
-    {
-        Region newRegion;
-        newRegion.chrom = currentRegion.chrom;
-        newRegion.start = currentRegion.start;
-        newRegion.end = currentRegion.end;
-        newRegion.positions = currentRegion.positions;
-        regions.push_back(newRegion);
-    }
+    // Always add the last region
+    Region newRegion;
+    newRegion.chrom = currentRegion.chrom;
+    newRegion.chromID = currentRegion.chromID;
+    newRegion.start = currentRegion.start;
+    newRegion.end = currentRegion.end;
+    newRegion.positions = currentRegion.positions;
+    newRegion.currentPosition = 0;
+    regions.push_back(newRegion);
 
-    SamFile samIn;
-    SamFileHeader header;
-    SamRecord record;
-    
-    if(!samIn.OpenForRead(bamFileName.c_str()))
+    if(!samIn.IsStream())
     {
-        fprintf(stderr, "%s\n", samIn.GetStatusMessage());
-        return(samIn.GetStatus());
-    }
-    
-    if(!samIn.ReadHeader(header))
-    {
-        fprintf(stderr, "%s\n", samIn.GetStatusMessage());
-        return(samIn.GetStatus());
-    }
-
-    // read index file
-    if (!samIn.ReadBamIndex())
-    {
-        return(samIn.GetStatus());  	
-    }
-	
-    // The file needs to be sorted by coordinate.
-    samIn.setSortedValidation(SamFile::COORDINATE);
-
-    // Iterate over selected regions
-    for (uint i=1; i<regions.size(); ++i)
-        //for (uint i=86770; i<86771; ++i)
-    {
-        int lastReadAlignmentStart = 0;
-        Region currentRegion = regions.at(i);
-        if(!samIn.SetReadSection(header.getReferenceID(currentRegion.chrom.c_str()), currentRegion.start-1, currentRegion.end))
-	{							
-            // std::cerr << "chrom:" << regions.at(i).chrom << ":" <<  regions.at(i).start << "-" << regions.at(i).end << "\n";
-	}
-        else
-	{
+        // Iterate over selected regions
+        // Start at position 1 - skip 0 since it is a dummy record.
+        for (uint i=1; i<regions.size(); ++i)
+        {
+            int lastReadAlignmentStart = 0;
+            Region currentRegion = regions.at(i);
+            if(!samIn.SetReadSection(header.getReferenceID(currentRegion.chrom.c_str()), currentRegion.start-1, currentRegion.end))
+            {
+                // Could not set read section, continue to next section.
+                continue;
+                // std::cerr << "chrom:" << regions.at(i).chrom << ":" <<  regions.at(i).start << "-" << regions.at(i).end << "\n";
+            }
             // Iterate over all records
             while (samIn.ReadRecord(header, record))
-	    {
-                uint16_t flag = record.getFlag();
-                if(flag & excludeFlag)
-		{
-                    // This record has an excluded flag set, 
-                    // so continue to the next one.
-                    continue;
-		}
-                if((flag & includeFlag) != includeFlag)
-		{
-                    // This record does not have all required flags set, 
-                    // so continue to the next one.
-                    continue;
-		}
-		        
+            {
                 if(record.get0BasedPosition()>=lastReadAlignmentStart)
-		{
+                {
                     lastReadAlignmentStart = record.get0BasedPosition();
                     processAlignment(record, &currentRegion);
-		}
-	    }
-	}
-    }	
-   
+                }
+            }
+        }
+    }
+    else
+    {
+        // Stream, so loop through and read all records, checking the region for each one.
+        int lastReadAlignmentStart = 0;
+        std::vector<Region>::iterator regionIter = regions.begin();
+        ++regionIter; // skip past the first, dummy record.
+
+        while (samIn.ReadRecord(header, record))
+        {
+            // Increment the region iter until it is at or after this 
+            // record's chromosome.
+            while((regionIter != regions.end()) && 
+                  (regionIter->chromID < record.getReferenceID()))
+            {
+                // region is prior to this record, so increment the iterator.
+                ++regionIter;
+            }
+            if(regionIter == regions.end())
+            {
+                // No more regions, so end loop.
+                // Keep continuing to consume the entire file across the pipe.
+                continue;
+            }
+            if(regionIter->chromID > record.getReferenceID())
+            {
+                // This record is prior to the next region,
+                // so continue to the next record.
+                continue;
+            }
+            if(record.get0BasedPosition()>=lastReadAlignmentStart)
+            {
+                lastReadAlignmentStart = record.get0BasedPosition();
+                processAlignment(record, &currentRegion);
+            }
+        }
+    }
     Pileup<PILEUP_TYPE>::flushPileup();
 
     int returnValue = 0;
@@ -312,12 +363,13 @@ void PileupWithoutGenomeReference<PILEUP_TYPE, FUNC_CLASS>::processAlignment(Sam
     Pileup<PILEUP_TYPE>::flushPileup(refID, refPosition);
 
     //search for first location in region.positions that is >= the start position of the record
-    while (region->positions->at(region->currentPosition)-1< (uint32_t)refPosition)
+    while((region->currentPosition < region->positions->size()) && 
+          (region->positions->at(region->currentPosition)-1 < (uint32_t)refPosition))
     {
         ++(region->currentPosition);
     }
-	
-    for (uint k=region->currentPosition; k<region->positions->size()&& region->positions->at(k)-1<=(uint32_t)record.get0BasedAlignmentEnd(); ++k)	
+
+    for (uint k=region->currentPosition; k<region->positions->size()&& region->positions->at(k)-1<=(uint32_t)record.get0BasedAlignmentEnd(); ++k)
     {
         Pileup<PILEUP_TYPE>::addAlignmentPosition(region->positions->at(k)-1, record);
     }
