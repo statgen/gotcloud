@@ -73,6 +73,8 @@ my $noPhoneHome = '';
 my $bamList = '';
 my $refdir = '';
 
+my $chunkOK = '';
+
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
                            "outdir|out_dir=s",\$outdir,
@@ -108,7 +110,8 @@ my $optResult = GetOptions("help",\$help,
                            "refdir|ref_dir=s", \$refdir,
                            "ignoresmcheck", \$ignoreSmCheck,
                            "gotcloudroot|gcroot=s", \$gcroot,
-                           "noPhoneHome", \$noPhoneHome
+                           "noPhoneHome", \$noPhoneHome,
+                           "chunkOK", \$chunkOK
     );
 
 my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
@@ -582,6 +585,7 @@ while(<IN>) {
 }
 close IN;
 
+my @toClean = ();
 
 my @chrs = split(/\s+/,getConf("CHRS"));
 my @chrchrs;
@@ -754,7 +758,7 @@ unless ( $outdir =~ /^\// ) {
 }
 
 system("mkdir -p $outdir") &&
-die "Unable to create directory '$outdir'\n";
+    die "Unable to create directory '$outdir'\n";
 dumpConf("$outdir/".getConf("MAKE_BASE_NAME").".$makeext.conf");
 
 
@@ -800,7 +804,7 @@ while(<IN>) {
     }
 
     # Make sure the sample id doesn't look like bam/cram file names.
-    if($smID =~ /(bam|BAM|cram|CRAM)$/)
+    if($smID =~ /\.(bam|BAM|cram|CRAM)$/)
     {
         die "ERROR: Check the format of $bamList.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $smID\n";
     }
@@ -1671,6 +1675,8 @@ foreach my $chr (@chrs) {
         my $vcfParent = "$remotePrefix$vcfDir/$chrchr";
         my $vcfPrefix = "$vcfParent/$chrchr";
 
+        $vcfPrefix =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+
         my $svmvcf = "$vcfPrefix.${svmPrefix}filtered.vcf.gz";
         my $svmsitesvcf = "$vcfPrefix.${svmPrefix}filtered.sites.vcf";
         #############################################################################
@@ -1703,15 +1709,18 @@ foreach my $chr (@chrs) {
 
             my $cmd = getConf("EXT_FILT")." --ref ".getConf("REF")." --in $svmvcf ${extStr} --out $outvcf 2> $outvcf.err";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "\t".getMosixCmd($cmd, "$outvcf")."\n\n";
-            $cmd = getConf("TABIX")." -f -pvcf $outvcf\n";
-            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+            print MAK "\t".getMosixCmd($cmd, "$outvcf")."\n";
+            $cmd = getConf("TABIX")." -f -pvcf $outvcf";
             writeLocalCmd($cmd);
             # Write just the sites, then do the summary.
             print MAK "\tzcat $outvcf | cut -f 1-8 > $outsitesvcf\n";
             $cmd = "\t".getConf("VCFSUMMARY")." --vcf $outsitesvcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $outsitesvcf.summary 2> $outsitesvcf.summary.log\n";
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             print MAK "$cmd";
+            $cmd = getConf("BGZIP")." -f $outsitesvcf";
+            writeLocalCmd($cmd);
+            $cmd = getConf("TABIX")." -f -pvcf $outsitesvcf.gz";
+            writeLocalCmd($cmd);
             writeTouch("$outvcf");
             print MAK "\n";
         }
@@ -1722,8 +1731,6 @@ foreach my $chr (@chrs) {
         my $mergedvcf = "$vcfPrefix.merged.vcf";
 
         my $expandFlag = ( getConf("RUN_FILTER") eq "TRUE" ) ? 1 : 0;
-
-        my @cmds = ();
 
         print MAK "svm$chr: $svmvcf.OK\n\n";
 
@@ -1758,234 +1765,185 @@ foreach my $chr (@chrs) {
         $cmd = "\t".getConf("VCFSUMMARY")." --vcf $svmsitesvcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $svmsitesvcf.summary 2> $svmsitesvcf.summary.log\n";
         $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
         print MAK "$cmd";
+        unless ($extfilt eq "TRUE") {
+            $cmd = getConf("BGZIP")." -f $vcfPrefix.filtered.sites.vcf";
+            writeLocalCmd($cmd);
+            $cmd = getConf("TABIX")." -f -pvcf $vcfPrefix.filtered.sites.vcf.gz";
+            writeLocalCmd($cmd);
+        }
         writeTouch("$svmvcf");
+        print MAK "\n";
+
+        for(my $j=0; $j < @unitStarts; ++$j) {
+            my $vcfParent = "$remotePrefix$vcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
+            push(@toClean,$vcfParent);
+        }
+        push(@toClean,"$vcfPrefix.merged.*") if ( getConf("RUN_SVM") eq "TRUE" );
+        push(@toClean,"$vcfPrefix.${filterPrefix}filtered.*") if ( getConf("RUN_SVM") eq "TRUE" );
+        push(@toClean,"$vcfPrefix.${svmPrefix}filtered.*") if ( $extfilt eq "TRUE" );
+    }
+
+    #############################################################################
+    ## STEP 10-4A : VCF PILEUP before MERGING
+    #############################################################################
+    if ( getConf("RUN_VCFPILEUP") eq "TRUE" ) {
+        my $expandFlag = ( getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
+
+        ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
+        my @gvcfs = ();
+        my @vcfs = ();
+        my @pvcfs = ();
+        my @cmds = ();
+
+        my $cptdir = "$outdir/cpt/".getConf("PVCF_DIR")."/$chrchr";
+        system("mkdir -p $cptdir") && die "Unable to create directory '$cptdir'\n";
+        my $cptMAKdir = $cptdir;
+        $cptMAKdir =~ s/$outdir/\$(OUT_DIR)/g;
+
+        my @svcfs = ();
+        for(my $j=0; $j < @unitStarts; ++$j) {
+            my $vcfParent = "$remotePrefix$vcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
+            my $svcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
+            my $gvcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
+            my $vcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].vcf";
+            my $pvcfParent = "$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
+            push(@cmds,"$svcf.OK: ".( ($expandFlag == 1) ? "$vcf.OK" : "")."\n\tcut -f 1-8 $vcf > $svcf\n\tmkdir --p $pvcfParent\n\t".getTouch("$svcf")."\n");
+            push(@svcfs, $svcf);
+        }
+
+        my @allcpts = ();
+        for(my $i=0; $i < @allbams; ++$i) {
+            my $bam = $allbams[$i];
+            my $bamSM = $allbamSMs[$i];
+            my @F = split(/\//,$bam);
+            my $bamFn = pop(@F);
+
+            my $cptOK = "$cptMAKdir/$bamFn.OK";
+            push(@allcpts, $cptOK);
+            my $singleOKCmd = "";
+            for(my $j=0; $j < @unitStarts; ++$j) {
+                my $pvcfParent = "$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
+                my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
+                    my $cmd = getConf("VCFPILEUP")." -i $svcfs[$j] -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+                if( $chunkOK) {
+                    push(@pvcfs,$pvcf);
+                    push(@cmds,"$pvcf.OK: $svcfs[$j].OK\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
+                }
+                else {
+                    $singleOKCmd .= $cmd."; ";
+                }
+            }
+            if(! $chunkOK)
+            {
+                push(@cmds, "$cptOK: ".join(".OK ",@svcfs).".OK");
+                push(@cmds, "\t".getMosixCmd($singleOKCmd,$cptOK));
+                push(@cmds, "\ttouch $cptOK\n");
+            }
+        }
+
+        print MAK "pvcf$chr: $cptMAKdir/all.OK\n\n";
+
+        if ( $chunkOK ) {
+            my $line = "$cptMAKdir/all.OK: ".join(".OK ",@pvcfs).".OK";
+            $line =~ s/$outdir/\$(OUT_DIR)/g;
+            print MAK $line;
+        }
+        else {
+            my $line = "$cptMAKdir/all.OK: ".join(" ",@allcpts);
+            $line =~ s/$outdir/\$(OUT_DIR)/g;
+            print MAK $line;
+        }
+        if ( $expandFlag == 1 ) {
+            print MAK " $remotePrefix$vcfDir/$chrchr/$chrchr.merged.vcf.OK\n";
+        }
+        else {
+            print MAK "\n";
+        }
+        print MAK "\ttouch $cptMAKdir/all.OK\n\n";
         print MAK join("\n",@cmds);
         print MAK "\n";
     }
 
-    if ( getConf("MERGE_BEFORE_FILTER") eq "TRUE" ) {
-        #############################################################################
-        ## STEP 10-4B : VCF PILEUP after MERGING
-        #############################################################################
-        if ( getConf("RUN_VCFPILEUP") eq "TRUE" ) {
-            # determine whether to expand to lower level target or not
-            my $expandFlag = ( getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
+    #############################################################################
+    ## STEP 10-5A : HARD FILTERING before MERGING
+    #############################################################################
+    if ( getConf("RUN_FILTER") eq "TRUE" ) {
+        my $expandFlag = ( getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
+        my $gmFlag = ( getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
 
-            ## Generate gpileup statistics (.pvcf) for every BAMs + merged VCF
-            my @gvcfs = ();
-            my @vcfs = ();
-            my @pvcfs = ();
-            my @cmds = ();
+        ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
+        my @gvcfs = ();
+        my @vcfs = ();
+        my @cmds = ();
 
-            my $vcfParent = "$remotePrefix$vcfDir/$chrchr";
-            my $svcf = "$vcfParent/$chrchr.merged.sites.vcf";
-            my $gvcf = "$vcfParent/$chrchr.merged.stats.vcf";
-            my $vcf = "$vcfParent/$chrchr.merged.vcf";
+        my $cptdir = "$outdir/cpt/".getConf("PVCF_DIR")."/$chrchr";
+        my $cptMAKdir = $cptdir;
+        $cptMAKdir =~ s/$outdir/\$(OUT_DIR)/g;
 
-            for(my $i=0; $i < @allbams; ++$i) {
-                my $bam = $allbams[$i];
-                my $bamSM = $allbamSMs[$i];
-                my @F = split(/\//,$bam);
-                my $bamFn = pop(@F);
-                my $pvcfParent = "$pvcfDir/$chrchr";
-                my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
-                push(@pvcfs,$pvcf);
-                #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
+        for(my $j=0; $j < @unitStarts; ++$j) {
+            my $vcfParent = "$remotePrefix$vcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
+            my $svcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
+            my $gvcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
+            my $vcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].vcf";
+
+            if ( $expandFlag > 0 ) {
+                my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                push(@cmds,"$pvcf.OK: $vcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
-            }
 
-            print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
-            if ( $expandFlag == 1 ) {
-                print MAK " $remotePrefix$vcfDir/$chrchr/$chrchr.merged.vcf.OK\n\n";
+                push(@cmds,"$gvcf.OK: $cptMAKdir/all.OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
             }
             else {
-                print MAK "\n\n";
-            }
-            print MAK join("\n",@cmds);
-        }
-
-        #############################################################################
-        ## STEP 10-5B : HARD FILTERING AFTER MERGING
-        #############################################################################
-        if ( getConf("RUN_FILTER") eq "TRUE" ) {
-            my $vcfParent = "$remotePrefix$vcfDir/$chrchr";
-            my $svcf = "$vcfParent/$chrchr.merged.sites.vcf";
-            my $gvcf = "$vcfParent/$chrchr.merged.stats.vcf";
-            my $vcf = "$vcfParent/$chrchr.merged.vcf";
-
-            my @pvcfs = ();
-            for(my $i=0; $i < @allbams; ++$i) {
-                my $bam = $allbams[$i];
-                my @F = split(/\//,$bam);
-                my $bamFn = pop(@F);
-                my $pvcfParent = "$pvcfDir/$chrchr";
-                my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.vcf.gz";
-                push(@pvcfs,$pvcf);
-            }
-
-            my $expandFlag = ( getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
-            my @cmds = ();
-            my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/ --suffix .$chr.vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-
-            my $mvcfPrefix = "$remotePrefix$vcfDir/$chrchr/$chrchr";
-            print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
-            if ( $expandFlag == 1 ) {
-                print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK pvcf$chr\n";
-            }
-            else {
-                print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: $gvcf.OK\n";
-            }
-            my $indelVCF = getConf("INDEL_PREFIX").".$chrchr.vcf";
-            if(getConf("INDEL_VCF"))
-            {
-                $indelVCF = getConf("INDEL_VCF");
-            }
-
-            $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $gvcf > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.out 2>&1\n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$cmd";
-            $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
-            writeLocalCmd($cmd);
-            $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$cmd";
-            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary 2> $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary.log\n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$cmd";
-            writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
-            print MAK join("\n",@cmds);
-            print MAK "\n";
-        }
-    }
-    else {
-        #############################################################################
-        ## STEP 10-4A : VCF PILEUP before MERGING
-        #############################################################################
-        if ( getConf("RUN_VCFPILEUP") eq "TRUE" ) {
-            my $expandFlag = ( getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
-
-            ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
-            my @gvcfs = ();
-            my @vcfs = ();
-            my @pvcfs = ();
-            my @cmds = ();
-
-            for(my $j=0; $j < @unitStarts; ++$j) {
-                #print STDERR "Yay..\n";
-                my $vcfParent = "$remotePrefix$vcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
-                my $svcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
-                my $gvcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
-                my $vcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].vcf";
-
-                push(@cmds,"$svcf.OK: ".( ($expandFlag == 1) ? "$vcf.OK" : "")."\n\tcut -f 1-8 $vcf > $svcf\n\t".getTouch("$svcf")."\n");
-
-                for(my $i=0; $i < @allbams; ++$i) {
-                    my $bam = $allbams[$i];
-                    my $bamSM = $allbamSMs[$i];
-                    my @F = split(/\//,$bam);
-                    my $bamFn = pop(@F);
-                    my $pvcfParent = "$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
-                    my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
-                    push(@pvcfs,$pvcf);
-                    #my $cmd = getConf("VCFPILEUP")." -i $svcf -r $ref -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                    my $cmd = getConf("VCFPILEUP")." -i $svcf -v $pvcf -b $bam > $pvcf.log 2> $pvcf.err";
-                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$pvcf.OK: $svcf.OK\n\tmkdir --p $pvcfParent\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
-                }
-            }
-            print MAK "pvcf$chr: ".join(".OK ",@pvcfs).".OK";
-            if ( $expandFlag == 1 ) {
-                print MAK " $remotePrefix$vcfDir/$chrchr/$chrchr.merged.vcf.OK\n\n";
-            }
-            else {
-                print MAK "\n\n";
-            }
-            print MAK join("\n",@cmds);
-        }
-
-        #############################################################################
-        ## STEP 10-5A : HARD FILTERING before MERGING
-        #############################################################################
-        if ( getConf("RUN_FILTER") eq "TRUE" ) {
-            my $expandFlag = ( getConf("RUN_VCFPILEUP") eq "TRUE" ) ? 1 : 0;
-            my $gmFlag = ( getConf("RUN_GLFMULTIPLES") eq "TRUE" ) ? 1 : 0;
-
-            ## Generate gpileup statistics (.pvcf) for every BAMs + VCF
-            my @gvcfs = ();
-            my @vcfs = ();
-            my @cmds = ();
-
-            for(my $j=0; $j < @unitStarts; ++$j) {
-                my $vcfParent = "$remotePrefix$vcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
-                my $svcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].sites.vcf";
-                my $gvcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].stats.vcf";
-                my $vcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].vcf";
-
-                if ( $expandFlag > 0 ) {
-                    my @pvcfs = ();
-
-                    for(my $i=0; $i < @allbams; ++$i) {
-                        my $bam = $allbams[$i];
-                        my $bamSM = $allbamSMs[$i];
-                        my @F = split(/\//,$bam);
-                        my $bamFn = pop(@F);
-                        my $pvcfParent = "$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
-                        my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
-                        push(@pvcfs,$pvcf);
-                    }
-
-                    my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
-                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$gvcf.OK: ".join(".OK ",@pvcfs).".OK".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
-                }
-                else {
-                    my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
-                    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
-                }
-                push(@gvcfs,$gvcf);
-                push(@vcfs,$vcf);
-            }
-
-            my $mvcfPrefix = "$remotePrefix$vcfDir/$chrchr/$chrchr";
-            print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
-            print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
-            if ( $#uniqBeds < 0 ) {
-                my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf 2> $mvcfPrefix.merged.stats.vcf.log\n";
-                $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+                my $cmd = getConf("INFOCOLLECTOR")." --anchor $vcf --prefix $remotePrefix$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]/ --suffix .$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz --outvcf $gvcf --list $bamListRemote $infoCollectorSkipList 2> $gvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                print MAK "$cmd";
+                push(@cmds,"$gvcf.OK:".(($gmFlag == 1) ? " $vcf.OK" : "")."\n\t".getMosixCmd($cmd, "$gvcf")."\n\t".getTouch("$gvcf")."\n\n");
             }
-            else {
-                my $cmd = getConf("VCFCAT")." @gvcfs > $mvcfPrefix.merged.stats.vcf";
-                $cmd =~ s/$outdir/\$(OUT_DIR)/g;
-                writeLocalCmd($cmd);
-            }
-            my $indelVCF = getConf("INDEL_PREFIX").".$chrchr.vcf";
-            if(getConf("INDEL_VCF"))
-            {
-                $indelVCF = getConf("INDEL_VCF");
-            }
-
-            my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.out 2>&1\n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$cmd";
-            $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
-            writeLocalCmd($cmd);
-            $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$cmd";
-            $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary 2> $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary.log\n";
-            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-            print MAK "$cmd";
-            writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
-            print MAK join("\n",@cmds);
-            print MAK "\n";
+            push(@gvcfs,$gvcf);
+            push(@vcfs,$vcf);
         }
+
+        my $mvcfPrefix = "$remotePrefix$vcfDir/$chrchr/$chrchr";
+        print MAK "filt$chr: $mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK\n\n";
+        print MAK "$mvcfPrefix.${filterPrefix}filtered.vcf.gz.OK: ".join(".OK ",@gvcfs).".OK ".join(".OK ",@vcfs).".OK".(($gmFlag == 1) ? " $mvcfPrefix.merged.vcf.OK" : "")."\n";
+        if ( $#uniqBeds < 0 ) {
+            my $cmd = "\t".getConf("VCFMERGE")." $unitChunk @gvcfs > $mvcfPrefix.merged.stats.vcf 2> $mvcfPrefix.merged.stats.vcf.log\n";
+            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
+            $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+            print MAK "$cmd";
+        }
+        else {
+            my $cmd = getConf("VCFCAT")." @gvcfs > $mvcfPrefix.merged.stats.vcf";
+            writeLocalCmd($cmd);
+        }
+        my $indelVCF = getConf("INDEL_PREFIX").".$chrchr.vcf";
+        if(getConf("INDEL_VCF"))
+        {
+            $indelVCF = getConf("INDEL_VCF");
+        }
+
+        my $cmd = "\t".getConf("VCFCOOKER")." ".getFilterArgs()." --indelVCF $indelVCF --out $mvcfPrefix.${filterPrefix}filtered.sites.vcf --in-vcf $mvcfPrefix.merged.stats.vcf > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.out 2>&1\n";
+        $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+        print MAK "$cmd";
+        $cmd = getConf("VCFPASTE")." $mvcfPrefix.${filterPrefix}filtered.sites.vcf $mvcfPrefix.merged.vcf | ".getConf("BGZIP")." -c > $mvcfPrefix.${filterPrefix}filtered.vcf.gz";
+        writeLocalCmd($cmd);
+        $cmd = "\t".getConf("TABIX")." -f -pvcf $mvcfPrefix.${filterPrefix}filtered.vcf.gz\n";
+        $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+        print MAK "$cmd";
+        $cmd = "\t".getConf("VCFSUMMARY")." --vcf $mvcfPrefix.${filterPrefix}filtered.sites.vcf --ref $ref --dbsnp ".getConf("DBSNP_VCF")." --FNRvcf ".getConf("HM3_VCF")." --chr $chr --tabix ".getConf("TABIX")." > $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary 2> $mvcfPrefix.${filterPrefix}filtered.sites.vcf.summary.log\n";
+        $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+        print MAK "$cmd";
+        if ($filterPrefix eq "")
+        {
+            $cmd = getConf("BGZIP")." -f $mvcfPrefix.filtered.sites.vcf";
+            writeLocalCmd($cmd);
+            $cmd = getConf("TABIX")." -f -pvcf $mvcfPrefix.filtered.sites.vcf.gz";
+            writeLocalCmd($cmd);
+        }
+        writeTouch("$mvcfPrefix.${filterPrefix}filtered.vcf.gz");
+        print MAK join("\n",@cmds);
+        print MAK "\n";
     }
+
 
     #############################################################################
     ## STEP 10-3 : GLFMULTIPLES
@@ -1998,29 +1956,23 @@ foreach my $chr (@chrs) {
         my $invcf = getConf("VCF_EXTRACT");
         if ( $invcf ) {
             unless ( ( $invcf =~ /.gz$/ ) && ( -s $invcf ) && ( -s "$invcf.tbi" ) ) {
-            die "Input VCF file $invcf must be bgzipped and tabixed\n";
+                die "Input VCF file $invcf must be bgzipped and tabixed\n";
+            }
         }
-    }
 
-    my $glfsingle = ( getConf("MODEL_GLFSINGLE") eq "TRUE" ? " --glfsingle" : "");
-    my $skipDetect = ( getConf("MODEL_SKIP_DISCOVER") eq "TRUE" ? " --skipDetect" : "");
-    my $afPrior = ( getConf("MODEL_AF_PRIOR") eq "TRUE" ? " --afprior" : "");
+        my $glfsingle = ( getConf("MODEL_GLFSINGLE") eq "TRUE" ? " --glfsingle" : "");
+        my $skipDetect = ( getConf("MODEL_SKIP_DISCOVER") eq "TRUE" ? " --skipDetect" : "");
+        my $afPrior = ( getConf("MODEL_AF_PRIOR") eq "TRUE" ? " --afprior" : "");
 
         for(my $j=0; $j < @unitStarts; ++$j) {
             my $vcfParent = "$remotePrefix$vcfDirReal/$chrchr/$unitStarts[$j].$unitEnds[$j]";
             my $vcf = "$vcfParent/$chrchr.$unitStarts[$j].$unitEnds[$j].vcf";
-            my @glfs = ();
             my $smGlfParent = "$remotePrefix$smGlfDirReal/$chrchr/$unitStarts[$j].$unitEnds[$j]";
             my $smGlfParentCopy = ( $copyglf ? "$copyglf/$chrchr/$unitStarts[$j].$unitEnds[$j]" : $smGlfParent );
 
             handleGlfIndexFile($smGlfParentCopy, $smGlfParent, $vcfParent, $chr, 
                                $unitStarts[$j], $unitEnds[$j]);
 
-            for(my $i=0; $i < @allSMs; ++$i) {
-                my $smGlfFn = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
-                my $smGlf = "$smGlfParent/$smGlfFn";
-                push(@glfs,$smGlf);
-            }
             my $glfAlias = "$vcfParent/".getConf("GLF_INDEX");
             $glfAlias =~ s/$outdir/\$(OUT_DIR)/g;
             push(@vcfs,$vcf);
@@ -2032,7 +1984,10 @@ foreach my $chr (@chrs) {
             $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
             if ( $expandFlag == 1 ) {
-                my $newcmd = "$vcf.OK: ".join(".OK ",@glfs).".OK\n\tmkdir --p $vcfParent\n";
+                my $cptdir = "$outdir/cpt/glfs/$chrchr";
+                my $cptMAKdir = $cptdir;
+                $cptMAKdir =~ s/$outdir/\$(OUT_DIR)/g;
+                my $newcmd = "$vcf.OK: $cptMAKdir/all.OK\n\tmkdir --p $vcfParent\n";
                 if($sleepSecs != 0)
                 {
                     $newcmd .= "\tsleep $sleepSecs\n";
@@ -2066,7 +2021,6 @@ foreach my $chr (@chrs) {
         }
         else {  ## targeted regions - rely on the loci info
             my $cmd = getConf("VCFCAT")." @vcfs > $out.vcf";
-            $cmd =~ s/$outdir/\$(OUT_DIR)/g;
             writeLocalCmd($cmd);
         }
         print MAK "\tcut -f 1-8 $out.vcf > $out.sites.vcf\n";
@@ -2081,15 +2035,27 @@ foreach my $chr (@chrs) {
     if ( getConf("RUN_PILEUP") eq "TRUE" ) {
         ## glf[$chr]: all-list-of-sample-glfs
         my @allSmGlfOKs = ();
+        my @allcpts = ();
         my @sampleCmds = ();
         my $bamPileupCmds = "";
         my $idxDependency = "";
         if (getConf("RUN_INDEX") eq "TRUE") { $idxDependency = " bai"; }
 
+        my $cptdir = "$outdir/cpt/glfs/$chrchr";
+        my $cptMAKdir = $cptdir;
+        $cptMAKdir =~ s/$outdir/\$(OUT_DIR)/g;
+        system("mkdir -p $cptdir") && die "Unable to create directory '$cptdir'\n";
+
         # for each sample
         for(my $i=0; $i < @allSMs; ++$i) {
             my @bams = @{$hSM2bams{$allSMs[$i]}};
+            my $cptOK = "$cptMAKdir/$allSMs[$i].OK";
+            push(@allcpts,$cptOK);
             # for each partition of the genome.
+
+            my $glfCmdHdr = "$cptOK:$idxDependency";
+            my $glfCmdBody = "";
+
             for(my $j=0; $j < @unitStarts; ++$j)
             {
                 # Set this region & loci information (if applicable) for doing the pileup(s).
@@ -2115,7 +2081,7 @@ foreach my $chr (@chrs) {
                 my $smGlfFilename = "$allSMs[$i].$chr.$unitStarts[$j].$unitEnds[$j].glf";
                 my $smGlf = "$smGlfPartitionDir/$smGlfFilename";
 
-                push(@allSmGlfOKs,"$smGlf.OK");
+                push(@allSmGlfOKs,"$smGlf.OK") if ( $chunkOK );
 
                 # Start the sample glf target
                 my $sampleCmd = "$smGlf.OK:$idxDependency";
@@ -2124,12 +2090,19 @@ foreach my $chr (@chrs) {
                 if($#bams == 0)
                 {
                     # There is just one BAM for this sample.
-                    if (getConf("BAM_DEPEND") eq "TRUE") { $sampleCmd .= " $bams[0]"; }
                     # Run pileup on this BAM and output as the sample GLF name.
-                    $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n";
-                    $sampleCmd .= logCatchFailure("pileup",
-                                                  runPileup($bams[0], $smGlf, $region, $loci),
-                                                  "$smGlf.log");
+                    if ( $chunkOK ) {
+                        if (getConf("BAM_DEPEND") eq "TRUE") { $sampleCmd .= " $bams[0]"; }
+                        $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n";
+                        $sampleCmd .= logCatchFailure("pileup",
+                                                      getMosixCmd(runPileup($bams[0], $smGlf, $region, $loci), $smGlf),
+                                                      "$smGlf.log");
+                    }
+                    else {
+                        if (getConf("BAM_DEPEND") eq "TRUE") { $glfCmdHdr .= " $bams[0]"; }
+                        $glfCmdBody .= "mkdir --p $smGlfPartitionDir; ";
+                        $glfCmdBody .= runPileup($bams[0], $smGlf, $region, $loci)."; ";
+                    }
                 }
                 else
                 {
@@ -2145,18 +2118,29 @@ foreach my $chr (@chrs) {
                         push(@bamGlfs,$bamGlf);
 
                         # Add the target info for this pileup.
-
-                        $bamPileupCmds .= "$bamGlf.OK:$idxDependency";
-                        if (getConf("BAM_DEPEND") eq "TRUE") { $bamPileupCmds .= " $bam"; }
-                        $bamPileupCmds .= "\n\tmkdir --p $bamGlfDir/$allSMs[$i]/$chrchr\n";
-                        $bamPileupCmds .= logCatchFailure("pileup",
-                                                          runPileup($bam, $bamGlf, $region, $loci),
-                                                          "$bamGlf.log");
-                        $bamPileupCmds .= "\t".getTouch("$bamGlf")."\n\n";
+                        if ( $chunkOK ) {
+                            $bamPileupCmds .= "$bamGlf.OK:$idxDependency";
+                            if (getConf("BAM_DEPEND") eq "TRUE") { $bamPileupCmds .= " $bam"; }
+                            $bamPileupCmds .= "\n\tmkdir --p $bamGlfDir/$allSMs[$i]/$chrchr\n";
+                            $bamPileupCmds .= logCatchFailure("pileup",
+                                                              getMosixCmd(runPileup($bam, $bamGlf, $region, $loci), $bamGlf),
+                                                              "$bamGlf.log");
+                            $bamPileupCmds .= "\t".getTouch("$bamGlf")."\n\n";
+                        }
+                        else {
+                            if (getConf("BAM_DEPEND") eq "TRUE") { $glfCmdHdr .= " $bam"; }
+                            $glfCmdBody .= "mkdir --p $bamGlfDir/$allSMs[$i]/$chrchr; ";
+                            $glfCmdBody .= runPileup($bam, $bamGlf, $region, $loci)."; ";
+                        }
                     }
                     # Add the BAM specific GLFs to the sample glf dependency.
-                    $sampleCmd .= " ".join(".OK ",@bamGlfs).".OK";
-                    $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n\t";
+                    if ( $chunkOK ) {
+                        $sampleCmd .= " ".join(".OK ",@bamGlfs).".OK\n";
+                        $sampleCmd .= "\tmkdir --p $smGlfPartitionDir\n";
+                    }
+                    else {
+                        $glfCmdBody .= "mkdir --p $smGlfPartitionDir; ";
+                    }
 
                     my $qualities = "0";
                     my $minDepths = "1";
@@ -2166,27 +2150,57 @@ foreach my $chr (@chrs) {
                         $minDepths .= ",1";
                         $maxDepths .= ",1000";
                     }
+
                     # Merge the multiple GLFs for this sample.
-                    $sampleCmd .= getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs > $smGlf.out 2>&1", "$smGlf");
-                    $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-                    $sampleCmd .= "\n";
+                    if ( $chunkOK ) {
+                        $sampleCmd .= "\t".getMosixCmd(getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs > $smGlf.out 2>&1", "$smGlf")."\n";
+                        $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+                    }
+                    else {
+                        $glfCmdBody .= getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs > $smGlf.out 2>&1; ";
+                    }
                 }
-                $sampleCmd .= "\t".getTouch("$smGlf")."\n";
-                push(@sampleCmds,$sampleCmd);
+                if ( $chunkOK ) {
+                    $sampleCmd .= "\t".getTouch("$smGlf")."\n";
+                    push(@sampleCmds,$sampleCmd);
+                }
+            }
+            unless ( $chunkOK ) {
+                $glfCmdHdr  =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+                $glfCmdBody =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
+                push(@sampleCmds,$glfCmdHdr);
+                push(@sampleCmds, "\t".getMosixCmd($glfCmdBody, $cptOK));
+                push(@sampleCmds, "\ttouch $cptOK\n");
             }
         }
 
-        print MAK "glf$chr: ";
-        print MAK join(" ",@allSmGlfOKs);
-        print MAK "\n\n";
+        print MAK "glf$chr: $cptMAKdir/all.OK\n\n";
+        print MAK "$cptMAKdir/all.OK: ";
+        if ( $chunkOK ) {
+            print MAK join(" ",@allSmGlfOKs);
+        }
+        else {
+            print MAK join(" ",@allcpts);
+        }
+        print MAK "\n\ttouch $cptMAKdir/all.OK\n\n";
 
         # Add the per sample commands
         print MAK join("\n",@sampleCmds);
         print MAK "\n";
         # Add the per BAM pileup commands
-        print MAK "$bamPileupCmds";
+        print MAK "$bamPileupCmds" if ( $chunkOK );
     }
 }
+
+print MAK "\nclean:\n";
+for(my $i=0; $i < @toClean; ++$i) {
+    print MAK "\trm -rf $toClean[$i]\n";
+}
+if ( getConf("RUN_VCFPILEUP") eq "TRUE" )
+{
+    print MAK "\trm -rf $pvcfDir\n";
+}
+
 
 #############################################################################
 ## Check for WGS_SVM and handle that
@@ -2525,10 +2539,7 @@ sub runPileup
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
     }
 
-    my $cmd = getMosixCmd("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log", "$glfOut");
-
-    $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-    return($cmd);
+    return("(".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
 }
 
 #--------------------------------------------------------------
@@ -2633,6 +2644,7 @@ sub writeLocalCmd {
     my $cmd = shift;
 
     # Replace gotcloudRoot with a Makefile variable.
+    $cmd =~ s/$outdir/\$(OUT_DIR)/g;
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
 
     # Check for pipes in the command.

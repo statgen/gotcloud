@@ -17,3 +17,5 @@ $(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.v
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.thunder.Makefile.cluster,$(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.vcf.gz local '$(GOTCLOUD_ROOT)/bin/thunderVCF -r 10 --phase --dosage --inputPhased --states 400 --weightedStates 300 --shotgun $(OUT_DIR)/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.1.vcf.gz -o $(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1 > $(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.out 2> $(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.err'
 	if [ -e  $(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.vcf.gz ]; then touch $(OUT_DIR)/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.vcf.gz.OK; else exit 1; fi
 
+
+clean:
