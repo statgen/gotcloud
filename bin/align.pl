@@ -73,6 +73,7 @@ my %opts = (
     conf => '',
     verbose => 0,
     maxlocaljobs => 10,
+    override => '',
 );
 Getopt::Long::GetOptions( \%opts,qw(
     help
@@ -96,6 +97,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     numjobs=i
     numcs=i
     maxlocaljobs=i
+    override=s
     gotcloudroot|gcroot=s
 )) || die "Failed to parse options\n";
 
@@ -241,6 +243,9 @@ if ($opts{list})         { push(@confSettings, "FASTQ_LIST = $opts{list}"); }
 if ($opts{batchtype})    { push(@confSettings, "BATCH_TYPE = $opts{batchtype}"); }
 if ($opts{batchopts})    { push(@confSettings, "BATCH_OPTS = $opts{batchopts}"); }
 
+# Process the override flags.
+push(@confSettings, split(";", $opts{override}));
+
 #############################################################################
 #   Load configuration variables from conf file
 #   Load config values. The default conf file is almost never seen by the user,
@@ -274,7 +279,7 @@ if(!getConf("FASTQ_LIST"))
 # to the fastq file names.
 foreach my $key (qw(REF_DIR OUT_DIR)) {
     my $f = getConf($key);
-    if (! $f) { die "Required field -$key was not specified\n"; }
+    if (! $f) { die "Required field $key was not specified\n"; }
     #   Extract up to the first '_' from the key to get the prefix type option.
     my $type = substr($key, 0, index($key, '_'));
     #   Replace the already stored value with the absolute path
@@ -284,7 +289,7 @@ foreach my $key (qw(REF_DIR OUT_DIR)) {
 # paths to add base prefix, but not specific type.
 foreach my $key (qw(FASTQ_LIST)) {
     my $f = getConf($key);
-    if (! $f) { die "Required field -$key was not specified\n"; }
+    if (! $f) { die "Required field $key was not specified\n"; }
     #   Replace the already stored value with the absolute path
     setConf($key, getAbsPath($f));
 }
