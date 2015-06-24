@@ -2504,15 +2504,15 @@ sub runSVM
     my $cmd = "";
     if (getConf("USE_SVMMODEL") eq "TRUE")
     {
-        $cmd = "\t".getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --model ".getConf("SVMMODEL")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA > $outVcf.out 2>&1\n";
+        $cmd = getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --model ".getConf("SVMMODEL")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA > $outVcf.out 2>&1";
     }
     else
     {
-        $cmd = "\t".getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --pos ".getConf("POS_SAMPLE")." --neg ".getConf("NEG_SAMPLE")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA > $outVcf.out 2>&1\n";
+        $cmd = getConf("SVM_SCRIPT")." --invcf $inVcf --out $outVcf --pos ".getConf("POS_SAMPLE")." --neg ".getConf("NEG_SAMPLE")." --svmlearn ".getConf("SVMLEARN")." --svmclassify ".getConf("SVMCLASSIFY")." --bin ".getConf("INVNORM")." --threshold ".getConf("SVM_CUTOFF")." --bfile ".getConf("OMNI_VCF")." --bfile ".getConf("HM3_VCF")." --checkNA > $outVcf.out 2>&1";
     }
 
     $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
-    print MAK "$cmd";
+    print MAK "\t".getMosixCmd($cmd, "$outVcf")."\n";
 }
 
 #--------------------------------------------------------------
