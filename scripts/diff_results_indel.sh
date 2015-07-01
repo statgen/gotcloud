@@ -42,7 +42,7 @@ status=0
 #set -e                          # Fail on errors
 echo "Results from DIFF will be in $DIFFRESULTS"
 
-diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x $DIFF_FILE $SKIP_FILES \
+diff -r $RESULTS_DIR/ $EXPECTED_DIR/ -x jobfiles -x $DIFF_FILE $SKIP_FILES \
     -I '^options: \[L\] input VCF file list *.*aux/candidate_vcf_files\.txt ([0-9]* files)$' \
     -I '^options: *input VCF file *.*aux/all\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
     -I '^ *\[o\] output VCF file *.*aux/all\.sites\.[0-9]*\.[0-9]*\.[0-9]*\.bcf$' \
@@ -73,7 +73,7 @@ if [ "$?" != "0" ]; then
 fi
 
 
-SED_REGEX="s/tmpNoLibCtrPltfm/tmp/g;s/tmpNoSM/tmp/g;s/tmpOrig/tmp/g;s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
+SED_REGEX="s/tmpNoLibCtrPltfm/tmp/g;s/tmpNoSM/tmp/g;s/tmpOrig/tmp/g;s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/-bashdir \S*\/jobfiles/-bashdir jobfiles/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
 
 diff <(sed "$SED_REGEX" $RESULTS_DIR/indel/aux/$DISCOVER_LIST) <(sed "$SED_REGEX" $EXPECTED_DIR/indel/aux/$DISCOVER_LIST) \
     >> $DIFFRESULTS

@@ -1427,7 +1427,6 @@ sub writeTarget {
     }
 
     my $newcmd;
-
     if(defined $local && $local ne "" && $local ne "0" )
     {
         $newcmd = $cmd;
@@ -1435,7 +1434,7 @@ sub writeTarget {
     else
     {
         $cmd =~ s/'/"/g;            # Avoid issues with single quotes in command
-        $newcmd = $opts{runcluster}." ";
+        $newcmd = $opts{runcluster}." -bashdir $outdir/jobfiles ";
         if($opts{batchopts})
         {
             $newcmd .= "-opts '".$opts{batchopts}."' ";

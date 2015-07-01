@@ -16,7 +16,7 @@ our @EXPORT_OK = qw(loadGTF writeGTF readFasta getCpGs initRef getDegeneracies r
 my $binzcat = "zcat";
 my $binbgzip = "$module_dir/bgzip";
 my $bintabix = "$module_dir/tabix";
-my $binruncluster = "$module_dir/runcluster.pl";
+my $binruncluster = "$module_dir/../scripts/runcluster.pl";
 
 my %codon1 = (TTT=>"F", TTC=>"F", TCT=>"S", TCC=>"S", TAT=>"Y", TAC=>"Y", TGT=>"C", TGC=>"C", TTA=>"L", TCA=>"S", TAA=>"*", TGA=>"*", TTG=>"L", TCG=>"S", TAG=>"*", TGG=>"W", CTT=>"L", CTC=>"L", CCT=>"P", CCC=>"P", CAT=>"H", CAC=>"H", CGT=>"R", CGC=>"R", CTA=>"L", CTG=>"L", CCA=>"P", CCG=>"P", CAA=>"Q", CAG=>"Q", CGA=>"R", CGG=>"R", ATT=>"I", ATC=>"I", ACT=>"T", ACC=>"T", AAT=>"N", AAC=>"N", AGT=>"S", AGC=>"S", ATA=>"I", ACA=>"T", AAA=>"K", AGA=>"R", ATG=>"M", ACG=>"T", AAG=>"K", AGG=>"R", GTT=>"V", GTC=>"V", GCT=>"A", GCC=>"A", GAT=>"D", GAC=>"D", GGT=>"G", GGC=>"G", GTA=>"V", GTG=>"V", GCA=>"A", GCG=>"A", GAA=>"E", GAG=>"E", GGA=>"G", GGG=>"G");
 my %idatFieldCodes = (1000 => "nSNPsRead", 102 => "IlluminaID", 103 => "SD", 104 => "Mean", 107 => "NBeads", 200 => "MidBlock", 300 => "RunInfo", 400 => "RedGreen", 401 => "Manifest", 402 => "Barcode", 403 => "ChipType", 404 => "Stripe", 405 => "Unknown405", 406 => "SampleID", 407 => "Unknown407", 408 => "Plate", 409 => "Well", 410 => "Unknown410", 510 => "Unknown510");

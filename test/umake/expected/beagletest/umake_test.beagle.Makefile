@@ -34,3 +34,5 @@ $(OUT_DIR)/beagle/chr20/split/bgl.1.chr20.PASS.1.vcf.gz.tbi:
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.beagle.Makefile.cluster,$(OUT_DIR)/beagle/chr20/split/bgl.1.chr20.PASS.1.vcf.gz local '$(GOTCLOUD_ROOT)/bin/bgzip -f $(OUT_DIR)/beagle/chr20/split/bgl.1.chr20.PASS.1.vcf'
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.beagle.Makefile.cluster,$(OUT_DIR)/beagle/chr20/split/bgl.1.chr20.PASS.1.vcf.gz.tbi local '$(GOTCLOUD_ROOT)/bin/tabix -f -pvcf $(OUT_DIR)/beagle/chr20/split/bgl.1.chr20.PASS.1.vcf.gz'
 
+
+clean:
