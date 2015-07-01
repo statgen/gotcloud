@@ -1420,12 +1420,19 @@ sub mapBwa {
     my $finalBwaBam =  getConf('ALN_TMP') . "/$bam.done";
 
     $allSteps .= "$finalBwaBam:";
+    my $rmFastq = getConf("BWA_RM_FASTQ");
+    my $rmStr = "";
+    if(defined $rmFastq && $rmFastq && (uc($rmFastq) ne "FALSE"))
+    {
+        $rmStr = "$absFastq1 $absFastq2";
+    }
 
     if(getConf('MAP_TYPE') eq 'BWA_MEM')
     {
         # No dependencies.
         if($oneBwa)
         {
+            # Depend on the previous BWA.
             $allSteps .= $prevBwa;
             $prevBwa = $finalBwaBam;
         }
@@ -1438,7 +1445,7 @@ sub mapBwa {
                      getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
                      " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
         $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
-        $allSteps .= doneTarget();
+        $allSteps .= doneTarget("", $rmStr);
     }
     else
     {
@@ -1478,7 +1485,7 @@ sub mapBwa {
             " - \$(basename \$(basename " . "\$\@))) 2> $log";
         $allSteps .= logCatchFailure("$samsesampe", $cmd, $log);
 
-        $allSteps .= doneTarget(1);
+        $allSteps .= doneTarget(1, $rmStr);
 
         # Add the aln steps.
         $allSteps .= alignBwa($absFastq1, $sai1);
@@ -1613,13 +1620,18 @@ sub mapMosaik {
 #   Done with the target, so write the done marker.
 #--------------------------------------------------------------
 sub doneTarget {
-    my ($rmDep) = @_;
+    my ($rmDep, $rmFiles) = @_;
     my $rmTmp = "";
     if((defined($rmDep) && $rmDep) && (!getConf('KEEP_TMP')))
     {
         $rmTmp = "\n\trm -f \$(basename \$^)";
 #        print $rmTmp;
     }
+    if((defined $rmFiles && $rmFiles) && (!getConf('KEEP_TMP')))
+    {
+        $rmTmp .= "\n\trm -f $rmFiles";
+    }
+
 #    return("\t\@echo `date +'%F.%H:%M:%S'` touch \$\@; touch \$\@\n\n");
     return("\t\@echo `date +'%F.%H:%M:%S'` touch \$\@; touch \$\@$rmTmp\n\n");
 }
