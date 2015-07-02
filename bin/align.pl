@@ -451,7 +451,7 @@ for my $refType (@reqRefs)
 #----------------------------------------------------------------------------
 #   Check for required executables
 #----------------------------------------------------------------------------
-my @reqExes = qw(SAMTOOLS_EXE BAM_EXE);
+my @reqExes = qw(SAMTOOLS_SORT_EXE SAMTOOLS_EXE BAM_EXE);
 if ( (getConf('MAP_TYPE') eq 'BWA') || (getConf('MAP_TYPE') eq 'BWA_MEM') )
 {
     push(@reqExes, 'BWA_EXE');
@@ -1442,7 +1442,7 @@ sub mapBwa {
         my $bwacmd = "(" . getConf('BWA_EXE') . " mem " . getConf("BWA_THREADS") .
                      " -M $rgCommand " . getConf('REF') . " $absFastq1 $absFastq2 | " .
                      getConf('SAMTOOLS_EXE') . " view -uhS - | " .
-                     getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
+                     getConf('SAMTOOLS__SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
                      " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
         $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
         $allSteps .= doneTarget("", $rmStr);
@@ -1481,7 +1481,7 @@ sub mapBwa {
         my $log = "\$(basename \$(basename \$\@)).$samsesampe.log";
         my $cmd = "(" . getConf('BWA_EXE') . " $samsesampe $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 $absFastq2 | " . getConf('SAMTOOLS_EXE') . " view -uhS - | " .
-            getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
+            getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
             " - \$(basename \$(basename " . "\$\@))) 2> $log";
         $allSteps .= logCatchFailure("$samsesampe", $cmd, $log);
 
@@ -1536,7 +1536,7 @@ sub mapMosaik {
     $allSteps .= "\tmkdir -p \$(\@D)\n";
 
     my $sortPrefix = "\$(basename \$(basename \$\@))";
-    my $sortcmd = getConf('SAMTOOLS_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
+    my $sortcmd = getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
         " \$(basename \$^) $sortPrefix 2> $sortPrefix.log";
     $allSteps .= "\t$sortcmd\n";
     $allSteps .= logCatchFailure('sort', "(grep -q -i -e abort -e error -e failed $sortPrefix.log; [ \$\$? -eq 1 ])", "$sortPrefix.log");
