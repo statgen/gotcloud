@@ -378,6 +378,12 @@ sub getConf {
         $val = $pre . '_NOT_DEFINED_' . $post;
     }
 
+    if($required && ($val eq ''))
+    {
+        warn "Failed: Required configuration key '$key' in section '$section' is blank\n";
+        if ($VERBOSE > 1) { return ''; }        # Sometimes do not die (for testing)
+        exit(7);
+    }
     return $val;
 }
 
