@@ -843,7 +843,7 @@ while ($line = <IN>)
         # Use RG line
         $fq1toRG{$fastq1} = "\"".join('\t',@fields[$fieldname2index{RG}..$#fields])."\"";
         # Set other values.
-        if($fq1toRG{$fastq1} =~ /SM:([^\t ]*)/)
+        if($fq1toRG{$fastq1} =~ /SM:([^\\"]*)/)
         {
             $fq1toSm{$fastq1} = $1;
         }
