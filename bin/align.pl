@@ -1442,7 +1442,7 @@ sub mapBwa {
         my $bwacmd = "(" . getConf('BWA_EXE') . " mem " . getConf("BWA_THREADS") .
                      " -M $rgCommand " . getConf('REF') . " $absFastq1 $absFastq2 | " .
                      getConf('SAMTOOLS_EXE') . " view -uhS - | " .
-                     getConf('SAMTOOLS__SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
+                     getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
                      " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
         $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
         $allSteps .= doneTarget("", $rmStr);
