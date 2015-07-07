@@ -113,19 +113,6 @@ if ( $fcn eq 'indel') {
     exit $rc>>8;
 }
 
-if ( $fcn eq 'pipe') {
-    foreach my $p ("$bindir/pipeline.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
-    if ($opts{perf}) { Perf('start'); }
-    my $rc = system($cmd, @ARGV);
-    if ($opts{perf}) { Perf('stop'); }
-    exit $rc>>8;
-}
-
 if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
 {
     foreach my $p ("$bindir/umake.pl") {
@@ -199,6 +186,33 @@ if ($fcn eq 'beagle4') {
     if ($opts{perf}) { Perf('stop'); }
     exit $rc>>8;
 }
+
+
+if ( $fcn eq 'pipe') {
+    foreach my $p ("$bindir/pipeline.pl") {
+        if (! -f $p) { next; }
+        $cmd = $p;
+        last;
+    }
+    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+    if ($opts{perf}) { Perf('start'); }
+    my $rc = system($cmd, @ARGV);
+    if ($opts{perf}) { Perf('stop'); }
+    exit $rc>>8;
+}
+
+foreach my $p ("$bindir/pipeline.pl") {
+    if (! -f $p) { next; }
+    $cmd = $p;
+    last;
+}
+if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+unshift(@ARGV, $fcn);
+unshift(@ARGV, "--name");
+if ($opts{perf}) { Perf('start'); }
+my $rc = system($cmd, @ARGV);
+if ($opts{perf}) { Perf('stop'); }
+exit $rc>>8;
 
 warn "ERROR: Unknown command '$fcn' Please see the usage below.\n";
 pod2usage(-exitval => 1);
