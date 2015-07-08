@@ -36,6 +36,7 @@ SKIP_FILES="-x gotcloud.$PIPE_NAME.conf"
 SKIP_FILES+=" -x gotcloud.$PIPE_NAME.Makefile"
 SKIP_FILES+=" -x gotcloud.$PIPE_NAME.Makefile.log"
 SKIP_FILES+=" -x $DIFF_FILE"
+SKIP_FILES+=" -x jobfiles"
 for file in $BAIS $QEMPS $BAMS
 do
   SKIP_FILES+=" -x $(basename $file)"
@@ -75,7 +76,7 @@ if [ "$?" != "0" ]; then
     status=2
 fi
 
-SED_REGEX="s/\S*recabQCtest\///g;s/\S*test\/recabQC\/bams\//test\/recabQC\/bams\//g;s/\S*test\/align\/expected\/aligntest\/bams\//test\/align\/expected\/aligntest\/bams\//g;s/'\S*bin\/qplot/'bin\/qplot/g;s/'\S*bin\/verifyBamID/'bin\/verifyBamID/g;s/\S*QCFiles/QCFiles/g;s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
+SED_REGEX="s/\S*recabQCtest\///g;s/\S*test\/recabQC\/bams\//test\/recabQC\/bams\//g;s/\S*test\/align\/expected\/aligntest\/bams\//test\/align\/expected\/aligntest\/bams\//g;s/'\S*bin\/qplot/'bin\/qplot/g;s/'\S*bin\/verifyBamID/'bin\/verifyBamID/g;s/\S*QCFiles/QCFiles/g;s/\S*mergedBams/mergedBams/g;s/\S*indelvcf/indelvcf/g;s/\S*aux/aux/g;s/\S*final/final/g;s/\S*scripts\/runcluster\.pl/scripts\/runcluster\.pl/g;s/-bashdir \S*\/jobfiles/-bashdir jobfiles/g;s/'\S*bin\/bam/'bin\/bam/g;s/'\S*bin\/samtools/'bin\/samtools/g;s/'\S*vt/'vt/g;s/| \S*vt/| vt/g;s/\S*test\/umake/test\/umake/g;s/\S*test\/chr20Ref/test\/chr20Ref/g"
 
 diff <(sed "$SED_REGEX" $RESULTS_DIR/gotcloud.$PIPE_NAME.Makefile) <(sed "$SED_REGEX" $EXPECTED_DIR/gotcloud.$PIPE_NAME.Makefile) \
     >> $DIFFRESULTS
