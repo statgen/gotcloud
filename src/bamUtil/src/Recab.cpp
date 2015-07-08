@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010-2012  Christian Fuchsberger,
+ *  Copyright (C) 2010-2015  Christian Fuchsberger,
  *                           Regents of the University of Michigan
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -66,6 +66,7 @@ Recab::Recab()
     myNumQualTagErrors = 0;
     myNumDBSnpSkips = 0;
     mySubMinQual = 0;
+    myAmbiguous = 0;
     myBMatchCount = 0;
     myBMismatchCount = 0;
     myBasecounts = 0;
@@ -119,7 +120,8 @@ void Recab::usage()
 
 void Recab::recabSpecificUsageLine()
 {
-    std::cerr << "--refFile <ReferenceFile> [--dbsnp <dbsnpFile>] [--minBaseQual <minBaseQual>] [--maxBaseQual <maxBaseQual>] [--blended <weight>] [--fitModel] [--fast] [--keepPrevDbsnp] [--keepPrevNonAdjacent] [--useLogReg] [--qualField <tag>] [--storeQualTag <tag>] [--buildExcludeFlags <flag>] [--applyExcludeFlags <flag>]";
+    std::cerr << "--refFile <ReferenceFile> [--dbsnp <dbsnpFile>] [--minBaseQual <minBaseQual>] [--maxBaseQual <maxBaseQual>] [--blended <weight>] [--fitModel] [--fast] [--keepPrevDbsnp] [--keepPrevNonAdjacent] [--useLogReg] [--qualField <tag>] [--storeQualTag <tag>] [--buildExcludeFlags <flag>] [--applyExcludeFlags <flag>] ";
+    mySqueeze.binningUsageLine();
 }
 
 void Recab::recabSpecificUsage()
@@ -153,6 +155,7 @@ void Recab::recabSpecificUsage()
     std::cerr << "\t--buildExcludeFlags <flag>    : exclude reads with any of these flags set when building the" << std::endl;
     std::cerr << "\t                                recalibration table" << std::endl;
     std::cerr << "\t--applyExcludeFlags <flag>    : do not apply the recalibration table to any reads with any of these flags set" << std::endl;
+    mySqueeze.binningUsage();
 }
 
 
@@ -211,12 +214,11 @@ int Recab::execute(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    if(myRefFile.IsEmpty())
+    int status = processRecabParam();
+    if(status != 0)
     {
-        usage();
         inputParameters.Status();
-        std::cerr << "Missing required --refFile parameter" << std::endl;
-        return EXIT_FAILURE;
+        return(status);
     }
 
     if ( logFile.IsEmpty() )
@@ -322,6 +324,19 @@ void Recab::addRecabSpecificParameters(LongParamContainer& params)
     params.addString("buildExcludeFlags", &myBuildExcludeFlags);
     params.addString("applyExcludeFlags", &myApplyExcludeFlags);
     myParamsSetup = false;
+    mySqueeze.addBinningParameters(params);
+
+}
+
+
+int Recab::processRecabParam()
+{
+    if(myRefFile.IsEmpty())
+    {
+        std::cerr << "Missing required --refFile parameter" << std::endl;
+        return EXIT_FAILURE;
+    }
+    return(mySqueeze.processBinningParam());
 }
 
 
@@ -580,7 +595,14 @@ bool Recab::processReadBuildTable(SamRecord& samRecord)
 
         // Set the reference & read bases in the Covariates
         char refBase = (*myReferenceGenome)[refPos];
-        
+
+        if(BaseUtilities::isAmbiguous(refBase))
+        {
+            // N reference, so skip it when building the table.
+            ++myAmbiguous;
+            continue;
+        }
+
         if(reverse)
         {
             refBase = BaseAsciiMap::base2complement[(unsigned int)(refBase)];
@@ -734,7 +756,7 @@ bool Recab::processReadApplyTable(SamRecord& samRecord)
         {
             qemp = myMaxBaseQual;
         }
-        myQualityStrings.newq[seqPos] = qemp+33;
+        myQualityStrings.newq[seqPos] = mySqueeze.getQualCharFromQemp(qemp);
     }
 
     if(!myStoreQualTag.IsEmpty())
@@ -761,8 +783,8 @@ void Recab::modelFitPrediction(const char* outputBase)
 
     Logger::gLogger->writeLog("# Bases observed: %ld - #match: %ld; #mismatch: %ld",
                               myBasecounts, myBMatchCount, myBMismatchCount);
-    Logger::gLogger->writeLog("# Bases Skipped for DBSNP: %ld, for BaseQual < %ld: %ld", 
-                              myNumDBSnpSkips, myMinBaseQual, mySubMinQual);
+    Logger::gLogger->writeLog("# Bases Skipped for DBSNP: %ld, for BaseQual < %ld: %ld, ref 'N': %ld", 
+                              myNumDBSnpSkips, myMinBaseQual, mySubMinQual, myAmbiguous);
     if(myNumQualTagErrors != 0)
     {
         Logger::gLogger->warning("%ld records did not have tag %s or it was invalid, so the quality field was used for those records.", myNumQualTagErrors, myQField.c_str());
