@@ -408,14 +408,18 @@ SamFilter::FilterStatus SamFilter::softClip(Cigar& oldCigar,
             {
                 // Convert from query index to reference position (from the
                 // old cigar)
-                // Get the position for the start clipped position by
+                // Get the position for the last front clipped position by
                 // getting the position associated with the clipped base on
                 // the reference.  Then add one to get to the first
                 // non-clipped position.
                 int32_t lastFrontClipPos = numFrontClips - 1;
-                startPos = 
-                    oldCigar.getRefPosition(lastFrontClipPos, 
-                                            startPos) + 1;
+                int32_t newStartPos = oldCigar.getRefPosition(lastFrontClipPos, 
+                                                              startPos);
+                if(newStartPos != Cigar::INDEX_NA)
+                {
+                    // Add one to get first non-clipped position.
+                    startPos = newStartPos + 1;
+                }
             }
         }
     }
@@ -484,5 +488,13 @@ void SamFilter::filterRead(SamRecord& record)
     // Filter the read by marking it as unmapped.
     uint16_t flag = record.getFlag(); 
     SamFlag::setUnmapped(flag);
+    // Clear N/A flags.
+    flag &= ~SamFlag::PROPER_PAIR;
+    flag &= ~SamFlag::SECONDARY_ALIGNMENT;
+    flag &= ~SamFlag::SUPPLEMENTARY_ALIGNMENT;
     record.setFlag(flag);
+    // Clear Cigar
+    record.setCigar("*");
+    // Clear mapping quality
+    record.setMapQuality(0);
 }
