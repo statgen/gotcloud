@@ -143,20 +143,6 @@ bool SamFile::OpenForRead(const char * filename, SamFileHeader* header)
             char magic[4];
             ifread(myFilePtr, magic, 4);
         }
-        else if(strcmp(filename, "-.uubam") == 0)
-        {
-            // uncompressed uncompressed BAM File.
-            // -.uubam is the filename, read uncompressed bam from stdin that
-            // is straight binary and not compression level 0.
-            filename = "-";
-
-            myFilePtr = ifopen(filename, "rb", InputFile::UNCOMPRESSED);
-            myInterfacePtr = new BamInterface;
-
-            // Read the magic string.
-            char magic[4];
-            ifread(myFilePtr, magic, 4);
-        }
         else if((strcmp(filename, "-") == 0) || (strcmp(filename, "-.sam") == 0))
         {
             // SAM File.
@@ -420,7 +406,7 @@ void SamFile::Close()
 
 
 // Returns whether or not the file has been opened.
-// return: bool - true = open; false = not open.
+// return: int - true = open; false = not open.
 bool SamFile::IsOpen()
 {
     if (myFilePtr != NULL)
@@ -434,7 +420,7 @@ bool SamFile::IsOpen()
 
 
 // Returns whether or not the end of the file has been reached.
-// return: bool - true = EOF; false = not eof.
+// return: int - true = EOF; false = not eof.
 bool SamFile::IsEOF()
 {
     if (myFilePtr != NULL)
@@ -444,20 +430,6 @@ bool SamFile::IsEOF()
     }
     // File pointer is not set, so return true, eof.
     return true;
-}
-
-
-// Returns whether or not the file is a stream.
-// return: bool - true = stream; false = not stream/not open.
-bool SamFile::IsStream()
-{
-    if (myFilePtr != NULL)
-    {
-        // File Pointer is set, so return if it is a stream.
-        return((myFilePtr->getFileName())[0] == '-');
-    }
-    // File pointer is not set, so return false, not a stream.
-    return false;
 }
 
 
