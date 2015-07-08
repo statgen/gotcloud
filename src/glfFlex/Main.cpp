@@ -303,7 +303,7 @@ void ReportGenotypes(FullLikelihood & lk, glfHandler * glf, int n,
 	pHet = lk.GPs[10*i+gIdx[1]]/(lk.GPs[10*i+gIdx[0]]+lk.GPs[10*i+gIdx[1]]+lk.GPs[10*i+gIdx[2]]+1e-30);
       }
       else { // four alleles
-	genotypes.catprintf(":%d,%d,%d,%d,%d,%d",llks[gIdx[0]], llks[gIdx[1]], llks[gIdx[2]], llks[gIdx[3]], llks[gIdx[4]], llks[gIdx[5]], llks[gIdx[6]], llks[gIdx[7]], llks[gIdx[8]], llks[gIdx[9]]);
+	genotypes.catprintf(":%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",llks[gIdx[0]], llks[gIdx[1]], llks[gIdx[2]], llks[gIdx[3]], llks[gIdx[4]], llks[gIdx[5]], llks[gIdx[6]], llks[gIdx[7]], llks[gIdx[8]], llks[gIdx[9]]);
 	pHet = lk.GPs[10*i+gIdx[1]]/(lk.GPs[10*i+gIdx[0]]+lk.GPs[10*i+gIdx[1]]+lk.GPs[10*i+gIdx[2]]+1e-30);
       }
 
