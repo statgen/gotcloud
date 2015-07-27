@@ -851,8 +851,11 @@ while(<IN>) {
              (getConf("RUN_VCFPILEUP") eq "TRUE") )
         {
             # die if bam is not readable
-            unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
-            unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
+            #unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
+            #unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
+            # hyun: temp
+            unless ( ( -r $bam ) || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
+            unless ( ( -s $bam ) || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: $bam' is empty.\n"; }
         }
     }
     push(@allSMs,$smID);
@@ -959,6 +962,7 @@ my %fileChrs = ();
 # Check the bam files for valid chromosomes (must be found in the ref fai file).
 for my $bam (@allbams)
 {
+    next if ( $bam =~ /^(ftp|http):\/\//); #hyun:temp
     die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
     tie *BAM, "IO::Zlib", $bam, "rb";
 
@@ -998,8 +1002,11 @@ for my $bam (@allbams)
         my $bai = "$bam.bai";
         my $bai2 = $bam;
         $bai2 =~ s/\.bam$/.bai/;
-        unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
-        unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+        #unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
+        #unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
+        # hyun:temp
+        unless ( -r $bai || -r $bai2 || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
+        unless ( -s $bai || -s $bai2 || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: $bai' is empty.\n"; }
     }
 
 
