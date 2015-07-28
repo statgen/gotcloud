@@ -73,9 +73,10 @@ my $noPhoneHome = '';
 my $bamList = '';
 my $refdir = '';
 
-# Track if any of the "bams" are crams.
-my %isCram = ();
+# check the format and location of the input file
+my %bamType = ();
 my $chunkOK = '';
+my %bamLocation = ();
 
 my $optResult = GetOptions("help",\$help,
                            "test=s",\$testdir,
@@ -830,7 +831,7 @@ while(<IN>) {
                 $bam =~ s/\$\($key\)/$val/;
             }
             # Check if there is just a relative path to the bams.
-            if ( !( $bam =~ /^\// ) )
+            if ( !( $bam =~ /^\// ) && ( $bam !~ /^(ftp|http):\/\// ) )
             {
                 # It is relative, so make it absolute.
                 $bam = getAbsPath($bam, "BAM");
@@ -962,7 +963,18 @@ my %fileChrs = ();
 # Check the bam files for valid chromosomes (must be found in the ref fai file).
 for my $bam (@allbams)
 {
-    next if ( $bam =~ /^(ftp|http):\/\//); #hyun:temp
+    # vasa:temp
+    # default file format is BAM
+    $bamType{$bam} = 'bam';
+    if ( $bam =~ /^(ftp|http):\/\//) {
+      $bamLocation{$bam} = 'remote';
+      next;
+    } else {
+      $bamLocation{$bam} = 'local'
+    }
+
+
+
     die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
     tie *BAM, "IO::Zlib", $bam, "rb";
 
@@ -975,7 +987,7 @@ for my $bam (@allbams)
         if($buffer eq "CRAM")
         {
             # This bam is a cram.
-            $isCram{$bam} = 1;
+            $bamType{$bam} = 'cram';
 
             # Check for cram index.
             if ( (getConf("RUN_PILEUP") eq "TRUE") ||
@@ -1124,15 +1136,18 @@ foreach my $chr (@chrs)
 ## Check MD5 files for CRAM.
 ############################################################################
 # If there are any CRAM files, set REF_PATH.
-if(scalar keys %isCram > 0)
+if('cram' ~~ [values %bamType])
 {
     # There is at least one CRAM file, so check the MD5 files.
     genMD5Files();
 
     # Check each CRAM and see if it's MD5 file exists.
     my %refM5s = ();
-    foreach my $cram (sort(keys %isCram))
+    foreach my $cram (sort(keys %bamType))
     {
+        ## vasa: this is ugly. better to generate array of files that are crams to start with
+        next if ($bamType{$cram} ne "cram");
+
         open my $input, "-|", getConf("SAMTOOLS_FOR_OTHERS")." view -H $cram | grep \"^\@SQ\""
         or die "samtools failed to read header from $cram: $!";
         while(my $line = <$input>)
@@ -1900,10 +1915,15 @@ foreach my $chr (@chrs) {
                 my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
                 my $cmd;
                 my $vcfInBam = $bam;
-                if(exists $isCram{$bam})
+                if($bamType{$bam} eq "cram")
                 {
                     # Cram has to be converted to bam and streamed to vcfPileup
                     $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                    $vcfInBam = "-.ubam";
+                }
+                # stream files through samtools if they exist remotely
+                elsif($bamLocation{$bam} eq "remote") {
+                    $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                     $vcfInBam = "-.ubam";
                 }
                 $cmd .= getConf("VCFPILEUP")." -i $svcfs[$j] -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
@@ -2622,7 +2642,7 @@ sub runPileup
     }
 
     my $md5Dir = "";
-    if(exists $isCram{$bamIn})
+    if($bamType{$bamIn} eq "cram")
     {
         $md5Dir = "REF_PATH=".getConf("MD5_DIR")." ";
     }
