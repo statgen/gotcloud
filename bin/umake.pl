@@ -73,6 +73,9 @@ my $noPhoneHome = '';
 my $bamList = '';
 my $refdir = '';
 
+# if this works, add sam-dump as a full dependency
+my $samdumpBin = '';
+
 # check the format and location of the input file
 my %bamType = ();
 my $chunkOK = '';
@@ -114,7 +117,8 @@ my $optResult = GetOptions("help",\$help,
                            "ignoresmcheck", \$ignoreSmCheck,
                            "gotcloudroot|gcroot=s", \$gcroot,
                            "noPhoneHome", \$noPhoneHome,
-                           "chunkOK", \$chunkOK
+                           "chunkOK", \$chunkOK,
+                           "samdumpBin", \$samdumpBin
     );
 
 my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
@@ -756,6 +760,8 @@ unless ( $outdir =~ /^\// ) {
     setConf('OUT_DIR', $outdir);
 }
 
+$samdumpBin = getConf("SAM_DUMP_BIN");
+
 system("mkdir -p $outdir") &&
     die "Unable to create directory '$outdir'\n";
 dumpConf("$outdir/".getConf("MAKE_BASE_NAME").".$makeext.conf");
@@ -831,7 +837,7 @@ while(<IN>) {
                 $bam =~ s/\$\($key\)/$val/;
             }
             # Check if there is just a relative path to the bams.
-            if ( !( $bam =~ /^\// ) && ( $bam !~ /^(ftp|http):\/\// ) )
+            if ( !( $bam =~ /^\// ) && ( $bam !~ /^(csra|ftp|http):\/\// ) )
             {
                 # It is relative, so make it absolute.
                 $bam = getAbsPath($bam, "BAM");
@@ -852,11 +858,11 @@ while(<IN>) {
              (getConf("RUN_VCFPILEUP") eq "TRUE") )
         {
             # die if bam is not readable
-            #unless ( -r $bam ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
+            #unless ( -r $bam ) { die "ERROR: Cannot r/bamTypead BAM file, '$bam'\n"; }
             #unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
             # hyun: temp
-            unless ( ( -r $bam ) || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
-            unless ( ( -s $bam ) || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: $bam' is empty.\n"; }
+            unless ( ( -r $bam ) || ( $bam =~ /^(csra|ftp|http):\/\//) ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
+            unless ( ( -s $bam ) || ( $bam =~ /^(csra|ftp|http):\/\//) ) { die "ERROR: $bam' is empty.\n"; }
         }
     }
     push(@allSMs,$smID);
@@ -964,16 +970,26 @@ my %fileChrs = ();
 for my $bam (@allbams)
 {
     # vasa:temp
-    # default file format is BAM
+    # set default file format to BAM
     $bamType{$bam} = 'bam';
-    if ( $bam =~ /^(ftp|http):\/\//) {
-      $bamLocation{$bam} = 'remote';
-      next;
+    # check whether file is local or remote
+    if ( $bam =~ /^(csra|ftp|http):\/\//) {
+        $bamLocation{$bam} = 'remote';
     } else {
-      $bamLocation{$bam} = 'local'
+        $bamLocation{$bam} = 'local'
     }
 
+    # vasa:temp
+    # check if input is csra
+    if ( ($bam =~ /^(csra|):\/\//) || ($bam =~ /\.csra$/) ) {
+        $bamType{$bam} = 'csra'
+    }
 
+    # vasa:temp
+    # sanity checks currently switched off for remote and non-bam files
+    if ($bamLocation{$bam} eq 'remote') {
+        next;
+    }
 
     die "ERROR: Cannot open file $bam: $!\n" unless ( -s $bam );
     tie *BAM, "IO::Zlib", $bam, "rb";
