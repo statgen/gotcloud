@@ -159,7 +159,7 @@ public:
     /// input/output.
     /// \return true = stream; false = not a stream.
     bool IsStream();
-   
+
     /// Reads the header section from the file and stores it in
     /// the passed in header.
     /// \return true = success; false = failure.
