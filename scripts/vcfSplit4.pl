@@ -37,7 +37,7 @@ pod2usage(-verbose => 2) if $man;
 
 my $bindir = "$FindBin::Bin";
 my $bgzip = "$bindir/../bin/bgzip";
-my $tabix = "$bindir/../bin/tabix";
+my $tabix = "$bindir/../src/tabix/tabix";
 
 unless ( ( $vcf ) && ( $out ) ) {
     print STDERR "ERROR: Missing required option\n";
