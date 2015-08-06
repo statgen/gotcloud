@@ -18,7 +18,7 @@ my $chr = "";
 my $ignoreFilter = "";
 my $bindir = "$FindBin::Bin";
 my $bgzip = "$bindir/../bin/bgzip";
-my $tabix = "$bindir/../src/tabix/tabix";
+my $tabix = "$bindir/../bin/tabix";
 
 ## Parse options and print usage if there is a syntax error,
 ## or if usage was explicitly requested.
