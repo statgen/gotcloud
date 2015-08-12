@@ -7,3 +7,6 @@ bin/instmodsh
 bin/package-stash-conflicts
 bin/prove
 man/
+test/stream/remote_bam-cram/output/
+test/stream/remote_csra/output/
+
