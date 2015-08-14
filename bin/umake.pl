@@ -795,7 +795,7 @@ while(<IN>) {
     }
 
     # Population is optional, so check pop to see if it looks like a BAM/CRAM.
-    if( ($pop =~ /(bam|BAM|cram|CRAM)$/) || ($pop =~ /(^(csra):\/\/)/ ) )
+    if( ($pop =~ /(bam|BAM|cram|CRAM|csra)$/) || ($pop =~ /(^(csra):\/\/)/ ) )
     {
         # No population, just a BAM/CRAM, add it to the list of bams, and 
         # set population to ALL.
@@ -986,7 +986,7 @@ for my $bam (@allbams)
     }
     # vasa:temp
     # sanity checks currently switched off for remote and non-bam files
-    if ($bamLocation{$bam} eq 'remote') {
+    if ( ($bamLocation{$bam} eq 'remote') || ($bamType{$bam} eq 'csra') ) {
         next;
     }
 
@@ -1945,11 +1945,19 @@ foreach my $chr (@chrs) {
                     $vcfInBam = "-.ubam";
                 }
                 # stream remote csra through sam-dump
-                elsif( ($sampleBamType eq "csra") && ($sampleBamLocation eq "remote") )
+                elsif( $sampleBamType eq "csra")
                 {
-                    my $srrNumber;
-                    ($srrNumber = $bam) =~ s/csra:\/\///;
-                    $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $chr:$unitStarts[$j]-$unitEnds[$j] $srrNumber | ".getConf("SAMTOOLS_FOR_OTHERS")." view -bS - | ";
+                    ## reference to SRA: local is a file path, remote is a SRR number
+                    my $srrHandle;
+                    if ($sampleBamLocation eq "remote")
+                    { 
+                        ($srrHandle = $bam) =~ s/csra:\/\///;
+                    } elsif ($sampleBamLocation eq "local")
+                    {
+                        $srrHandle = $bam;
+                    }
+                    # construct the command
+                    $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $chr:$unitStarts[$j]-$unitEnds[$j] $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view -bS - | ";
                     $vcfInBam = "-.ubam";
                 }
                 $cmd .= getConf("VCFPILEUP")." -i $svcfs[$j] -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
@@ -2178,6 +2186,7 @@ foreach my $chr (@chrs) {
         for(my $i=0; $i < @allSMs; ++$i) {
             my @bams = @{$hSM2bams{$allSMs[$i]}};
             my @sampleBamTypes = @bamType{@bams};
+            my @sampleBamLocations = @bamLocation{@bams};
             my $cptOK = "$cptMAKdir/$allSMs[$i].OK";
             push(@allcpts,$cptOK);
             # for each partition of the genome.
@@ -2224,13 +2233,13 @@ foreach my $chr (@chrs) {
                         if (getConf("BAM_DEPEND") eq "TRUE") { $sampleCmd .= " $bams[0]"; }
                         $sampleCmd .= "\n\tmkdir --p $smGlfPartitionDir\n";
                         $sampleCmd .= logCatchFailure("pileup",
-                                                      getMosixCmd(runPileup($bams[0], $smGlf, $region, $loci), $smGlf, $sampleBamTypes[0]),
+                                                      getMosixCmd(runPileup($bams[0], $smGlf, $region, $loci), $smGlf, $sampleBamTypes[0], $sampleBamLocations[0]),
                                                       "$smGlf.log");
                     }
                     else {
                         if (getConf("BAM_DEPEND") eq "TRUE") { $glfCmdHdr .= " $bams[0]"; }
                         $glfCmdBody .= "mkdir --p $smGlfPartitionDir; ";
-                        $glfCmdBody .= runPileup($bams[0], $smGlf, $region, $loci, $sampleBamTypes[0])."; ";
+                        $glfCmdBody .= runPileup($bams[0], $smGlf, $region, $loci, $sampleBamTypes[0], $sampleBamLocations[0])."; ";
                     }
                 }
                 else
@@ -2242,6 +2251,7 @@ foreach my $chr (@chrs) {
                     {
                         # Output into BAM specific glfs.
                         my $sampleBamType = $bamType{$bam}; 
+                        my $sampleBamLocation = $bamLocation{$bam}; 
                         my @F = split(/\//,$bam);
                         my $bamFn = pop(@F);
                         my $bamGlf = "$remotePrefix$bamGlfDir/$allSMs[$i]/$chrchr/$bamFn.$unitStarts[$j].$unitEnds[$j].glf";
@@ -2253,14 +2263,14 @@ foreach my $chr (@chrs) {
                             if (getConf("BAM_DEPEND") eq "TRUE") { $bamPileupCmds .= " $bam"; }
                             $bamPileupCmds .= "\n\tmkdir --p $bamGlfDir/$allSMs[$i]/$chrchr\n";
                             $bamPileupCmds .= logCatchFailure("pileup",
-                                                              getMosixCmd(runPileup($bam, $bamGlf, $region, $loci), $bamGlf, $sampleBamType),
+                                                              getMosixCmd(runPileup($bam, $bamGlf, $region, $loci), $bamGlf, $sampleBamType, $sampleBamLocation),
                                                               "$bamGlf.log");
                             $bamPileupCmds .= "\t".getTouch("$bamGlf")."\n\n";
                         }
                         else {
                             if (getConf("BAM_DEPEND") eq "TRUE") { $glfCmdHdr .= " $bam"; }
                             $glfCmdBody .= "mkdir --p $bamGlfDir/$allSMs[$i]/$chrchr; ";
-                            $glfCmdBody .= runPileup($bam, $bamGlf, $region, $loci, $sampleBamType)."; ";
+                            $glfCmdBody .= runPileup($bam, $bamGlf, $region, $loci, $sampleBamType, $sampleBamLocation)."; ";
                         }
                     }
                     # Add the BAM specific GLFs to the sample glf dependency.
@@ -2652,7 +2662,7 @@ sub runSVM
 #--------------------------------------------------------------
 sub runPileup
 {
-    my ($bamIn, $glfOut, $region, $loci, $bamType) = @_;
+    my ($bamIn, $glfOut, $region, $loci, $bamType, $bamLocation) = @_;
 
     # Skip BAQ if the BAM filename contains any of the NOBAQ_SUBSTRINGS.
     my $baqFlag = 1;
@@ -2676,10 +2686,15 @@ sub runPileup
         # prefix the command with the location of the md5 directory and use samtools with bam file path
         $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
     } elsif ($bamType eq "csra") {
+        # $srrHandle: pass file path to sam-dump if local, otherwise pass SRR number
+        my $srrHandle;
+        if ($bamLocation eq "local") {
+            $srrHandle = $bamIn;
+        } elsif ($bamLocation eq "remote") {
+            ($srrHandle = $bamIn) =~ s/csra:\/\///;
+        }
         # prefix the command with sam-dump, and using streaming input for samtools
-        my $srrNumber;
-        ($srrNumber = $bamIn) =~ s/csra:\/\///;
-        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrNumber | ".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh - | $baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
+        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh - | $baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
     }
 
     return($cmd);
