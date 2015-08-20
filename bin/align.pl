@@ -774,7 +774,7 @@ while ($line = <IN>)
             die "ERROR: Cannot open file $fastq1: $!\n" unless ( -s $fullPathFQ1 );
             tie *FQ1, "IO::Zlib", $fullPathFQ1, "rb";
             my $fqline = FQ1->getline();
-
+            close(FQ1);
             # Check if first line of fastq1 matches expected default format:
             if($fqline =~ m/^@([^:]*:[^:]*:[^:]*:[^:]*)/)
             {
