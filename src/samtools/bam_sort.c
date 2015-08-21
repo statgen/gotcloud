@@ -1,9 +1,10 @@
 /*  bam_sort.c -- sorting and merging.
 
-    Copyright (C) 2008-2014 Genome Research Ltd.
+    Copyright (C) 2008-2015 Genome Research Ltd.
     Portions copyright (C) 2009-2012 Broad Institute.
 
     Author: Heng Li <lh3@sanger.ac.uk>
+    Author: Martin Pollard <mp15@sanger.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -307,14 +308,18 @@ static void trans_tbl_init(bam_hdr_t* out, bam_hdr_t* translate, trans_tbl_t* tb
         regcomp(&rg_id_search, rg_regex.s, REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
         free(rg_regex.s);
         kstring_t transformed_id = { 0, 0, NULL };
-        bool transformed_equals_match;
+        bool transformed_equals_match; // Have we changed the ID of this line?
+        bool not_found_in_output; // Do we need to add this line to our output?
+        not_found_in_output = regexec(&rg_id_search, out->text, 0, NULL, 0) == REG_NOMATCH;
+
         if (rg_override) {
+            // If we're overriding RG terminate the loop early
             kputs(rg_override, &transformed_id);
             transformed_equals_match = false;
             rg_override = NULL;
             loop = false;
         } else {
-            if (regexec(&rg_id_search, out->text, 0, NULL, 0) != 0  || merge_rg) {
+            if ( not_found_in_output || merge_rg) {
                 // Not in there so can add it as 1-1 mapping
                 kputs(match_id.s, &transformed_id);
                 transformed_equals_match = true;
@@ -323,8 +328,8 @@ static void trans_tbl_init(bam_hdr_t* out, bam_hdr_t* translate, trans_tbl_t* tb
                 ksprintf(&transformed_id, "%s-%0lX", match_id.s, lrand48());
                 transformed_equals_match = false;
             }
-            regfree(&rg_id_search);
         }
+        regfree(&rg_id_search);
 
         // Insert it into our translation map
         int in_there = 0;
@@ -341,7 +346,8 @@ static void trans_tbl_init(bam_hdr_t* out, bam_hdr_t* translate, trans_tbl_t* tb
             kputsn(text+matches[1].rm_eo, matches[0].rm_eo-matches[1].rm_eo, &transformed_line);
         }
 
-        if (!(transformed_equals_match && merge_rg)) {
+        // Does this line need to go into our output header?
+        if (!(transformed_equals_match && merge_rg && !not_found_in_output)) {
             // append line to linked list for PG processing
             char** ln = kl_pushp(hdrln, rg_list);
             *ln = ks_release(&transformed_line);  // Give away to linked list
@@ -377,8 +383,10 @@ static void trans_tbl_init(bam_hdr_t* out, bam_hdr_t* translate, trans_tbl_t* tb
         regcomp(&pg_id_search, pg_regex.s, REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
         free(pg_regex.s);
         kstring_t transformed_id = { 0, 0, NULL };
-        bool transformed_equals_match;
-        if (regexec(&pg_id_search, out->text, 0, NULL, 0) != 0 || merge_pg) {
+        bool transformed_equals_match; // Have we changed the ID of this line?
+        bool not_found_in_output; // Do we need to add this line to our output?
+        not_found_in_output = regexec(&pg_id_search, out->text, 0, NULL, 0) == REG_NOMATCH;
+        if (not_found_in_output || merge_pg) {
             // Not in there so can add it as 1-1 mapping
             kputs(match_id.s, &transformed_id);
             transformed_equals_match = true;
@@ -404,7 +412,8 @@ static void trans_tbl_init(bam_hdr_t* out, bam_hdr_t* translate, trans_tbl_t* tb
             kputsn(text+matches[1].rm_eo, matches[0].rm_eo-matches[1].rm_eo, &transformed_line);
         }
 
-        if (!(transformed_equals_match && merge_pg)) {
+        // Does this line need to go into our output header?
+        if (!(transformed_equals_match && merge_pg && !not_found_in_output)) {
             // append line to linked list for PP processing
             char** ln = kl_pushp(hdrln, pg_list);
             *ln = ks_release(&transformed_line);  // Give away to linked list
@@ -1069,9 +1078,9 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
  */
 int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads)
 {
-    int ret, i, n_files = 0;
+    int ret = -1, i, n_files = 0;
     size_t mem, max_k, k, max_mem;
-    bam_hdr_t *header;
+    bam_hdr_t *header = NULL;
     samFile *fp;
     bam1_t *b, **buf;
 
@@ -1088,8 +1097,7 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
     header = sam_hdr_read(fp);
     if (header == NULL) {
         fprintf(stderr, "[bam_sort_core] failed to read header for '%s'\n", fn);
-        sam_close(fp);
-        return -1;
+        goto err;
     }
     if (is_by_qname) change_SO(header, "queryname");
     else change_SO(header, "coordinate");
@@ -1116,8 +1124,12 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
             mem = k = 0;
         }
     }
-    if (ret != -1)
-        fprintf(stderr, "[bam_sort_core] truncated file. Continue anyway.\n");
+    if (ret != -1) {
+        fprintf(stderr, "[bam_sort_core] truncated file. Aborting.\n");
+        ret = -1;
+        goto err;
+    }
+
     // write the final output
     if (n_files == 0) { // a single block
         ks_mergesort(sort, k, buf, 0);
@@ -1134,7 +1146,7 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
         if (bam_merge_core2(is_by_qname, fnout, modeout, NULL, n_files, fns, MERGE_COMBINE_RG|MERGE_COMBINE_PG, NULL, n_threads) < 0) {
             // Propagate bam_merge_core2() failure; it has already emitted a
             // message explaining the failure, so no further message is needed.
-            return -1;
+            goto err;
         }
         for (i = 0; i < n_files; ++i) {
             unlink(fns[i]);
@@ -1142,12 +1154,16 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
         }
         free(fns);
     }
+
+    ret = 0;
+
+ err:
     // free
     for (k = 0; k < max_k; ++k) bam_destroy1(buf[k]);
     free(buf);
     bam_hdr_destroy(header);
     sam_close(fp);
-    return 0;
+    return ret;
 }
 
 int bam_sort_core(int is_by_qname, const char *fn, const char *prefix, size_t max_mem)

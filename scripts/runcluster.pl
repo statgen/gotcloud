@@ -352,6 +352,7 @@ sub waitforcommand {
     #   query for the batch system and see if the job is still there
     while (1) {
         foreach (1 .. $opts{waittries}) {
+            if ($opts{verbose}) { print "Wait $_\n"; }
             sleep($opts{waitinterval});
             if (-r "$shell.err") {
                 unlink("$shell.err");
@@ -363,13 +364,25 @@ sub waitforcommand {
                 if ($opts{verbose}) { print "Found $shell.ok\n"; }
                 return 0;
             }
-            if ($opts{verbose}) { print "Wait $_\n"; }
         }
         if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
         my $qout = "/tmp/$$.queryoutput";
         if (system($querycmd . " 2>&1 >$qout") || (-z $qout)) {
+            unlink($qout) or die "Could not remove $qout\n";
+            # Sleep one more time to give the file system time to catchup.
+            sleep($opts{waitinterval});
+            # Recheck for the err/ok file in case it is there now.
+            if (-r "$shell.err") {
+                unlink("$shell.err");
+                if ($opts{verbose}) { print "Found $shell.err\n"; }
+                return 1;
+            }
+            if (-r "$shell.ok")  {
+                unlink("$shell.ok");
+                if ($opts{verbose}) { print "Found $shell.ok\n"; }
+                return 0;
+            }
             warn "Batch job '$jobid' completed without setting $shell.ok or $shell.err - something is wrong\n";
-            unlink($qout);
             return 99;
         }
         #   Some systems remove q jobid from the queue when it completes
@@ -383,12 +396,13 @@ sub waitforcommand {
                 }
             }
             close(WAITREAD);
-            unlink($qout);
+            unlink($qout) or die "Could not remove $qout\n";
             if ($jobstate eq 'C') {
                 warn "Batch job '$jobid' was cancelled\n";
                 return 98;
             }
         }
+        unlink($qout) or die "Could not remove $qout\n";
         $opts{waittries} += 12;
         if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
         if ($opts{verbose}) { print "Next pass waittries=$opts{waittries}\n"; }

@@ -22,3 +22,5 @@ $(OUT_DIR)/beagle4/chr20/like/chr20.PASS.1.vcf.gz.tbi.OK:
 	if [ -e  $(OUT_DIR)/beagle4/chr20/like/chr20.PASS.1.vcf.gz.tbi ]; then touch $(OUT_DIR)/beagle4/chr20/like/chr20.PASS.1.vcf.gz.tbi.OK; else exit 1; fi
 
 
+
+clean:

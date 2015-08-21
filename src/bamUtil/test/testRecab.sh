@@ -258,6 +258,30 @@ let "status |= $?"
 diff -I "Start: .*" -I "End: .*" results/testRecabBin.sam.log expected/testRecabBin.sam.log
 let "status |= $?"
 
+
+###############
+# Recalibration to stdout
+../bin/bam recab --noph --in testFiles/testRecab.sam --out - --refFile testFilesLibBam/chr1_partial.fa --fitModel > results/testRecabStdout.sam 2> results/testRecabStdout.log
+let "status |= $?"
+diff results/testRecabStdout.sam expected/testRecab.sam
+let "status |= $?"
+diff -I "Start: .*" -I "End: .*" results/testRecabStdout.log expected/testRecabStdout.log
+let "status |= $?"
+
+
+###############
+# Recalibration to stdout with log
+../bin/bam recab --noph --in testFiles/testRecab.sam --out - --refFile testFilesLibBam/chr1_partial.fa --fitModel --log results/testRecabStdoutLog.log > results/testRecabStdoutLog.sam 2> results/testRecabStdoutLog.err
+let "status |= $?"
+diff results/testRecabStdoutLog.sam expected/testRecab.sam
+let "status |= $?"
+diff results/testRecabStdoutLog.err expected/empty.log
+let "status |= $?"
+diff <(sort results/testRecabStdoutLog.log.qemp) <(sort expected/testRecab.sam.qemp)
+let "status |= $?"
+diff -I "Start: .*" -I "End: .*" results/testRecabStdoutLog.log expected/testRecabStdoutLog.log
+let "status |= $?"
+
 if [ $status != 0 ]
 then
   echo failed testRecab.sh

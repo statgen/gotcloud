@@ -935,6 +935,9 @@ if($numInfer > 0)
     my $firstField = 1;
     foreach my $field (@fieldnames)
     {
+        # Skip RG field since inferred fields mean that RG was not in the original header.
+        next if($field eq "RG");
+
         if($firstField != 1)
         {
             print OUT "\t";
@@ -943,10 +946,7 @@ if($numInfer > 0)
         {
             $firstField = 0;
         }
-        if($field ne "RG")
-        {
-            print OUT $field;
-        }
+        print OUT $field;
     }
     foreach my $mergeName (sort (keys %mergeToFq1))
     {
@@ -990,6 +990,8 @@ if($numInfer > 0)
                 }
                 elsif($field eq "RG")
                 {
+                    # Do not output RG.  Fields are inferred, meaning RG was not used.
+                    next;
                 }
                 else
                 {

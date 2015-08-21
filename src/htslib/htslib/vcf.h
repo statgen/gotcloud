@@ -37,6 +37,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <assert.h>
 #include "hts.h"
 #include "kstring.h"
+#include "hts_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -183,6 +184,7 @@ typedef struct {
 #define BCF_ERR_CTG_UNDEF 1
 #define BCF_ERR_TAG_UNDEF 2
 #define BCF_ERR_NCOLS     4
+#define BCF_ERR_LIMITS    8
 
 /*
     The bcf1_t structure corresponds to one VCF/BCF line. Reading from VCF file
@@ -376,13 +378,30 @@ typedef struct {
 
     /** Create a new header using the supplied template */
     bcf_hdr_t *bcf_hdr_dup(const bcf_hdr_t *hdr);
+
     /**
      *  Copy header lines from src to dst if not already present in dst. See also bcf_translate().
      *  Returns 0 on success or sets a bit on error:
      *      1 .. conflicting definitions of tag length
      *      // todo
      */
-    int bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src);
+    int bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src) HTS_DEPRECATED("Please use bcf_hdr_merge instead");
+
+    /**
+     *  bcf_hdr_merge() - copy header lines from src to dst, see also bcf_translate()
+     *  @param dst: the destination header to be merged into, NULL on the first pass
+     *  @param src: the source header
+     *
+     *  Notes:
+     *      - use as:
+     *          bcf_hdr_t *dst = NULL;
+     *          for (i=0; i<nsrc; i++) dst = bcf_hdr_merge(dst,src[i]);
+     *
+     *      - bcf_hdr_merge() replaces bcf_hdr_combine() which had a problem when
+     *      combining multiple BCF headers. The current bcf_hdr_combine()
+     *      does not have this problem, but became slow when used for many files.
+     */
+    bcf_hdr_t *bcf_hdr_merge(bcf_hdr_t *dst, const bcf_hdr_t *src);
 
     /**
      *  bcf_hdr_add_sample() - add a new sample.
@@ -410,7 +429,7 @@ typedef struct {
     /**
      *  bcf_hdr_remove() - remove VCF header tag
      *  @param type:      one of BCF_HL_*
-     *  @param key:       tag name
+     *  @param key:       tag name or NULL to remove all tags of the given type
      */
     void bcf_hdr_remove(bcf_hdr_t *h, int type, const char *key);
 
@@ -731,7 +750,9 @@ typedef struct {
     #define bcf_index_load(fn) hts_idx_load(fn, HTS_FMT_CSI)
     #define bcf_index_seqnames(idx, hdr, nptr) hts_idx_seqnames((idx),(nptr),(hts_id2name_f)(bcf_hdr_id2name),(hdr))
 
+    hts_idx_t *bcf_index_load2(const char *fn, const char *fnidx);
     int bcf_index_build(const char *fn, int min_shift);
+    int bcf_index_build2(const char *fn, const char *fnidx, int min_shift);
 
 /*******************
  * Typed value I/O *
