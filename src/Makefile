@@ -64,8 +64,13 @@ bamUtil:
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/bam $@; cd ..
 
-samtools-hybrid samtools: 
+samtools:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	mkdir --p bin/
+	cd bin/; ln -fs ../$@/$@ $@; cd ..
+
+samtools-hybrid:
+	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
 
@@ -75,13 +80,13 @@ bgzip tabix:
 	cd bin/; ln -fs ../htslib/$@ $@; cd ..
 
 libsvm-3.1:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/svm-predict .; cd ..
 	cd bin/; ln -fs ../$@/svm-train .; cd ..
 
 mosaik:
-	$(MAKE) -C $@/src $(MAKECMDGOALS)
+	$(MAKE) -C $@/src $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/MosaikAligner .; cd ..
 	cd bin/; ln -fs ../$@/bin/MosaikBuild .; cd ..
@@ -90,21 +95,28 @@ mosaik:
 
 premo:
 	mkdir -p $@/build; cd $@/build; $(CMAKE) ..
-	$(MAKE) -C $@/build $(MAKECMDGOALS)
+	$(MAKE) -C $@/build $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/premo .; cd ..
 
 bwa: 
-	$(MAKE) -C bwa $(MAKECMDGOALS)
+	$(MAKE) -C bwa $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../bwa/bwa $@; cd ..
 
 vt:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	@if [ "$(MAKECMDGOALS)" = test ] ; then \
+		echo "vt does have tests, but they're broken right now." ; \
+	fi
+	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/vt .; cd ..
 
 $(LIBS): 
-	@$(MAKE) -C $@ $(MAKECMDGOALS)
+	@if [ $@ = libStatGen ]; then \
+		$(MAKE) -C $@ $(MAKECMDGOALS) ; \
+	else \
+		$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS)) ; \
+	fi
 	mkdir --p lib/
 	cd lib/; ln -fs ../$@/$@.a $@.a; cd ..
