@@ -1,6 +1,6 @@
 
 STAT_GEN_EXES = bamUtil glfExtract glfMerge vcfPileup infoCollector vcfCooker glfMultiples thunderVCF verifyBamID invNorm qplot glfFlex
-EXES = samtools samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik bwa bgzip tabix premo vt
+EXES = samtools samtools-hybrid $(STAT_GEN_EXES) libsvm-3.1 mosaik bwa bgzip tabix premo vt vt2
 LIBS = libStatGen libVcf libMach
 SUBDIRS = $(EXES) $(LIBS)
 
@@ -105,12 +105,14 @@ bwa:
 	cd bin/; ln -fs ../bwa/bwa $@; cd ..
 
 vt:
-	@if [ "$(MAKECMDGOALS)" = test ] ; then \
-		echo "vt does have tests, but they're broken right now." ; \
-	fi
 	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/vt .; cd ..
+
+vt2:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+	mkdir --p bin/
+	cd bin/; ln -fs ../vt2/vt .; cd ..
 
 $(LIBS): 
 	@if [ $@ = libStatGen ]; then \
