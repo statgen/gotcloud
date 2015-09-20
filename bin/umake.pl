@@ -2695,6 +2695,9 @@ sub runPileup
         }
         # prefix the command with sam-dump, and using streaming input for samtools
         $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh - | $baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
+    } else {
+        ##  bam/cram that is local or remote
+        $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
     }
 
     return($cmd);
