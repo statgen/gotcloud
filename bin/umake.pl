@@ -795,7 +795,7 @@ while(<IN>) {
     }
 
     # Population is optional, so check pop to see if it looks like a BAM/CRAM.
-    if( ($pop =~ /(bam|BAM|cram|CRAM|csra)$/) || ($pop =~ /(^(csra):\/\/)/ ) )
+    if( ($pop =~ /(bam|cram|csra)$/i) || ($pop =~ /(^(csra):\/\/)/ ) )
     {
         # No population, just a BAM/CRAM, add it to the list of bams, and 
         # set population to ALL.
@@ -809,7 +809,7 @@ while(<IN>) {
     }
 
     # Make sure the sample id doesn't look like bam/cram file names.
-    if($smID =~ /\.(bam|BAM|cram|CRAM)$/)
+    if($smID =~ /\.(bam|cram)$/i)
     {
         die "ERROR: Check the format of $bamList.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $smID\n";
     }
