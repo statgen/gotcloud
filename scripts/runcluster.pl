@@ -368,7 +368,7 @@ sub waitforcommand {
         if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
         my $qout = "/tmp/$$.queryoutput";
         if (system($querycmd . " 2>&1 >$qout") || (-z $qout)) {
-            unlink($qout) or die "Could not remove $qout\n";
+            unlink($qout) or warn "Could not remove $qout\n";
             # Sleep one more time to give the file system time to catchup.
             sleep($opts{waitinterval});
             # Recheck for the err/ok file in case it is there now.
@@ -396,13 +396,13 @@ sub waitforcommand {
                 }
             }
             close(WAITREAD);
-            unlink($qout) or die "Could not remove $qout\n";
             if ($jobstate eq 'C') {
+                unlink($qout) or warn "Could not remove $qout\n";
                 warn "Batch job '$jobid' was cancelled\n";
                 return 98;
             }
         }
-        unlink($qout) or die "Could not remove $qout\n";
+        unlink($qout) or warn "Could not remove $qout\n";
         $opts{waittries} += 12;
         if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
         if ($opts{verbose}) { print "Next pass waittries=$opts{waittries}\n"; }
