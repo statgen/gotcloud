@@ -51,7 +51,7 @@ Alignment statistics are written to the VCF file specified, if the file name end
         TCLAP::ValueArg<std::string> argInputVCFFileName("i", "inputvcf", "VCF file listing the loci of interest (can be gzipped), bam index file is automatically assumed to be in the same location as the bam file.", false, "", "string");
         TCLAP::ValueArg<std::string> argOutputVCFFileName("v", "outputvcf", "VCF file - if the extension is .gz, the written file will be a gzip file, (default is STDOUT)", false, "-", "string");
         TCLAP::ValueArg<int> argWindow("w","window","Window size for pileup (default 1024)", false, 1024, "integer");
-        TCLAP::ValueArg<int> argMaxReads("n","maxreads","Maximum # reads per site (default 10000)", false, 10000, "integer");
+        TCLAP::ValueArg<int> argMaxReads("n","maxreads","Maximum # reads per site (default 255)", false, 255, "integer");
         TCLAP::SwitchArg argAddDelAsBase("d", "adddelasbase", "Adds deletions as base", cmd, false);
 
         cmd.add(argInputBAMFileName);
