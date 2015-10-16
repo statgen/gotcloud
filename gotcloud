@@ -19,6 +19,7 @@ use strict;
 use warnings;
 use Pod::Usage;
 use File::Basename;
+use File::Copy 'copy';
 use Cwd;
 use Cwd 'abs_path';
 #   Find out where this program lives (in a 'bin' directory).
@@ -72,6 +73,12 @@ if ($fcn =~ /^([\-])*version$/) {
 # Determine the types of analysis to be done and do it
 ##################################################################
 my $cmd = '';
+
+if ( $fcn eq 'test') {
+    system("$scriptdir/generate_all_test_results.sh");
+    exit 0;
+}
+
 if ( $fcn eq 'align') {
     $cmd = "$bindir/align.pl";
     if (! -f $cmd) { die "ERROR: Unable to find align.pl\n"; }
