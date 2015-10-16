@@ -1244,7 +1244,14 @@ sub getStepType
     if(hasTmpKey($output, "CHR"))    { $outputtype .= "PerChr";}
     if(hasTmpKey($output, "START"))  { $outputtype .= "PerRegion"; }
 
-# TODO check for any other tmp keys - invalid.
+    # Check for invalid tmp keys
+    my %validTmpKeys = map {$_ => 1} qw{BAM SAMPLE CHR START};
+    for my $observedTmpKey ($output =~ m/\?\((.*?)\)/g) {
+        if ( ! exists $validTmpKeys{$observedTmpKey} ) {
+            die "illegal tmp key '$observedTmpKey' in step '$step'.";
+        }
+    }
+
     # Check for valid types - can't have PerRegion without PerChr.
     die "ERROR, can't have a PerRegion type without PerChr\n" if(($outputtype =~ /PerRegion/) && ($outputtype !~ /PerChr/));
     return($outputtype);
