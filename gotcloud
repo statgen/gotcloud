@@ -183,9 +183,6 @@ my $rc = system($cmd, @ARGV);
 if ($opts{perf}) { Perf('stop'); }
 exit $rc>>8;
 
-warn "ERROR: Unknown command '$fcn' Please see the usage below.\n";
-pod2usage(-exitval => 1);
-
 
 #--------------------------------------------------------------
 #   Perf(fcn)

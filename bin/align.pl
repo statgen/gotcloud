@@ -154,9 +154,10 @@ push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
 #--------------------------------------------------------------
 #   Special case for convenient testing
 if ($opts {test}) {
-    # remove a trailing slash if there is one.
-    $opts{test} =~ s/\/\z//;
+    # remove any trailing slashes.
+    $opts{test} =~ s/\/+\z//;
     my $outdir=abs_path($opts{test});
+    die "Parent directory of $opts{test} should exist." if ! defined($outdir);
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
     my $testoutdir = $outdir . '/aligntest';
@@ -217,8 +218,8 @@ if ($opts{conf})
 #   Set configuration variables from comand line options
 #############################################################################
 if ($opts{out_dir}) {
-    # remove a trailing slash if there is one.
-    $opts{out_dir} =~ s/\/\z//;
+    # remove any trailing slashes.
+    $opts{out_dir} =~ s/\/+\z//;
     my $outdir = abs_path($opts{out_dir});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
