@@ -16,9 +16,9 @@ Positive samples: 287, Negative samples: 37
 DP	MQ	NS	AN	AB	AZ	FIC	SLRT	LBS	OBS	STR	STZ	CBR	CBZ	IOR	IOZ	AOI	AOZ	LQR	MQ0	MQ10	MQ20	MQ30	QUAL
 <gotcloud_root>/bin/svm-train -s 0 -t 2 <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.labeled.svm <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm.model
 *
-optimization finished, #iter = 96
-nu = 0.072267
-obj = -11.833510, rho = 0.260973
+optimization finished, #iter = 95
+nu = 0.071772
+obj = -11.741298, rho = 0.288957
 nSV = 45, nBSV = 3
 Total nSV = 45
 <gotcloud_root>/bin/svm-predict <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm.model <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm.pred

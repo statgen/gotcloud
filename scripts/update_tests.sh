@@ -10,6 +10,9 @@ echo gotcloud_root: $gotcloud_root/
 cd $gotcloud_root/test/umake/expected/
 echo expected: $PWD/
 
+set +u
+[[ -z "$1" ]] && echo You must enter a directory of test results, gotten from \`gotcloud test\`. && exit 1
+
 outdir=$1
 outdir=${outdir%/}
 echo outdir: $outdir/
