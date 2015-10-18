@@ -7,6 +7,8 @@
 #   to verify the output results. Typically called like this:
 #
 #       diff_results_umake.sh ~/outtest gotcloud/test/umake/expected snpcall
+set -e -u -o pipefail
+
 medir=`dirname $0`
 if [ "$2" = "" ]; then
   echo "$0 failed"
@@ -24,6 +26,7 @@ if [ -d $RESULTS_DIR/umaketest ]; then
     RESULTS_DIR=$RESULTS_DIR/umaketest;
 fi
 
+FIND_EXCLUDE=()
 DIR_EXCLUDE=
 if [ "$TYPE" == "snpcall" ]; then
     if [ -d $EXPECTED_DIR/umaketest ]; then
@@ -56,12 +59,12 @@ fi
 
 
 BAM_UTIL=$medir/../bin/bam
-EXPECTED_VCF_GZS=$(find -L $EXPECTED_DIR/ -name "*vcf.gz" "${FIND_EXCLUDE[@]}")
-RESULTS_VCF_GZS=`find $RESULTS_DIR/ -name "*vcf.gz" "${FIND_EXCLUDE[@]}"`
-EXPECTED_TBIS=`find -L $EXPECTED_DIR/ -name "*tbi" "${FIND_EXCLUDE[@]}"`
+EXPECTED_GZS=$(find -L $EXPECTED_DIR/ -name "*.gz" "${FIND_EXCLUDE[@]:+${FIND_EXCLUDE[@]}}") # This is a `set -u`-compliant version of ${FIND_EXCLUDE[@]}
+RESULTS_GZS=`find $RESULTS_DIR/ -name "*.gz" "${FIND_EXCLUDE[@]:+${FIND_EXCLUDE[@]}}"`
+EXPECTED_TBIS=`find -L $EXPECTED_DIR/ -name "*tbi" "${FIND_EXCLUDE[@]:+${FIND_EXCLUDE[@]}}"`
 
 SKIP_GZS=""
-for file in $EXPECTED_VCF_GZS
+for file in $EXPECTED_GZS
 do
   SKIP_GZS+="-x $(basename $file) "
 done
@@ -78,9 +81,6 @@ do
   SKIP_LOGS+="-x $file.conf -x $file.Makefile.log -x $file.Makefile.cluster "
 done
 
-#SKIP_GZS=""; for file in `ls $EXPECTED_DIR/pvcfs/chr20/*/*vcf.gz $EXPECTED_DIR/vcfs/chr20/*.vcf.gz $EXPECTED_DIR/split/chr20/*.vcf.gz`; do SKIP_GZS+="-x $(basename $file) "; done;
-#echo $SKIP_GZS
-
 status=0
 
 
@@ -88,6 +88,7 @@ echo "Results from DIFF will be in $DIFFRESULTS"
 
 #    -I '^.*vcfPileup.*$' \
 
+set +e
 diff -r $RESULTS_DIR $EXPECTED_DIR \
     $SKIP_GZS $SKIP_TBIS -x $DIFF_FILE $SKIP_LOGS -x jobfiles -x 20.20000001.25000000.txt $DIR_EXCLUDE\
     -I "^Analysis completed on " \
@@ -102,7 +103,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^\s*--list \[[^][:space:]]*\]$' \
     -I '^\s*Output Options : --outvcf \[.*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.stats\.vcf\],$' \
     -I '^\s*Base Call File : .*vcfs/chr20/[0-9]*\.[0-9]*/chr20\.[0-9]*\.[0-9]*\.vcf (-bname)$' \
-    -I '^Opening /.*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \
+    -I '^Opening .*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.\.\.$' \
     -I '^[^[:space:]]*split/chr20/chr20.*filtered\.PASS\.split\.[1-6]\.vcf\.gz$' \
     -I '^[^[:space:]]*pvcfs/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.bam\.20\.[0-9]*\.[0-9]*\.vcf\.gz$' \
     -I '^[^[:space:]]*pvcfs/chr20/[0-9]*\.[0-9]*/[^/ \n\t]*\.cram\.20\.[0-9]*\.[0-9]*\.vcf\.gz$' \
@@ -117,17 +118,17 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^GOTCLOUD_ROOT=.*$' \
     -I '^Reading Input File .*chr20.filtered.sites.vcf.raw$' \
     -I '^Reading Input File .*/vcfs/filtered.sites.vcf.raw$' \
-    -I '^Opening /.*beagle/chr20/split/bgl\.1\.chr20\.PASS\.1\.vcf\.gz\.\.$' \
+    -I '^Opening .*beagle/chr20/split/bgl\.1\.chr20\.PASS\.1\.vcf\.gz\.\.$' \
     -I '^Start time: ' \
-    -I '^  like=/.*beagle/chr20/like/chr20\.PASS\.1\.gz$' \
-    -I '^  out=/.*beagle/chr20/split/bgl\.1$' \
-    -I '^Running time for phasing: [0-9]* seconds$' \
-    -I '^/.*thunder/chr20/ALL/split/chr20\.filtered\.PASS\.beagled\.ALL\.split\.1\.vcf\.gz$' \
-    -I '^Opening /.*thunder/chr20/ALL/split/chr20\.filtered\.PASS\.beagled\.ALL\.split\.1\.vcf\.\.\.$' \
+    -I '^  like=.*beagle/chr20/like/chr20\.PASS\.1\.gz$' \
+    -I '^  out=.*beagle/chr20/split/bgl\.1$' \
+    -I '^Running time for phasing: ' \
+    -I 'thunder/chr20/ALL/split/chr20\.filtered\.PASS\.beagled\.ALL\.split\.1\.vcf\.gz$' \
+    -I '^Opening .*thunder/chr20/ALL/split/chr20\.filtered\.PASS\.beagled\.ALL\.split\.1\.vcf\.\.\.$' \
     -I '^   Shotgun Sequences : --shotgun \[.*/thunder/chr20/ALL/split/chr20\.filtered\.PASS\.beagled\.ALL\.split\.1\.vcf\.gz\],$' \
     -I '^        Output Files : --prefix \[.*/thunder/chr20/ALL/thunder/chr20\.filtered\.PASS\.beagled\.ALL\.thunder\.1\],$' \
     -I '^Outputing VCF file [^[:space:]]*/thunder/chr20/ALL/thunder/chr20\.filtered\.PASS\.beagled\.ALL\.thunder\.1\.vcf\.gz$' \
-    -I '^Opening /[^[:space:]]*thunder/chr20/ALL/thunder/chr20\.filtered\.PASS\.beagled\.ALL\.thunder\.1\.vcf\.gz\.\.$' \
+    -I '^Opening [^[:space:]]*thunder/chr20/ALL/thunder/chr20\.filtered\.PASS\.beagled\.ALL\.thunder\.1\.vcf\.gz\.\.$' \
     -I $'^1\t20\t20000121\t20299968\t[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf.gz$' \
     -I $'^*** Redundant: 2\t20\t20001591\t20299968\t[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.2.vcf.gz$' \
     -I '^all: [^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf.gz$' \
@@ -135,11 +136,11 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I $'^\t[^[:space:]]*scripts/../bin/bgzip [^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf$' \
     -I '^  gl=[^[:space:]]*split4/chr20/chr20.filtered.PASS.split.1.vcf.gz$' \
     -I '^  out=[^[:space:]]*beagle4/chr20/like/chr20.PASS.1$' \
-    -I '^Time for building model:[[:space:]]*[0-9]* seconds$' \
-    -I '^Time for sampling (singles):[[:space:]]*[0-9]* seconds$' \
-    -I '^Total time for building model:[[:space:]]*[0-9]* seconds$' \
-    -I '^Total time for sampling:[[:space:]]*[0-9]* seconds$' \
-    -I '^Total run time:[[:space:]]*[0-9]* seconds$' \
+    -I '^Time for building model:' \
+    -I '^Time for sampling (singles):' \
+    -I '^Total time for building model:' \
+    -I '^Total time for sampling:' \
+    -I '^Total run time:' \
     -I '^Command line: java -Xmx364[01]m -jar beagle.jar$' \
     -I '^End time: ' \
     -I '^\s*Output : --outfile \[.*glfs/samples/chr20/[0-9]*\.[0-9]*/.*\.[0-9]*\.[0-9]*\.glf\],$' \
@@ -163,7 +164,7 @@ fi
 
 set -e                          # Fail on errors
 
-for file in $EXPECTED_VCF_GZS
+for file in $EXPECTED_GZS
 do
   if [ ! -f ${file/$EXPECTED_DIR/$RESULTS_DIR} ]
   then
@@ -172,7 +173,7 @@ do
   fi
 done
 
-for file in $RESULTS_VCF_GZS
+for file in $RESULTS_GZS
 do
   if [ ! -f ${file/$RESULTS_DIR/$EXPECTED_DIR} ]
   then
@@ -182,8 +183,8 @@ do
 done
 
 set +e                          # Do not fail on errors
-for file in $EXPECTED_VCF_GZS; do
-    zdiff -I"^##filedate=.*$" -I"^#CHROM\sPOS\sID\sREF\sALT\sQUAL\sFILTER\sINFO\sFORMAT\s.*$" $file ${file/$EXPECTED_DIR/$RESULTS_DIR} >> $DIFFRESULTS;
+for file in $EXPECTED_GZS; do
+    zdiff -I"^##filedate=" -I"^#CHROM\sPOS\sID\sREF\sALT\sQUAL\sFILTER\sINFO\sFORMAT" $file ${file/$EXPECTED_DIR/$RESULTS_DIR} >> $DIFFRESULTS;
     if [ $? -ne 0 ] ; then
         echo "$file failed. See mismatches in $DIFFRESULTS"
         status=2

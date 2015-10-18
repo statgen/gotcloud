@@ -1,5 +1,5 @@
 ##fileformat=VCFv4.1
-##filedate=20140718
+##filedate=<date>
 ##source=glfMultiples
 ##minDepth=1
 ##maxDepth=10000000

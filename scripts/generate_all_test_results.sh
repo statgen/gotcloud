@@ -24,24 +24,43 @@ done
 
 set +e
 
-# Run snpcall, ldrefine, and beagle4.
-# The name of the directory ends up in the output files, so it must always be the same while code is running.
-$gotcloud_executable snpcall --test $outdir/umaketest &> $outdir/snpcall.output
+# Note: ldrefine is beagle + thunder, and beagle4 is `umake --split4` + `umake --beagle4`
+
+# Note: all tests are run in `workdir`, because the name of the working directory must stay consistent through the whole process.
+
+# run snpcall
+$gotcloud_executable snpcall --test $outdir/workdir &> $outdir/snpcall.output
 echo $? > $outdir/snpcall.return_status
 echo $(date) finished snpcall
-mv $outdir/umaketest $outdir/snpcall # Store the finished snpcall data away from the working path
+cp -r $outdir/workdir $outdir/snpcall # Store the finished snpcall data away from the working path
 
-cp -r $outdir/snpcall $outdir/umaketest
-$gotcloud_executable ldrefine --test $outdir/umaketest &> $outdir/ldrefine.output
-echo $? > $outdir/ldrefine.return_status
-echo $(date) finished ldrefine
-mv $outdir/umaketest $outdir/ldrefine
+# run ldrefine, broken out into beagle + thunder (as in gotcloud)
+# beagle
+$gotcloud_root/bin/umake.pl --beagle --test $outdir/workdir &> $outdir/beagle.output
+echo $? > $outdir/beagle.return_status
+echo $(date) finished beagle
+cp -r $outdir/workdir $outdir/beagle
 
-cp -r $outdir/snpcall $outdir/umaketest
-$gotcloud_executable beagle4 --test $outdir/umaketest &> $outdir/beagle4.output
+# thunder
+$gotcloud_root/bin/umake.pl --thunder --test $outdir/workdir &> $outdir/thunder.output
+echo $? > $outdir/thunder.return_status
+echo $(date) finished thunder
+mv $outdir/workdir $outdir/thunder
+
+# run beagle4, broken out into `umake.pl --split4` + `umake.pl --beagle4` (as in gotcloud)
+# split4
+cp -r $outdir/snpcall $outdir/workdir
+$gotcloud_root/bin/umake.pl --split4 --test $outdir/workdir &> $outdir/split4.output
+echo $? > $outdir/split4.return_status
+echo $(date) finished split4
+cp -r $outdir/workdir $outdir/split4
+
+# beagle4
+$gotcloud_root/bin/umake.pl --beagle4 --test $outdir/workdir &> $outdir/beagle4.output
 echo $? > $outdir/beagle4.return_status
 echo $(date) finished beagle4
-mv $outdir/umaketest $outdir/beagle4
+mv $outdir/workdir $outdir/beagle4
+
 
 set -e
 
@@ -49,7 +68,7 @@ for child_pid in $child_pids; do
     wait $child_pid
 done
 
-for cmd in $cmds1 snpcall ldrefine beagle4; do
+for cmd in $cmds1 snpcall beagle thunder split4 beagle4; do
     printf "%-10s %4d\n" $cmd $(cat $outdir/$cmd.return_status)
 done
 

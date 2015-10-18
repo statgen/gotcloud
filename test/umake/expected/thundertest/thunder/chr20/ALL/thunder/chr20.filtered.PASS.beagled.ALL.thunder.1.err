@@ -1,6 +1,6 @@
 
 Available Options
-   Shotgun Sequences : --shotgun [/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.1.vcf.gz],
+   Shotgun Sequences : --shotgun [<outdir_path>/thunder/chr20/ALL/split/chr20.filtered.PASS.beagled.ALL.split.1.vcf.gz],
                        --maxPhred [255]
       Optional Files : --crossoverMap [], --errorMap [], --physicalMap []
       Markov Sampler : --seed [123456], --burnin, --rounds [10]
@@ -8,8 +8,8 @@ Available Options
                        --weightedStates [300], --compact, --fixTrans
              Phasing : --randomPhase, --inputPhased [ON], --refPhased
           Imputation : --geno, --quality, --dosage [ON], --probs, --mle
-        Output Files : --prefix [/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1],
+        Output Files : --prefix [<outdir_path>/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1],
                        --phase [ON], --uncompressed, --mldetails
       Interim Output : --sampleInterval, --interimInterval
 
-Outputing VCF file /thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.vcf.gz
+Outputing VCF file <outdir_path>/thunder/chr20/ALL/thunder/chr20.filtered.PASS.beagled.ALL.thunder.1.vcf.gz
