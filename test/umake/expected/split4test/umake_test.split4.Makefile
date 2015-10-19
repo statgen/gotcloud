@@ -1,5 +1,5 @@
-OUT_DIR=/net/wonderland/home/mktrost/gotcloudInWork/gotcloudBeagle/T2
-GOTCLOUD_ROOT=/net/wonderland/home/mktrost/gotcloudInWork/gotcloudBeagle
+OUT_DIR=<outdir_path>
+GOTCLOUD_ROOT=<gotcloud_root>
 
 .DELETE_ON_ERROR:
 

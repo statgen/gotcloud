@@ -5,7 +5,7 @@ starting LoadShotgunSamples
 
 Loaded 60 individuals from shotgun sequence data
 
-Loaded information on 1004 polymorphic sites
+Loaded information on 1003 polymorphic sites
 
 
 Processing input files and allocating memory for haplotyping
@@ -15,8 +15,8 @@ starting LoadShotgunResults
 starting LoadPolymorphicSites
 
             Haplotyping engine (actual) ... 28.1 mb
-                      Consensus builder ... 266.8 kb
-                      Dosage Calculator ... 118.7 kb
+                      Consensus builder ... 266.5 kb
+                      Dosage Calculator ... 118.5 kb
 Memory allocated successfully
 
 Warning: crossover rate map file [] not available
@@ -26,18 +26,18 @@ Loading phased information from the input VCF file
 starting LoadHaplotypesFromVCF
 Found initial haplotype set
 
-Markov Chain iteration 1 [609 mosaic crossovers]
-Markov Chain iteration 2 [418 mosaic crossovers]
-Markov Chain iteration 3 [346 mosaic crossovers]
-Markov Chain iteration 4 [368 mosaic crossovers]
-Markov Chain iteration 5 [350 mosaic crossovers]
-Markov Chain iteration 6 [361 mosaic crossovers]
-Markov Chain iteration 7 [338 mosaic crossovers]
-Markov Chain iteration 8 [301 mosaic crossovers]
-Markov Chain iteration 9 [328 mosaic crossovers]
-Markov Chain iteration 10 [321 mosaic crossovers]
+Markov Chain iteration 1 [600 mosaic crossovers]
+Markov Chain iteration 2 [474 mosaic crossovers]
+Markov Chain iteration 3 [415 mosaic crossovers]
+Markov Chain iteration 4 [377 mosaic crossovers]
+Markov Chain iteration 5 [378 mosaic crossovers]
+Markov Chain iteration 6 [360 mosaic crossovers]
+Markov Chain iteration 7 [337 mosaic crossovers]
+Markov Chain iteration 8 [334 mosaic crossovers]
+Markov Chain iteration 9 [324 mosaic crossovers]
+Markov Chain iteration 10 [327 mosaic crossovers]
 
 Merged sampled haplotypes to generate consensus
-   Consensus estimated to have 496.1 errors in missing genotypes and 156.6 flips in haplotypes
+   Consensus estimated to have 549.4 errors in missing genotypes and 175.0 flips in haplotypes
 
-Estimated mismatch rate in Markov model is: 0.00113
+Estimated mismatch rate in Markov model is: 0.00112

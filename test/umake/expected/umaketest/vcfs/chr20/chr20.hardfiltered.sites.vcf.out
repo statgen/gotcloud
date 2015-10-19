@@ -2,18 +2,18 @@
 Available Options
                          Recipes : --write-bed, --write-vcf [ON], --upgrade,
                                    --summarize, --filter [ON], --subset
-               VCF Input options : --in-vcf [vcfs/chr20/chr20.merged.stats.vcf]
+               VCF Input options : --in-vcf [<outdir_path>/vcfs/chr20/chr20.merged.stats.vcf]
                BED Input options : --in-bfile [], --in-bed [], --in-bim [],
                                    --in-fam [],
                                    --ref [/data/local/ref/karma.ref/human.g1k.v37.fa]
               Subsetting options : --in-subset [], --mono-subset,
                                    --filt-only-subset
-                  Output Options : --out [vcfs/chr20/chr20.hardfiltered.sites.vcf],
+                  Output Options : --out [<outdir_path>/vcfs/chr20/chr20.hardfiltered.sites.vcf],
                                    --qGeno, --print-every [10000]
       Output compression Options : --plain [ON], --bgzf, --gzip
    Genotype-level Filter Options : --minGQ, --minGD
                   Filter Options : --winIndel [5],
-                                   --indelVCF [chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf],
+                                   --indelVCF [<gotcloud_root>/test/chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf],
                                    --minQUAL [5], --minMQ [20],
                                    --maxDP [60000], --minDP [60],
                                    --maxABL [70], --winFFRQ, --maxFFRQ,

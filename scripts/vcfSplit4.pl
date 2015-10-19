@@ -78,7 +78,11 @@ foreach my $chr (@chrs) {
     my @outs = ();
     while( $prev < $pos ) {
 	$prev = $pos;
-	my $cmd = "($tabix -H $vcf; $tabix $vcf $chr:$pos | ".($ignoreFilter ? "" : " grep -w PASS |").($nosingle ? " grep -v \"AC=1;\" |" : "")." head -n $win | sed s/PL3/PL/g) > $out.$num.vcf";
+	my $cmd = "($tabix -H $vcf; $tabix $vcf $chr:$pos | "
+            . "perl -nale 'print if \$F[1] >= $pos' | " # Tabix might print long variants which start shortly before $pos. Remove them.
+            . ($ignoreFilter ? "" : " grep -w PASS |")
+            . ($nosingle ? " grep -v \"AC=1;\" |" : "")
+            . " head -n $win | sed s/PL3/PL/g) > $out.$num.vcf";
 	#print "$cmd\n"; print `$cmd`;
 	&forkExecWait($cmd);
 

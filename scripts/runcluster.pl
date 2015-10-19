@@ -365,6 +365,8 @@ sub waitforcommand {
                 return 0;
             }
         }
+
+        #check whether the scheduler thinks that the job has completed.
         if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
         my $qout = "/tmp/$$.queryoutput";
         if (system($querycmd . " 2>&1 >$qout") || (-z $qout)) {

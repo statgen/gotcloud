@@ -1,5 +1,5 @@
-OUT_DIR=/beagletest
-GOTCLOUD_ROOT=/gotcloud
+OUT_DIR=<outdir_path>
+GOTCLOUD_ROOT=<gotcloud_root>
 
 .DELETE_ON_ERROR:
 

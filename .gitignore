@@ -7,3 +7,4 @@ bin/instmodsh
 bin/package-stash-conflicts
 bin/prove
 man/
+test/chr20Ref/md5/

@@ -77,7 +77,7 @@ Getopt::Long::GetOptions( \%opts,qw(
     ignoreSmCheck
     ignoreRefChrCheck
     verbose=i
-    numjobs|numjobs=i
+    numjobs|num_jobs=i
     maxlocaljobs=i
     gotcloudroot|gcroot=s
     region=s
@@ -134,8 +134,8 @@ push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
 #   Check if we are running the test case.
 #--------------------------------------------------------------
 if ($opts {test}) {
-    # remove a trailing slash if there is one.
-    $opts{test} =~ s/\/\z//;
+    # remove any trailing slashes.
+    $opts{test} =~ s/\/+\z//;
     my $outdir=abs_path($opts{test});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
@@ -174,7 +174,7 @@ if ($opts {test}) {
 #############################################################################
 if(!$opts{runcluster})
 {
-    $opts{runcluster} = "$gotcloudRoot/scripts/runcluster.pl",
+    $opts{runcluster} = "$gotcloudRoot/scripts/runcluster.pl";
 }
 $opts{runcluster} = abs_path($opts{runcluster});    # Make sure this is fully qualified
 
@@ -196,8 +196,7 @@ if($opts{conf})
 {
     if (! -r $opts{conf})
     {
-        my $usage;
-        $usage .= "Conf file '$opts{conf}' does not exist or was not specified\n";
+        warn "Conf file '$opts{conf}' can't be accessed.\n";
     }
     $opts{conf} = abs_path($opts{conf});
 }
@@ -206,8 +205,8 @@ if($opts{conf})
 #   Set configuration variables from comand line options
 #############################################################################
 if ($opts{out_dir}) {
-    # remove a trailing slash if there is one.
-    $opts{out_dir} =~ s/\/\z//;
+    # remove any trailing slashes.
+    $opts{out_dir} =~ s/\/+\z//;
     my $outdir = abs_path($opts{out_dir});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
@@ -360,7 +359,7 @@ while (<LIST>)
         }
 
         # Population is optional, so check pop to see if it looks like a BAM/CRAM.
-        if($pop =~ /(bam|BAM|cram|CRAM)$/)
+        if($pop =~ /(bam|cram)$/i)
         {
             # No population, just a BAM/CRAM, add it to the list of bams, and
             # set population to ALL.
@@ -370,17 +369,17 @@ while (<LIST>)
         }
         elsif(scalar @bams == 0)
         {
-            die "ERROR: Check the format of $bamList.  It should be at least 3 columns (sample, population, bams), or if population is skipped, the bams/crams in the 2nd column should end in 'bam', 'BAM', 'cram', or 'CRAM'.\n";
+            die "ERROR: Check the format of $bamList.  It should be at least 3 columns (sample, population, bams), or if population is skipped, the bams/crams in the 2nd column should end in 'bam' or 'cram'.\n";
         }
 
         # Make sure the sample id & population don't look like bam file names.
-        if($sampleID =~ /(bam|BAM|cram|CRAM)$/)
+        if($sampleID =~ /(bam|cram)$/i)
         {
             die "ERROR: Check the format of $bamList.\nFirst column should be the sample name, but it looks like a bam file.\n\tExample: $sampleID\n";
         }
         if($pop =~ /\.bam$/)
         {
-            die "ERROR: Check the format of $bamList.\nSecond column should be the population, but it looks like a bam file.\n\tExample: $pop\n";
+            die "ERROR: Check the format of $bamList.\nSecond of three columns should be the population, but it looks like a bam file.\n\tExample: $pop\n";
         }
 
         # Check if the sample already exists.
@@ -440,7 +439,7 @@ if(scalar keys %bam2sample == 0)
 
 my $numSamples = scalar @samplesArray;
 
-if(($noPop ne 0) && ($noPop ne $numSamples))
+if(($noPop != 0) && ($noPop != $numSamples))
 {
     die "ERROR: All entries in BAM_LIST, $bamList, must consistently either have a population column or not have a population column.  It cannot be mixed.\n";
 }
@@ -466,7 +465,7 @@ close IN;
 # TODO
 my ($callstart,$callend);
 if ( $opts{region} ) {
-    if ( $opts{region} =~ /^([^:]+):(\d+)(\-\d+)?$/ ) {
+    if ( $opts{region} =~ /^([^:]+):(\d+)(-\d+)?$/ ) {
 # TODO - set CHRS to $1        @chrs = ($1);
         $callstart = $2;
         $callend = $3 ? substr($3,1) : $hChrSizes{$1};
@@ -1244,7 +1243,14 @@ sub getStepType
     if(hasTmpKey($output, "CHR"))    { $outputtype .= "PerChr";}
     if(hasTmpKey($output, "START"))  { $outputtype .= "PerRegion"; }
 
-# TODO check for any other tmp keys - invalid.
+    # Check for invalid tmp keys
+    my %validTmpKeys = map {$_ => 1} qw{BAM SAMPLE CHR START};
+    for my $observedTmpKey ($output =~ m/\?\((.*?)\)/g) {
+        if ( ! exists $validTmpKeys{$observedTmpKey} ) {
+            die "illegal tmp key '$observedTmpKey' in step '$step'.";
+        }
+    }
+
     # Check for valid types - can't have PerRegion without PerChr.
     die "ERROR, can't have a PerRegion type without PerChr\n" if(($outputtype =~ /PerRegion/) && ($outputtype !~ /PerChr/));
     return($outputtype);
