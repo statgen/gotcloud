@@ -4,7 +4,7 @@
 # Name: gclogger.pl write to a log file
 #
 # Description:
-#   Use this to write an entry to a log file in a controller manner
+#   Use this to write an entry to a log file in a controlled manner
 #
 # ChangeLog:
 #   25 June 2014 tpg    Initial coding
@@ -32,7 +32,7 @@ my $logfile = shift(@ARGV);
 #   Simple help if requested, sanity check input options
 if ($opts{help} || $#ARGV < 0) {
     warn "$me$mesuffix [options] key logfile message\n" .
-        "Use this to write an entry to a log file in a controller manner.\n" .
+        "Use this to write an entry to a log file in a controlled manner.\n" .
         "More details available by entering: perldoc $0\n\n";
     if ($opts{help}) { system("perldoc $0"); }
     exit 1;
@@ -71,7 +71,7 @@ gclogger.pl - Write to a log file
 =head1 SYNOPSIS
 
   gclogger.pl step2 /tmp/log.file "Start of second step"
-  gclogger.pl step2 /tmp/log.file End   of second   step
+  gclogger.pl step2 /tmp/log.file End of second step
 
 =head1 DESCRIPTION
 
