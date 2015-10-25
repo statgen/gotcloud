@@ -66,8 +66,9 @@ bamUtil:
 
 samtools-hybrid samtools-libcurl samtools: 
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	mkdir --p bin/
-	cd bin/; ln -fs ../$@/$@ $@; cd ..
+	mkdir --p ../bin/
+	cd bin/; ln -fs ../$@/$@ $@; cd -
+	cd ../bin/; ln -fs ../src/$@/$@ $@; cd -
 
 bgzip tabix: 
 	$(MAKE) -C htslib $(MAKECMDGOALS) $@

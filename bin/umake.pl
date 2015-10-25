@@ -837,7 +837,7 @@ while(<IN>) {
                 $bam =~ s/\$\($key\)/$val/;
             }
             # Check if there is just a relative path to the bams.
-            if ( !( $bam =~ /^\// ) && ( $bam !~ /^(csra|ftp|http):\/\// ) )
+            if ( !( $bam =~ /^\// ) && ( $bam !~ /^(csra|ftp|http|https):\/\// ) )
             {
                 # It is relative, so make it absolute.
                 $bam = getAbsPath($bam, "BAM");
@@ -861,8 +861,8 @@ while(<IN>) {
             #unless ( -r $bam ) { die "ERROR: Cannot r/bamTypead BAM file, '$bam'\n"; }
             #unless ( -s $bam ) { die "ERROR: $bam' is empty.\n"; }
             # hyun: temp
-            unless ( ( -r $bam ) || ( $bam =~ /^(csra|ftp|http):\/\//) ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
-            unless ( ( -s $bam ) || ( $bam =~ /^(csra|ftp|http):\/\//) ) { die "ERROR: $bam' is empty.\n"; }
+            unless ( ( -r $bam ) || ( $bam =~ /^(csra|ftp|http|https):\/\//) ) { die "ERROR: Cannot read BAM file, '$bam'\n"; }
+            unless ( ( -s $bam ) || ( $bam =~ /^(csra|ftp|http|https):\/\//) ) { die "ERROR: $bam' is empty.\n"; }
         }
     }
     push(@allSMs,$smID);
@@ -973,7 +973,7 @@ for my $bam (@allbams)
     # set default file format to BAM
     $bamType{$bam} = 'bam';
     # check whether file is local or remote
-    if ( $bam =~ /^(csra|ftp|http):\/\//) {
+    if ( $bam =~ /^(csra|ftp|http|https):\/\//) {
         $bamLocation{$bam} = 'remote';
     } else {
         $bamLocation{$bam} = 'local'
@@ -1032,8 +1032,8 @@ for my $bam (@allbams)
         #unless ( -r $bai || -r $bai2 ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
         #unless ( -s $bai || -s $bai2 ) { die "ERROR: $bai' is empty.\n"; }
         # hyun:temp
-        unless ( -r $bai || -r $bai2 || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
-        unless ( -s $bai || -s $bai2 || ( $bam =~ /^(ftp|http):\/\//) ) { die "ERROR: $bai' is empty.\n"; }
+        unless ( -r $bai || -r $bai2 || ( $bam =~ /^(ftp|http|https):\/\//) ) { die "ERROR: Cannot read BAM.bai file, '$bai'\n"; }
+        unless ( -s $bai || -s $bai2 || ( $bam =~ /^(ftp|http|https):\/\//) ) { die "ERROR: $bai' is empty.\n"; }
     }
 
 
@@ -1941,7 +1941,7 @@ foreach my $chr (@chrs) {
                 # stream BAM through samtools if they exist remotely
                 elsif( ($sampleBamLocation eq "remote") && ($sampleBamType eq "bam") )
                 {
-                    $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                    $cmd = getConf("SAMTOOLS_FOR_STREAM")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                     $vcfInBam = "-.ubam";
                 }
                 # stream remote csra through sam-dump
