@@ -1930,36 +1930,48 @@ foreach my $chr (@chrs) {
             for(my $j=0; $j < @unitStarts; ++$j) {
                 my $pvcfParent = "$pvcfDir/$chrchr/$unitStarts[$j].$unitEnds[$j]";
                 my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
+                
+                # construct the appropriate command
                 my $cmd;
                 my $vcfInBam = $bam;
+                # check input file location
+                my $srrHandle;
+                my $samtoolsType;
+                if ($sampleBamLocation eq "remote")
+                { 
+                    ($srrHandle = $bam) =~ s/csra:\/\///;
+                    $samtoolsType = "SAMTOOLS_FOR_STREAM";
+                } elsif ($sampleBamLocation eq "local")
+                {
+                    $srrHandle = $bam;
+                    $samtoolsType = "SAMTOOLS_FOR_OTHERS";
+                } else {
+                    die "Cannot determing input file location for file:\n\t $bam"
+                }
+
+                # check input file type
                 if($sampleBamType eq "cram")
                 {
                     # Cram has to be converted to bam and streamed to vcfPileup
-                    $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                    $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf($samtoolsType)." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                     $vcfInBam = "-.ubam";
                 }
                 # stream BAM through samtools if they exist remotely
-                elsif( ($sampleBamLocation eq "remote") && ($sampleBamType eq "bam") )
+                elsif($sampleBamType eq "bam")
                 {
-                    $cmd = getConf("SAMTOOLS_FOR_STREAM")." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                    $cmd = getConf($samtoolsType)." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                     $vcfInBam = "-.ubam";
                 }
                 # stream remote csra through sam-dump
                 elsif( $sampleBamType eq "csra")
                 {
                     ## reference to SRA: local is a file path, remote is a SRR number
-                    my $srrHandle;
-                    if ($sampleBamLocation eq "remote")
-                    { 
-                        ($srrHandle = $bam) =~ s/csra:\/\///;
-                    } elsif ($sampleBamLocation eq "local")
-                    {
-                        $srrHandle = $bam;
-                    }
-                    # construct the command
                     $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $chr:$unitStarts[$j]-$unitEnds[$j] $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view -bS - | ";
                     $vcfInBam = "-.ubam";
+                } else {
+                    die "Cannot determing file type of input file:\n\t $bam"
                 }
+
                 $cmd .= getConf("VCFPILEUP")." -i $svcfs[$j] -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 if( $chunkOK) {
@@ -2679,27 +2691,41 @@ sub runPileup
         $baq .= " ".getConf("SAMTOOLS_FOR_OTHERS")." calmd -uAEbr - $ref |";
     }
 
-    # check BAM type, and construct the appropriate command
+    # check input location and make sure the command uses the appropriate executables and formats
     my $cmd = "";
+    my $srrHandle; # $srrHandle: pass file path to sam-dump if local, otherwise pass SRR number
+    my $samtoolsType; # use samtools-libcurl for streaming remote BAM/CRAM files
+    if ($bamLocation eq "local") {
+        $srrHandle = $bamIn;
+        $samtoolsType = "SAMTOOLS_FOR_OTHERS";
+    } elsif ($bamLocation eq "remote") {
+        ($srrHandle = $bamIn) =~ s/csra:\/\///;
+        $samtoolsType = "SAMTOOLS_FOR_STREAM";
+    } else {
+        die "Cannot determine the location type of input file:\n\t $bamIn"
+    }
+    
+    # check input type and construct the appropriate command
     if($bamType eq "cram")
     {
         # prefix the command with the location of the md5 directory and use samtools with bam file path
-        $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
-    } elsif ($bamType eq "csra") {
-        # $srrHandle: pass file path to sam-dump if local, otherwise pass SRR number
-        my $srrHandle;
-        if ($bamLocation eq "local") {
-            $srrHandle = $bamIn;
-        } elsif ($bamLocation eq "remote") {
-            ($srrHandle = $bamIn) =~ s/csra:\/\///;
+        $cmd = "REF_PATH=".getConf("MD5_DIR")." ";
+    } elsif ($bamType eq "csra")
+    {
+        # check if SAM_DUMP_BIN exists and is executable: download if not
+        if (not(-e getConf("SAM_DUMP_BIN") or -x getConf("SAM_DUMP_BIN"))) {
+            ## TODO: add the download logic here
         }
         # prefix the command with sam-dump, and using streaming input for samtools
-        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh - | $baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
+        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | "
+    } elsif ($bamType eq "bam") {
+        # do nothing
     } else {
-        ##  bam/cram that is local or remote
-        $cmd = getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
+      die "Cannot determine the file type of input file:\n\t $bamIn"
     }
 
+    ## construct the final command
+    $cmd .= getConf($samtoolsType)." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
     return($cmd);
 }
 
