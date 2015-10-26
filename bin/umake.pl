@@ -20,6 +20,9 @@ use Getopt::Long;
 use IO::Zlib;
 use File::Path qw(make_path);
 use File::Basename;
+use File::Fetch;
+use File::Copy;
+use Archive::Extract;
 use Cwd 'abs_path';
 
 # Set the umake base directory.
@@ -73,9 +76,6 @@ my $noPhoneHome = '';
 my $bamList = '';
 my $refdir = '';
 
-# if this works, add sam-dump as a full dependency
-my $samdumpBin = '';
-
 # check the format and location of the input file
 my %bamType = ();
 my $chunkOK = '';
@@ -118,7 +118,6 @@ my $optResult = GetOptions("help",\$help,
                            "gotcloudroot|gcroot=s", \$gcroot,
                            "noPhoneHome", \$noPhoneHome,
                            "chunkOK", \$chunkOK,
-                           "samdumpBin", \$samdumpBin
     );
 
 my $usage = "Usage:\tgotcloud snpcall --conf [conf.file]\n".
@@ -759,8 +758,6 @@ unless ( $outdir =~ /^\// ) {
     $outdir = getcwd()."/".$outdir;
     setConf('OUT_DIR', $outdir);
 }
-
-$samdumpBin = getConf("SAM_DUMP_BIN");
 
 system("mkdir -p $outdir") &&
     die "Unable to create directory '$outdir'\n";
@@ -1938,7 +1935,7 @@ foreach my $chr (@chrs) {
                 my $srrHandle;
                 my $samtoolsType;
                 if ($sampleBamLocation eq "remote")
-                { 
+                {
                     ($srrHandle = $bam) =~ s/csra:\/\///;
                     $samtoolsType = "SAMTOOLS_FOR_STREAM";
                 } elsif ($sampleBamLocation eq "local")
@@ -1965,13 +1962,19 @@ foreach my $chr (@chrs) {
                 # stream remote csra through sam-dump
                 elsif( $sampleBamType eq "csra")
                 {
+                    # check if SAM_DUMP_BIN exists and is executable: download if not
+                    if (not(-e getConf("SAM_DUMP_BIN") or -x getConf("SAM_DUMP_BIN")))
+                    {
+                      downloadSamdump();
+                    }
                     ## reference to SRA: local is a file path, remote is a SRR number
                     $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $chr:$unitStarts[$j]-$unitEnds[$j] $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view -bS - | ";
                     $vcfInBam = "-.ubam";
                 } else {
-                    die "Cannot determing file type of input file:\n\t $bam"
+                    die "Cannot determing file type of input file:\n\t $bam";
                 }
 
+                
                 $cmd .= getConf("VCFPILEUP")." -i $svcfs[$j] -v $pvcf -b $vcfInBam > $pvcf.log 2> $pvcf.err";
                 $cmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                 if( $chunkOK) {
@@ -2501,6 +2504,28 @@ sub handleGlfIndexFile
 
 
 #--------------------------------------------------------------
+#   downloadSamdump()
+#
+#   Downloads sam-dump from the NCBI sratoolkit.
+#--------------------------------------------------------------
+sub downloadSamdump
+{
+  my $sratoolsurl = "http://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.5.4-1/sratoolkit.2.5.4-1-ubuntu64.tar.gz";
+  print "Downloading file:\n\t $sratoolsurl \n";
+  my $sratoolsURI = File::Fetch->new(uri=>$sratoolsurl);
+  $sratoolsURI->fetch() or die $sratoolsURI->error;
+  print "Extracting archive:\n\t".$sratoolsURI->file."\n";
+  my $sratoolsarchive = Archive::Extract->new( archive => $sratoolsURI->file);
+  $sratoolsarchive->extract or die $sratoolsarchive->error;
+  print "Cleaning up\n";
+  File::Copy::move($sratoolsarchive->extract_path."/bin/sam-dump.2.5.4", getConf("SAM_DUMP_BIN"));
+  File::Path::remove_tree($sratoolsarchive->extract_path);
+  File::Path::remove_tree($sratoolsarchive->extract_path.".tar.gz");
+  chmod 0755, "./sam-dump.2.5.4"
+}
+
+
+#--------------------------------------------------------------
 #   getFilterArgs()
 #
 #   Returns the filter arguments.
@@ -2713,19 +2738,22 @@ sub runPileup
     } elsif ($bamType eq "csra")
     {
         # check if SAM_DUMP_BIN exists and is executable: download if not
-        if (not(-e getConf("SAM_DUMP_BIN") or -x getConf("SAM_DUMP_BIN"))) {
-            ## TODO: add the download logic here
+        if (not(-e getConf("SAM_DUMP_BIN") or -x getConf("SAM_DUMP_BIN")))
+        {
+            downloadSamdump();
         }
         # prefix the command with sam-dump, and using streaming input for samtools
-        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | "
+        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | ";
+        $bamIn = "-";
+        $region = "";
     } elsif ($bamType eq "bam") {
         # do nothing
     } else {
-      die "Cannot determine the file type of input file:\n\t $bamIn"
+      die "Cannot determine the file type of input file:\n\t $bamIn";
     }
-
+    
     ## construct the final command
-    $cmd .= getConf($samtoolsType)." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
+    $cmd .= getConf($samtoolsType)." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region | $baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut 2> $glfOut.log";
     return($cmd);
 }
 
