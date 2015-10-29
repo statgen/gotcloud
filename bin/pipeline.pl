@@ -1244,10 +1244,10 @@ sub getStepType
     if(hasTmpKey($output, "START"))  { $outputtype .= "PerRegion"; }
 
     # Check for invalid tmp keys
-    my %validTmpKeys = map {$_ => 1} qw{BAM SAMPLE CHR START};
+    my %validTmpKeys = map {$_ => 1} qw{BAM SAMPLE CHR START END INPUT};
     for my $observedTmpKey ($output =~ m/\?\((.*?)\)/g) {
-        if ( ! exists $validTmpKeys{$observedTmpKey} ) {
-            die "illegal tmp key '$observedTmpKey' in step '$step'.";
+        if ( ! exists $validTmpKeys{$observedTmpKey} and ($observedTmpKey !~ m/OUTPUT/)) {
+            warn "illegal tmp key '$observedTmpKey' in step '$step'.";
         }
     }
 
