@@ -1,1 +1,0 @@
-indelvcf/NA10847/NA10847.genotypes.20.20000001.40000000.bcf
