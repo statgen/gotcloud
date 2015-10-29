@@ -5,5 +5,5 @@ Options:     input VCF File    +
 
 stats: variants   : 386
 
-Time elapsed: 0.05s
+Time elapsed: 0.04s
 

@@ -1,7 +1,7 @@
 remove_overlap v0.57
 
 options:     input VCF file        +
-         [o] output VCF file      final/merge/all.genotypes.20.20000001.40000000.bcf
+         [o] output VCF file       /net/snowwhite/home/pjvh/tmp/indel-1029-0221/indeltest/indel/final/merge/all.genotypes.20.bcf
 
 
 stats: Total number of observed variants    386

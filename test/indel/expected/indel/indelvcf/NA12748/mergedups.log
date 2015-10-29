@@ -1,7 +1,7 @@
 mergedups v0.57
 
 options:     input VCF file        +
-         [o] output VCF file       indelvcf/NA12748/NA12748.sites.bcf
+         [o] output VCF file       /net/snowwhite/home/pjvh/tmp/indel-1029-0221/indeltest/indel/indelvcf/NA12748/NA12748.sites.bcf
          [p] merge by              alleles
 
 
