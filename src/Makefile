@@ -15,9 +15,13 @@ CMAKE = cmake
 # Can't build lib in parallel since multiple subdirs write to the library archive
 .NOTPARALLEL:
 
-.PHONY: $(SUBDIRS) all test clean debug install 
+.PHONY: $(SUBDIRS) all test profile opt debug clean install
 
-all test opt debug profile: $(SUBDIRS)
+all: $(SUBDIRS)
+
+test: $(STAT_GEN_EXES) samtools bgzip tabix
+
+profile opt debug: $(STAT_GEN_EXES)
 
 install: all
 
@@ -70,7 +74,7 @@ samtools:
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
 
 samtools-hybrid:
-	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/$@ $@; cd ..
 
@@ -80,13 +84,13 @@ bgzip tabix:
 	cd bin/; ln -fs ../htslib/$@ $@; cd ..
 
 libsvm-3.1:
-	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/svm-predict .; cd ..
 	cd bin/; ln -fs ../$@/svm-train .; cd ..
 
 mosaik:
-	$(MAKE) -C $@/src $(patsubst test,,$(MAKECMDGOALS))
+	$(MAKE) -C $@/src $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/MosaikAligner .; cd ..
 	cd bin/; ln -fs ../$@/bin/MosaikBuild .; cd ..
@@ -95,28 +99,25 @@ mosaik:
 
 premo:
 	mkdir -p $@/build; cd $@/build; $(CMAKE) ..
-	$(MAKE) -C $@/build $(patsubst test,,$(MAKECMDGOALS))
+	$(MAKE) -C $@/build $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/bin/premo .; cd ..
 
 bwa: 
-	$(MAKE) -C bwa $(patsubst test,,$(MAKECMDGOALS))
+	$(MAKE) -C bwa $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../bwa/bwa $@; cd ..
 
 vt:
-	@if [ "$(MAKECMDGOALS)" = test ] ; then \
-		echo "vt does have tests, but they're broken right now." ; \
-	fi
-	$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS))
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 	mkdir --p bin/
 	cd bin/; ln -fs ../$@/vt .; cd ..
 
 $(LIBS): 
 	@if [ $@ = libStatGen ]; then \
-		$(MAKE) -C $@ $(MAKECMDGOALS) ; \
+		$(MAKE) -C $@ $(MAKECMDGOALS); \
 	else \
-		$(MAKE) -C $@ $(patsubst test,,$(MAKECMDGOALS)) ; \
+		$(MAKE) -C $@; \
 	fi
 	mkdir --p lib/
 	cd lib/; ln -fs ../$@/$@.a $@.a; cd ..
