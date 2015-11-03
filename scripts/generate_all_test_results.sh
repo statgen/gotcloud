@@ -57,6 +57,7 @@ for cmd in $cmds1 $cmds2; do
         echo
         echo log files for failing command $cmd:
         cat $outdir/$cmd.log
+        echo
     fi
 done
 
