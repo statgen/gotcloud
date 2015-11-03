@@ -1,0 +1,15 @@
+language: perl
+perl:
+  - "5.10" # Note: Perl 5.10.1 on Flux works, but Perl 5.12.5 on Travis does not. I don't know why.
+  - "5.12"
+  - "5.14"
+  - "5.16"
+install:
+  - sh -c "cd src && make -w -j 10" # Note: Too much parallelism will give confusing errors due to a memory limit
+script:
+  - sh -c "cd src && make -w -j 10 test"
+  - ./scripts/generate_all_test_results.sh
+matrix:
+  allow_failures:
+    - perl: "5.10"
+    - perl: "5.12"

@@ -3,6 +3,8 @@ GotCloud
 ========
 See <http://genome.sph.umich.edu/wiki/GotCloud> for full GotCloud documentation.
 
+[![Build Status](https://travis-ci.org/statgen/gotcloud.svg?branch=master)](https://travis-ci.org/statgen/gotcloud)
+
 Build GotCloud
 --------------
 Before running GotCloud, you need to compile the source:
