@@ -7,6 +7,7 @@ use Pod::Usage;
 use Cwd;
 use FindBin;
 use lib "$FindBin::Bin";
+use IO::File;
 
 my $man = 0;
 my $help = 0;
