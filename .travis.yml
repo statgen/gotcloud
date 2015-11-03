@@ -13,3 +13,4 @@ matrix:
   allow_failures:
     - perl: "5.10"
     - perl: "5.12"
+sudo: false # See http://docs.travis-ci.com/user/migrating-from-legacy/
