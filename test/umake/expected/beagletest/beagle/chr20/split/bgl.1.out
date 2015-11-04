@@ -2,7 +2,7 @@ Beagle version 3.3.1 (26 Dec 2010)
 Enter "java -jar beagle.jar" for summary of command line arguments.
 Start time: <time>
 
-Command line: java -Xmx3640m -jar beagle.jar
+Command line: java -Xmx<number>m -jar beagle.jar
   seed=993478
   gprobs=true
   niterations=50

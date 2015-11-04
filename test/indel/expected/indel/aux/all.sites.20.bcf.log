@@ -1,7 +1,7 @@
 merge_candidate_variants v0.5
 
-options: [L] input VCF file list   /net/snowwhite/home/pjvh/tmp/indel-1029-0221/indeltest/indel/aux/candidate_vcf_files.txt (60 files)
-         [o] output VCF file       /net/snowwhite/home/pjvh/tmp/indel-1029-0221/indeltest/indel/aux/all.sites.20.bcf
+options: [L] input VCF file list   <outdir_path>/indel/aux/candidate_vcf_files.txt (60 files)
+         [o] output VCF file       <outdir_path>/indel/aux/all.sites.20.bcf
          [i] intervals             20
 
 stats: Total Number of Candidate SNPs                 0
@@ -9,5 +9,5 @@ stats: Total Number of Candidate SNPs                 0
        Total Number of Candidate SNPIndels            2
        Total Number of Candidate other variant types  0
 
-Time elapsed: 0.07s
+Time elapsed: <time>
 

@@ -4,7 +4,7 @@ grid.col='gray';
 pchvec=c(1);
 legend.txt=c('recal');
 lty.vec=c(1);
-pdf(file="QCFiles/Sample1.qplot.pdf", height=12, width=12);
+pdf(file="<outdir_path>/QCFiles/Sample1.qplot.pdf", height=12, width=12);
 par(mfrow=c(2,2)); par(cex.main=1.4); par(cex.lab=1.2); par(cex.axis=1.2);par(mar=c(5.1, 4.1, 4.1, 4.1))
 X=vector("list", NFiles);
 Y=vector("list", NFiles);

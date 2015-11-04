@@ -1,4 +1,4 @@
-Stats\BAM	SampleID1.recal.bam
+Stats\BAM	<outdir_path>/recabQC/recabQCtest/recab/SampleID1.recal.bam
 TotalReads(e6)	0.01
 MappingRate(%)	56.37
 MapRate_MQpass(%)	56.37

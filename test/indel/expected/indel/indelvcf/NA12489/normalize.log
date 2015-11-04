@@ -3,7 +3,7 @@ normalize v0.5
 options:     input VCF file        +
          [o] output VCF file       +
          [w] sorting window size   10000
-         [r] reference FASTA file  /net/snowwhite/home/pjvh/tmp/gotcloud/test/chr20Ref/human_g1k_v37_chr20.fa
+         [r] reference FASTA file  <gotcloud_root>/test/chr20Ref/human_g1k_v37_chr20.fa
 
 
 stats: biallelic
@@ -27,5 +27,5 @@ stats: biallelic
        total no. variants normalized            : 0
        total no. variants observed              : 9
 
-Time elapsed: 0.00s
+Time elapsed: <time>
 

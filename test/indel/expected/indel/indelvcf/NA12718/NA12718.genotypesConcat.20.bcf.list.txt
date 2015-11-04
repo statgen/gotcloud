@@ -1,1 +1,1 @@
-/net/snowwhite/home/pjvh/tmp/indel-1029-0221/indeltest/indel/indelvcf/NA12718/NA12718.genotypes.20.20000001.40000000.bcf
+<outdir_path>/indel/indelvcf/NA12718/NA12718.genotypes.20.20000001.40000000.bcf

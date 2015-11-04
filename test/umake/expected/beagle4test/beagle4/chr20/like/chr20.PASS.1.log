@@ -2,7 +2,7 @@ b4.jar (r1219)
 Enter "java -jar b4.jar" for a summary of command line arguments.
 Start time: <time>
 
-Command line: java -Xmx3640m -jar beagle.jar
+Command line: java -Xmx<number>m -jar beagle.jar
   seed=993478
   gprobs=true
   gl=<outdir_path>/split4/chr20/chr20.filtered.PASS.split.1.vcf.gz
