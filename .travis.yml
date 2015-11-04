@@ -8,7 +8,7 @@ install:
   - sh -c "cd src && make -w"
 script:
   - sh -c "cd src && make -w test"
-  - ./scripts/generate_all_test_results.sh
+  - ./gotcloud test --update
 matrix:
   allow_failures:
     - perl: "5.10"

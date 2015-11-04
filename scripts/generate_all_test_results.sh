@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e -u -o pipefail # Safety first!
 
+set +u
+update=false
+if [[ "$1" = "--update" ]]; then
+    update=true
+fi
+set -u
+
 echo 'Your ran `cd src && make && make test` before this, right?  I'\''ll trust that you did.'
 
 gotcloud_root="$(dirname $(dirname $0))"
@@ -85,5 +92,17 @@ done
 
 echo "When you're done, run the following command to clean up:"
 echo "rm -r $outdir"
+
+if [[ $update = true ]]; then
+    echo
+    echo updating tests:
+    $gotcloud_root/scripts/update_tests.sh $outdir
+    echo
+    echo status:
+    git status
+    echo
+    echo first 100 lines of diff:
+    git diff | head -n100
+fi
 
 exit $status
