@@ -6,70 +6,163 @@ set -euo pipefail # Safety first!
 gotcloud_root=$(dirname $(dirname $(readlink -e $0)))
 gotcloud_root=${gotcloud_root%/} # Remove trailing slash
 echo gotcloud_root: $gotcloud_root/
-
-cd $gotcloud_root/test/umake/expected/
-echo expected: $PWD/
+samtools=$gotcloud_root/bin/samtools
+tabix=$gotcloud_root/bin/tabix
+bgzip=$gotcloud_root/bin/bgzip
 
 set +u
-[[ -z "$1" ]] && echo You must enter a directory of test results, gotten from \`gotcloud test\`. && exit 1
+[[ -z "$1" ]] && echo You must supply a directory of test results, gotten from \`gotcloud test\`. && exit 1
+set -u
 
 outdir=$1
 outdir=${outdir%/}
 echo outdir: $outdir/
 
-read -p "Press any key to continue."
 
-
-# Copy results
+# Copy umake results
 # ============
-rm -r umaketest
-cp -r $outdir/snpcall/umaketest ./
-rm umaketest/umake_test.snpcall.Makefile.log
-rm umaketest/umake_test.snpcall.Makefile.cluster
+cd $gotcloud_root/test/umake/expected/
+
+# Copy umaketest
+rm -r beagletest thundertest split4test beagle4test umaketest
+mkdir beagletest thundertest split4test beagle4test
+cp -r $outdir/umaketest/umaketest ./
+
+# Move some directories from umaketest to their proper directories
+mv umaketest/{beagle,umake_test.beagle.{conf,Makefile}} beagletest/
+mkdir -p beagletest/thunder/chr20/ALL/ # `thunder/` must exist in both beagletest and thundertest, because thunder modifies that directory.
+mv umaketest/thunder/chr20/ALL/split beagletest/thunder/chr20/ALL/
+mv umaketest/{thunder,umake_test.thunder.{conf,Makefile}} thundertest/
+mv umaketest/{split4,umake_test.split4.{conf,Makefile}} split4test/
+mv umaketest/{beagle4,umake_test.beagle4.{conf,Makefile}} beagle4test/
+
+# Add symlinks to predecessors
+ln -s  ../umaketest/{vcfs,target,split,pvcfs,glfs,cpt,umake_test.snpcall.{Makefile,conf}} beagletest/
+ln -s ../beagletest/{vcfs,target,split,pvcfs,glfs,cpt,beagle,umake_test.{snpcall,beagle}.{Makefile,conf}} thundertest/
+ln -s  ../umaketest/{vcfs,target,split,pvcfs,glfs,cpt,umake_test.snpcall.{Makefile,conf}} split4test/
+ln -s ../split4test/{vcfs,target,split,pvcfs,glfs,cpt,split4,umake_test.{snpcall,split4}.{Makefile,conf}} beagle4test/
+
+# Clean up umaketest
 rmdir umaketest/jobfiles
 
-rm -r beagletest/{beagle,thunder,umake_test.beagle.{conf,Makefile}}
-cp -r $outdir/beagle/umaketest/{beagle,thunder,umake_test.beagle.{conf,Makefile}} beagletest/
-rm beagletest/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz
+# Clean up beagletest
+rm beagletest/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz{,.tbi}
 ln -s chr20.filtered.PASS.beagled.vcf.gz beagletest/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz
-rm beagletest/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz.tbi
 ln -s chr20.filtered.PASS.beagled.vcf.gz.tbi beagletest/beagle/chr20/chr20.filtered.PASS.beagled.ALL.vcf.gz.tbi
 
-rm -r thundertest/{thunder,umake_test.thunder.{conf,Makefile}}
-cp -r $outdir/thunder/umaketest/{thunder,umake_test.thunder.{conf,Makefile}} thundertest/
-rm -r thundertest/thunder/chr20/ALL/split
+# Clean up thundertest
 ln -s ../../../../beagletest/thunder/chr20/ALL/split/ thundertest/thunder/chr20/ALL/split
 
-rm -r split4test/{split4,umake_test.split4.{conf,Makefile}}
-cp -r $outdir/split4/umaketest/{split4,umake_test.split4.{conf,Makefile}} split4test/
+# Clean up split4test
 rm split4test/split4/chr20/chr20.filtered.PASS.split.1.vcf.gz
 ln -s ../../split/chr20/chr20.filtered.PASS.split.1.vcf.gz split4test/split4/chr20/chr20.filtered.PASS.split.1.vcf.gz
 
-rm -rf beagle4test/{beagle4,umake_test.beagle4.{conf,Makefile}}
-cp -r $outdir/beagle4/umaketest/{beagle4,umake_test.beagle4.{conf,Makefile}} beagle4test/
+# Delete some logfiles
+for cmd in snpcall beagle thunder split4 beagle4; do
+    rm umaketest/umake_test.$cmd.Makefile.cluster
+    rm umaketest/umake_test.$cmd.Makefile.log
+done
 
 
-# Clean up output
-# ===============
+# Copy indel results
+# ==================
+cd $gotcloud_root/test/indel
+rm -r expected
+mkdir expected
+cp -r $outdir/indel/indeltest/{indel,gotcloud.indel.Makefile} expected/
+
+
+# Copy align results
+# ==================
+cd $gotcloud_root/test/align/expected/
+rm -r aligntest
+cp -r $outdir/align/aligntest .
+
+rm aligntest/Makefiles/align{All,_Sample{1,2,3}}.Makefile.log
+
+
+# Copy bamQC results
+# ==================
+cd $gotcloud_root/test/bamQC/expected/
+rm -r QCFiles
+cp -r $outdir/bamQC/bamQCtest/QCFiles .
+cp $outdir/bamQC/bamQCtest/gotcloud.bamQC.Makefile .
+
+cd QCFiles
+# Use ls instead of find to avoid "./" in $filename
+ls *.genoCheck.depth* *.genoCheck.self* *.qplot.stats | while read filename; do
+    linkname=../../../align/expected/aligntest/QCFiles/$(echo $filename | sed s_SampleID_Sample_)
+    diff -I .recal.bam $filename $linkname # TODO do this after removing run-specific information
+    rm $filename
+    ln -s $linkname $filename
+done
+
+
+# Copy recabQC results
+# ====================
+cd $gotcloud_root/test/recabQC/expected/
+rm -r recab
+cp -r $outdir/recabQC/recabQCtest/recab .
+cp $outdir/recabQC/recabQCtest/gotcloud.recabQC.Makefile .
+
+cd recab/
+ls SampleID*.recal.bam{,.OK,.bai,.bai.OK,.metrics,.qemp} | while read filename; do
+    linkname=../../../align/expected/aligntest/bams/$(echo $filename | sed s_SampleID_Sample_)
+    linkname=${linkname/.OK/.done}
+    echo $filename | grep -q 'bam\(.bai\)\?$' || diff -I .recal.bam $filename $linkname # TODO do this after removing run-specific information
+    rm $filename
+    ln -s $linkname $filename
+done
+
+cd QCFiles/
+# TODO link *.qplot.{stats,R}
+ls *.genoCheck.depth* *.genoCheck.self* | while read filename; do
+    linkname=../../../../align/expected/aligntest/QCFiles/$(echo $filename | sed s_SampleID_Sample_)
+    diff -I .recal.bam $filename $linkname # TODO do this after removing run-specific information
+    rm $filename
+    ln -s $linkname $filename
+done
+
+
+# Remove run-specific information
+# ===============================
+cd $gotcloud_root/test
 sponge_write() { tmp=$(mktemp); cat > $tmp; mv $tmp $1; }
 
 find . -type f | while read filename; do
-    sed -i -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+/workdir/umaketest#<outdir_path>#g' \
-        -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+/workdir#<outdir_path>#g' \
+    sed -i -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+\(/umaketest/umaketest\|/umaketest\|/indel/indeltest\|/indel\|/align/aligntest\|/align\)\?#<outdir_path>#g' \
         -e "s#${gotcloud_root}#<gotcloud_root>#g" $filename
 done
-find umaketest -type f | while read filename; do
+find umake/expected/umaketest/ bamQC/expected/ recabQC/expected/ -type f | while read filename; do
     sed -i -e 's#^Analysis \([a-z]\+\) on [a-zA-Z ]\{7\} [0-9: ]\{16\}$#Analysis \1 on <date>#g' \
         -e 's_^##filedate=[0-9]\{8\}$_##filedate=<date>_' $filename
 done
-find beagletest beagle4test -type f | while read filename; do
-    sed -i 's_^\(.*[Tt]ime.*:\s\+\).\{5,30\}$_\1<time>_' $filename
+find umake/expected/beagle{4,}test/ indel/expected/ -type f | while read filename; do
+    sed -i -e 's_^\(.*[Tt]ime.*:\s\+\).\{5,30\}$_\1<time>_' \
+        -e 's_java -Xmx[0-9]\+m _java -Xmx<number>m _' $filename
 done
-find . -name '*.gz' -type f | while read filename; do # avoid symlinks
+# Note: indel/expected/indel/mergedBams/*bam and indel/expected/indel/final/*gz will break if re-encoded
+find umake/expected/ indel/expected/ -name '*.gz' -type f | while read filename; do # avoid symlinks
     zcat $filename |
-    sed 's_^##filedate=[0-9]\{8\}$_##filedate=<date>_' |
-    sed 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+/workdir#<outdir_path>#g' |
-    gzip -n | sponge_write $filename # `gzip -n` suppresses writing of the current time into the file
+    sed -e 's_^##filedate=[0-9]\{8\}$_##filedate=<date>_' \
+        -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+\(/umaketest\|/indel/indeltest\|/indel\)#<outdir_path>#g' |
+    $bgzip | sponge_write $filename
+    # Re-index where necessary
+    if [[ -e "$filename.tbi" ]]; then
+        rm $filename.tbi
+        $tabix $filename
+    fi
 done
-
+find align/expected/ indel/expected/indel/{aux,final,indelvcf} recabQC/expected/ -name '*.bam' -type f | while read filename; do
+    tmp=$(mktemp)
+    $samtools view -h $filename |
+    sed -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+\(/umaketest/umaketest\|/umaketest\|/indel/indeltest\|/indel\|/align/aligntest\|/align\)\?#<outdir_path>#g' \
+        -e "s#${gotcloud_root}#<gotcloud_root>#g" |
+    $samtools view -b - | sponge_write $filename
+    # Re-index
+    if [[ -e "$filename.bai" ]]; then
+        rm $filename.bai
+        $samtools index $filename
+    fi
+done
 echo FINISHED

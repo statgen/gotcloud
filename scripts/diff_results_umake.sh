@@ -141,7 +141,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^Total time for building model:' \
     -I '^Total time for sampling:' \
     -I '^Total run time:' \
-    -I '^Command line: java -Xmx364[01]m -jar beagle.jar$' \
+    -I '^Command line: java -Xmx[^\s]*m -jar beagle.jar$' \
     -I '^End time: ' \
     -I '^\s*Output : --outfile \[.*glfs/samples/chr20/[0-9]*\.[0-9]*/.*\.[0-9]*\.[0-9]*\.glf\],$' \
     -I '^  .*glfs/bams/.*/chr20/.*\.bam\.[0-9]*\.[0-9]*\.glf$' \
@@ -156,6 +156,7 @@ diff -r $RESULTS_DIR $EXPECTED_DIR \
     -I '^\s*--indelVCF \[.*chr20Ref/1kg\.pilot_release\.merged\.indels\.sites\.hg19\.chr20\.vcf\],$' \
     -I '^\s*Output Options : --out \[.*vcfs/chr20/chr20\.hardfiltered\.sites\.vcf\],$' \
     -I '^loading .*chr20Ref/dbsnp135_chr20\.vcf\.gz as a VCF input\.\.$' \
+    -I '^Warning: The index file is older than the data file:' \
     > $DIFFRESULTS
 if [ "$?" != "0" ]; then
     echo "Failed results validation. See mismatches in $DIFFRESULTS"
