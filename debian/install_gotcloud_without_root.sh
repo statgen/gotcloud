@@ -33,5 +33,5 @@ rm -rf $tempdir
 #   Sanity check to see if you have the requirements
 echo ""
 echo ""
-$destdir/gotcloud/scripts/check_requirements.sh
+$destdir/gotcloud/scripts/check_requirements.sh $destdir/gotcloud/
 
