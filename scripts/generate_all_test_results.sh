@@ -1,12 +1,18 @@
 #!/bin/bash
 set -e -u -o pipefail # Safety first!
 
-set +u
+# Parse arguments
 update=false
-if [[ "$1" = "--update" ]]; then
-    update=true
-fi
-set -u
+cleanup=true
+verbose=false
+while [[ $# > 1 ]]; do
+    case "$1" in
+        --update) update=true ;;
+        --leave-a-mess) cleanup=false ;;
+        --verbose) verbose=true ;;
+    esac
+    shift
+done
 
 echo 'Your ran `cd src && make && make test` before this, right?  I'\''ll trust that you did.'
 
@@ -83,15 +89,13 @@ for cmd in $cmds2; do
         echo log files for failing command $cmd:
         cat $outdir/$cmd.log
         echo
-        echo diff results:
-        cat $outdir/umaketest/diff_logfiles_results_$cmd.txt
-        echo
+        if [[ $verbose = true ]]; then
+            echo diff results:
+            cat $outdir/umaketest/diff_logfiles_results_$cmd.txt
+            echo
+        fi
     fi
 done
-# /tmp/gotcloud-tests-pjvh-xAq/umaketest/diff_logfiles_results_beagle4.txt
-
-echo "When you're done, run the following command to clean up:"
-echo "rm -r $outdir"
 
 if [[ $update = true ]]; then
     echo
@@ -103,6 +107,12 @@ if [[ $update = true ]]; then
     echo
     echo first 100 lines of diff:
     git diff | head -n100
+fi
+
+if [[ $cleanup = true ]]; then
+    echo
+    echo cleaning up
+    rm -r "$outdir"
 fi
 
 exit $status

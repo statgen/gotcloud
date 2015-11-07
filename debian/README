@@ -2,24 +2,6 @@
 
 To test the pipeline, run:
 
-  /usr/local/gotcloud/bin/align.pl --test ~/testalign
+  /usr/local/gotcloud/gotcloud test
 
-If it doesn't already exist, this will create the directory, ~/testalign.
-If it already exists, it will remove all contents from the directory.
-
-
-
-To run the umake test:
-
-   /usr/local/gotcloud/bin/umake.pl --test  ~/testumake
-
-If it doesn't already exist, this will create the directory, ~/testalign.
-The test run will output the following to the screen:
-   Running UMAKE TEST, test log in: ~/testumake/umakeTest.log
-Upon completion, it will output either: 
-   Failed test at bin/umake.pl line ???.
-or
-   Test Passed
-
-If the test failed, more detailed output explaining the failure is found
-in testumake/umakeTest.log
+If the test failed, more detailed output explaining the failure will be printed.

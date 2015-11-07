@@ -41,8 +41,7 @@ Dependencies - not forced by the packages, but actually required for a successfu
 A complete test is available and you are encouraged to run it once,
 just to prove everything is correct. Run the test case with
 
-  /usr/local/gotcloud/bin/gotcloud align    --test /your/testdir/path
-  /usr/local/gotcloud/bin/gotcloud snpcall  --test /your/testdir/path
+  /usr/local/gotcloud/bin/gotcloud test
 
 The first will take about 2 minutes, the second about 10 minutes. Both
 are self checking. Errors will be reported and it will be obvious that

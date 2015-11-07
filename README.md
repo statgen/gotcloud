@@ -13,22 +13,14 @@ Before running GotCloud, you need to compile the source:
 
 Test GotCloud
 -------------
-To test the GotCloud aligner, run:
+To test GotCloud, run:
 
-    gotcloud align --test ~/testalign
+    gotcloud test
 
-This will create/clear the output directory `~/testalign.
-Test results and a log file are put in this directory.
-Results are self-checked and if errors should occur, it will be obvious.
+Results are self-checked and if errors should occur, the output will say so.
+To preserve output files for inspection, run:
 
-To test the GotCloud umake, run:
-
-    gotcloud snpcall --test ~/testsnp
-
-This will create/clear the output directory `~/testsnp`.
-Test results and a log file are put in this directory.
-Results are self-checked and if errors should occur, it will be obvious.
-
+    gotcloud test --leave-a-mess
 
 
 General Help for Variant Calling
