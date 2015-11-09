@@ -19,7 +19,8 @@ PileupElementBaseQual::PileupElementBaseQual()
       myAllocatedSize(0),
       myIndex(-1),
       myAddDelAsBase(false),
-      myVcfOutFile(NULL)
+      myVcfOutFile(NULL),
+      myLogGLMatrix(NULL)
 {
     myAllocatedSize = 1024;
     myBases = (char*)malloc(myAllocatedSize + 1);
