@@ -124,6 +124,8 @@ unless ( $runMetadata || $runDiscovery || $runGenotype || $runThirdparty ) {
 
 my $runcluster = "\$(GOTCLOUD_ROOT)/scripts/runcluster.pl";
 
+my $java7 = get_java7_path();
+
 #--------------------------------------------------------------
 #   Convert command line options to conf settings
 #--------------------------------------------------------------
@@ -382,7 +384,7 @@ else {
     
 my $Rdir = "/net/fantasia/home/hmkang/bin/R/bin";
 my $setenv = "export PATH=$Rdir:$gsdir:/usr/bin:$gsdir/bwa/:\${PATH}; export SV_DIR=$gsdir; mkdir --p $tmpdir";
-my $queuecmd = "java -Xmx4g -XX:+UseParallelOldGC -XX:ParallelGCThreads=4 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Djava.io.tmpdir=$tmpdir -cp $gsdir/lib/SVToolkit.jar:$gsdir/lib/gatk/GenomeAnalysisTK.jar:$gsdir/lib/gatk/Queue.jar";
+my $queuecmd = "$java7 -Xmx4g -XX:+UseParallelOldGC -XX:ParallelGCThreads=4 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Djava.io.tmpdir=$tmpdir -cp $gsdir/lib/SVToolkit.jar:$gsdir/lib/gatk/GenomeAnalysisTK.jar:$gsdir/lib/gatk/Queue.jar";
 
 open(MAK,">$out/Makefile") || die "Cannot open file $out/Makefile\n";
 print MAK ".DELETE_ON_ERROR:\n\n";
@@ -818,4 +820,29 @@ if ( $dryrun ) {
 }
 else {
     &forkExecWait("make -f $out/Makefile -j $numjobs");
+}
+
+
+
+sub binary_is_java7 {
+    my $java_path = shift;
+    if ($java_path =~ m{^\s+|\s+\z}) {die "java_path [$java_path] has leading or trailing whitespace."}
+    my $java_version_output = `$java_path -version 2>&1`;
+    if ($? != 0) { return 0; }
+    if (not $java_version_output =~ m{^java version "(.*?)"}) {die "Couldn't find a java version in [$java_version_output]."}
+    my $java_version = $1;
+    return ($java_version =~ m{1\.7\.});
+}
+
+sub get_java7_path {
+    my @java_paths = (getConf("JAVA7"), `which java`);
+    foreach my $java_path (@java_paths) {
+        $java_path =~ s{^\s+|\s+\z}{}g; # strip whitespace
+        if ($java_path ne '' and -x $java_path) {
+            if (binary_is_java7 $java_path) {
+                return $java_path;
+            }
+        }
+    }
+    die 'Could not find Java7.  Add something like `JAVA7=/usr/lib/jvm/jdk1.7.0_25/bin/java` to your conf.';
 }
