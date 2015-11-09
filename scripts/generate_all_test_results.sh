@@ -107,7 +107,9 @@ if [[ $update = true ]]; then
     git status
     echo
     echo first 100 lines of diff:
-    git diff | head -n100
+    set +e # This command may return a non-zero status
+    git diff -U0 --word-diff | head -n100
+    set -e
 fi
 
 if [[ $cleanup = true ]]; then
