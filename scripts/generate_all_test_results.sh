@@ -106,8 +106,11 @@ if [[ $update = true ]]; then
     echo status:
     git status
     echo
-    echo first 100 lines of diff:
+    echo first 100 lines of diff stat:
     set +e # This command may return a non-zero status
+    git diff --stat | head -n100
+    echo
+    echo first 100 lines of diff:
     git diff -U0 --word-diff | head -n100
     set -e
 fi
