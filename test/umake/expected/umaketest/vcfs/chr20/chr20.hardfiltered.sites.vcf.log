@@ -1,4 +1,4 @@
-Analysis started on Wed Jan 30 11:24:37 2013
+Analysis started on <date>
 
 The following filters are in effect:
 m20 : MQ >= 20.00
@@ -16,8 +16,8 @@ MQ0_10 : MQ0 <= 0.10
 fic-20 : FIC >= -0.20
 LQR30 : LQR <= 0.30
 q5 : QUAL >= 5
-INDEL5 : INDEL >= 5 bp with /gotcloud/test/umake/chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf
+INDEL5 : INDEL >= 5 bp with <gotcloud_root>/test/chr20Ref/1kg.pilot_release.merged.indels.sites.hg19.chr20.vcf
 
-Writing to VCF file /gotcloud/umaketest/vcfs/chr20/chr20.hardfiltered.sites.vcf
-Analysis finished on Wed Jan 30 11:24:37 2013
+Writing to VCF file <outdir_path>/vcfs/chr20/chr20.hardfiltered.sites.vcf
+Analysis finished on <date>
 

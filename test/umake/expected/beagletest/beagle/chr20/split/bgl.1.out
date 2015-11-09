@@ -1,16 +1,16 @@
 Beagle version 3.3.1 (26 Dec 2010)
 Enter "java -jar beagle.jar" for summary of command line arguments.
-Start time: 08:48 AM EDT on 02 Jul 2014
+Start time: <time>
 
-Command line: java -Xmx3640m -jar beagle.jar
+Command line: java -Xmx<number>m -jar beagle.jar
   seed=993478
   gprobs=true
   niterations=50
   lowmem=true
-  like=/beagle/chr20/like/chr20.PASS.1.gz
-  out=/beagle/chr20/split/bgl.1
+  like=<outdir_path>/beagle/chr20/like/chr20.PASS.1.gz
+  out=<outdir_path>/beagle/chr20/split/bgl.1
 
-number of markers    =    1004
+number of markers    =    1003
 number of haplotypes =     120 (chr20.PASS.1.gz)
 
 Phasing: iteration 1
@@ -113,5 +113,5 @@ Phasing: iteration 49
 
 Phasing: iteration 50
 
-Running time for phasing: 35 seconds
+Running time for phasing: <time>
 Beagle version 3.3.1 (26 Dec 2010) finished

@@ -2,17 +2,17 @@
 Options
    Map Quality Filter : --qualities [0,0]
         Depth Filters : --minDepths [1,1], --maxDepths [1000,1000]
-               Output : --outfile [glfs/samples/chr20/20000001.25000000/NA12045.20.20000001.25000000.glf],
+               Output : --outfile [<outdir_path>/glfs/samples/chr20/20000001.25000000/NA12045.20.20000001.25000000.glf],
                         --verbose
 
 glfMerge V1.0.2 -- Merge SNP calls based on .glf or .glz files
 (c) 2009 Goncalo Abecasis, Sebastian Zoellner, Yun Li
 
-Analysis started on Thu Dec  3 22:17:10 2014
+Analysis started on <date>
 
 Calling genotypes for files ...
-  glfs/bams/NA12045/chr20/NA12045.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20000001.25000000.glf
-  glfs/bams/NA12045/chr20/NA12045.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20000001.25000000.glf
+  <outdir_path>/glfs/bams/NA12045/chr20/NA12045.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20000001.25000000.glf
+  <outdir_path>/glfs/bams/NA12045/chr20/NA12045.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20000001.25000000.glf
 
 Processing section 20 with 63025520 entries
 Combined file includes 1886443 bases covering 298358 sites (6.3 coverage)

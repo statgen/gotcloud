@@ -154,9 +154,10 @@ push(@confSettings, "GOTCLOUD_ROOT = $gotcloudRoot");
 #--------------------------------------------------------------
 #   Special case for convenient testing
 if ($opts {test}) {
-    # remove a trailing slash if there is one.
-    $opts{test} =~ s/\/\z//;
+    # remove any trailing slashes.
+    $opts{test} =~ s/\/+\z//;
     my $outdir=abs_path($opts{test});
+    die "Parent directory of $opts{test} should exist." if ! defined($outdir);
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
     my $testoutdir = $outdir . '/aligntest';
@@ -217,8 +218,8 @@ if ($opts{conf})
 #   Set configuration variables from comand line options
 #############################################################################
 if ($opts{out_dir}) {
-    # remove a trailing slash if there is one.
-    $opts{out_dir} =~ s/\/\z//;
+    # remove any trailing slashes.
+    $opts{out_dir} =~ s/\/+\z//;
     my $outdir = abs_path($opts{out_dir});
     system("mkdir -p $outdir") &&
         die "Unable to create directory '$outdir'\n";
@@ -935,6 +936,9 @@ if($numInfer > 0)
     my $firstField = 1;
     foreach my $field (@fieldnames)
     {
+        # Skip RG field since inferred fields mean that RG was not in the original header.
+        next if($field eq "RG");
+
         if($firstField != 1)
         {
             print OUT "\t";
@@ -943,10 +947,7 @@ if($numInfer > 0)
         {
             $firstField = 0;
         }
-        if($field ne "RG")
-        {
-            print OUT $field;
-        }
+        print OUT $field;
     }
     foreach my $mergeName (sort (keys %mergeToFq1))
     {
@@ -990,6 +991,8 @@ if($numInfer > 0)
                 }
                 elsif($field eq "RG")
                 {
+                    # Do not output RG.  Fields are inferred, meaning RG was not used.
+                    next;
                 }
                 else
                 {

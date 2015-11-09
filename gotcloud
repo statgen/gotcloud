@@ -19,6 +19,7 @@ use strict;
 use warnings;
 use Pod::Usage;
 use File::Basename;
+use File::Copy 'copy';
 use Cwd;
 use Cwd 'abs_path';
 #   Find out where this program lives (in a 'bin' directory).
@@ -62,10 +63,8 @@ if ($fcn =~ /^([\-])*help$/) {
 }
 if ($fcn =~ /^([\-])*version$/) {
     my $v = 'UNKNOWN VERSION';
-    foreach my $f ("$gotcloudRoot/release_version.txt") {
-        if (! -f $f) { next; }
-        if (open (IN, $f)) { $v = <IN>; close(IN); last; }
-    }
+    my $f = "$gotcloudRoot/release_version.txt";
+    if (-f $f && open (IN, $f)) { $v = <IN>; close(IN); }
     chomp($v);
     die "GotCloud version: $v\n";
 }
@@ -74,13 +73,14 @@ if ($fcn =~ /^([\-])*version$/) {
 # Determine the types of analysis to be done and do it
 ##################################################################
 my $cmd = '';
+
+if ( $fcn eq 'test') {
+    exit system("$scriptdir/generate_all_test_results.sh @ARGV");
+}
+
 if ( $fcn eq 'align') {
-    foreach my $p ("$bindir/align.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find align.pl\n"; }
+    $cmd = "$bindir/align.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find align.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, @ARGV);
     if ($opts{perf}) { Perf('stop'); }
@@ -88,12 +88,8 @@ if ( $fcn eq 'align') {
 }
 
 if ( $fcn eq 'genomestrip') {
-    foreach my $p ("$bindir/genomestrip.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find genomestrip.pl\n"; }
+    $cmd = "$bindir/genomestrip.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find genomestrip.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, @ARGV);
     if ($opts{perf}) { Perf('stop'); }
@@ -101,12 +97,8 @@ if ( $fcn eq 'genomestrip') {
 }
 
 if ( $fcn eq 'indel') {
-    foreach my $p ("$bindir/pipeline.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+    $cmd = "$bindir/pipeline.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, "--name", "$fcn", @ARGV);
     if ($opts{perf}) { Perf('stop'); }
@@ -115,12 +107,8 @@ if ( $fcn eq 'indel') {
 
 if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
 {
-    foreach my $p ("$bindir/umake.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find umake.pl\n"; }
+    $cmd = "$bindir/umake.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find umake.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, "--$fcn", @ARGV);
     if ($opts{perf}) { Perf('stop'); }
@@ -129,12 +117,8 @@ if ( ($fcn eq 'snpcall') || ($fcn eq 'beagle') || ($fcn eq 'thunder') )
 }
 
 if ($fcn eq 'vc') {
-    foreach my $p ("$bindir/umake.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find umake.pl\n"; }
+    $cmd = "$bindir/umake.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find umake.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, @ARGV);
     if ($opts{perf}) { Perf('stop'); }
@@ -142,12 +126,8 @@ if ($fcn eq 'vc') {
 }
 
 if ($fcn eq 'ldrefine') {
-    foreach my $p ("$bindir/umake.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find umake.pl for ldrefine\n"; }
+    $cmd = "$bindir/umake.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find umake.pl for ldrefine\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, '--beagle', @ARGV);
     if ($rc) { warn "Failed the first step of ld genotype refinement: ".($rc>>8)."\n"; }
@@ -165,12 +145,8 @@ if ($fcn eq 'ldrefine') {
 }
 
 if ($fcn eq 'beagle4') {
-    foreach my $p ("$bindir/umake.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find umake.pl for $fcn\n"; }
+    $cmd = "$bindir/umake.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find umake.pl for $fcn\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, '--split4', @ARGV);
     if ($rc) { warn "Failed the first step of beagle4: ".($rc>>8)."\n"; }
@@ -189,33 +165,22 @@ if ($fcn eq 'beagle4') {
 
 
 if ( $fcn eq 'pipe') {
-    foreach my $p ("$bindir/pipeline.pl") {
-        if (! -f $p) { next; }
-        $cmd = $p;
-        last;
-    }
-    if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+    $cmd = "$bindir/pipeline.pl";
+    if (! -f $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
     if ($opts{perf}) { Perf('start'); }
     my $rc = system($cmd, @ARGV);
     if ($opts{perf}) { Perf('stop'); }
     exit $rc>>8;
 }
 
-foreach my $p ("$bindir/pipeline.pl") {
-    if (! -f $p) { next; }
-    $cmd = $p;
-    last;
-}
-if (! $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
+$cmd = "$bindir/pipeline.pl";
+if (! -f $cmd) { die "ERROR: Unable to find pipeline.pl\n"; }
 unshift(@ARGV, $fcn);
 unshift(@ARGV, "--name");
 if ($opts{perf}) { Perf('start'); }
 my $rc = system($cmd, @ARGV);
 if ($opts{perf}) { Perf('stop'); }
 exit $rc>>8;
-
-warn "ERROR: Unknown command '$fcn' Please see the usage below.\n";
-pod2usage(-exitval => 1);
 
 
 #--------------------------------------------------------------

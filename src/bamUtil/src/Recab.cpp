@@ -79,6 +79,7 @@ Recab::Recab()
     myLogReg = false;
     myMinBaseQual = DEFAULT_MIN_BASE_QUAL;
     myMaxBaseQual = DEFAULT_MAX_BASE_QUAL;
+    myMaxBaseQualChar = BaseUtilities::getAsciiQuality(DEFAULT_MAX_BASE_QUAL);
 }
 
 
@@ -132,6 +133,8 @@ void Recab::recabSpecificUsage()
     std::cerr << "\t--dbsnp <known variance file> : dbsnp file of positions" << std::endl;
     std::cerr << "\t--minBaseQual <minBaseQual>   : minimum base quality of bases to recalibrate (default: " << DEFAULT_MIN_BASE_QUAL << ")" << std::endl;
     std::cerr << "\t--maxBaseQual <maxBaseQual>   : maximum recalibrated base quality (default: " << DEFAULT_MAX_BASE_QUAL << ")" << std::endl;
+    std::cerr << "\t                                qualities over this value will be set to this value." << std::endl;
+    std::cerr << "\t                                This setting is applied after binning (if applicable)." << std::endl;
     std::cerr << "\t--blended <weight>            : blended model weight" << std::endl;
     std::cerr << "\t--fitModel                    : check if the logistic regression model fits the data" << std::endl;
     std::cerr << "\t                                overriden by fast, but automatically applied by useLogReg" << std::endl;
@@ -279,7 +282,15 @@ int Recab::execute(int argc, char *argv[])
     localtm = localtime(&now);
     Logger::gLogger->writeLog("End: %s", asctime(localtm));
 
-    modelFitPrediction(outFile);
+    if((outFile[0] == '-') && (logFile[0] != '-'))
+    {
+        // Since outFile is to stdout, and logfile isn't, pass logfile name 
+        modelFitPrediction(logFile);
+    }
+    else
+    {
+        modelFitPrediction(outFile);
+    }
 
     Logger::gLogger->writeLog("Writing recalibrated file %s",outFile.c_str());
 
@@ -336,6 +347,8 @@ int Recab::processRecabParam()
         std::cerr << "Missing required --refFile parameter" << std::endl;
         return EXIT_FAILURE;
     }
+    myMaxBaseQualChar = BaseUtilities::getAsciiQuality(myMaxBaseQual);
+
     return(mySqueeze.processBinningParam());
 }
 
@@ -752,11 +765,12 @@ bool Recab::processReadApplyTable(SamRecord& samRecord)
 
         // Update quality score
         uint8_t qemp = hasherrormodel.getQemp(data);
-        if(qemp > myMaxBaseQual)
+        qemp = mySqueeze.getQualCharFromQemp(qemp);
+        if(qemp > myMaxBaseQualChar)
         {
-            qemp = myMaxBaseQual;
+            qemp = myMaxBaseQualChar;
         }
-        myQualityStrings.newq[seqPos] = mySqueeze.getQualCharFromQemp(qemp);
+        myQualityStrings.newq[seqPos] = qemp;
     }
 
     if(!myStoreQualTag.IsEmpty())
@@ -797,31 +811,41 @@ void Recab::modelFitPrediction(const char* outputBase)
         //// Model fitting + prediction
         std::string modelfile = outputBase;
         modelfile += ".model";
+        if(outputBase[0] == '-')
+        {
+            modelfile = "";
+        }
         
         prediction.setErrorModel(&(hasherrormodel));
         
         Logger::gLogger->writeLog("Start model fitting!");
-        if(prediction.fitModel(true,modelfile))
-            prediction.outModel();
-        else
+        if(!prediction.fitModel(true,modelfile))
+        {
             Logger::gLogger->error("Could not fit model!");
+        }
         
         hasherrormodel.addPrediction(prediction.getModel(),myBlendedWeight);
 
-        std::string recabFile = outputBase;
-        recabFile += ".recab";
-        Logger::gLogger->writeLog("Writing recalibration table %s",recabFile.c_str());
-        if(!(hasherrormodel.writeTableQemp(recabFile,
-                                           myId2Rg, true)))
-            Logger::gLogger->error("Writing errormodel not possible!");
+        if(outputBase[0] != '-')
+        {
+            std::string recabFile = outputBase;
+            recabFile += ".recab";
+            Logger::gLogger->writeLog("Writing recalibration table %s",recabFile.c_str());
+            if(!(hasherrormodel.writeTableQemp(recabFile,
+                                               myId2Rg, true)))
+                Logger::gLogger->error("Writing errormodel not possible!");
+        }
     }
 
-    std::string qempFile = outputBase;
-    qempFile += ".qemp";
-    Logger::gLogger->writeLog("Writing recalibration table %s",qempFile.c_str());
-    if(!(hasherrormodel.writeTableQemp(qempFile,
-                                       myId2Rg, false)))
-        Logger::gLogger->error("Writing errormodel not possible!");
+    if(outputBase[0] != '-')
+    {
+        std::string qempFile = outputBase;
+        qempFile += ".qemp";
+        Logger::gLogger->writeLog("Writing recalibration table %s",qempFile.c_str());
+        if(!(hasherrormodel.writeTableQemp(qempFile,
+                                           myId2Rg, false)))
+            Logger::gLogger->error("Writing errormodel not possible!");
+    }
 }
 
 

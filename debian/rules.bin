@@ -39,14 +39,15 @@ binary:
 	sed -e s/99.99/${PACKVER}/g < debian/changelog > debian/changelog.new
 	mv debian/changelog.new debian/changelog
 	cp debian/changelog debian/tmp/usr/share/doc/${PKG}
-	cp README    debian/tmp/usr/share/doc/${PKG}/README
+	cp README.md debian/tmp/usr/share/doc/${PKG}/README
 	gzip -9      debian/tmp/usr/share/doc/${PKG}/*
 	cp debian/copyright debian/tmp/usr/share/doc/${PKG}
 	mkdir -p debian/tmp/${INSTALLDIR}
 	cp -p release_version.txt debian/tmp/${INSTALLDIR}
 	cp -rp ${DIRLIST} debian/tmp/${INSTALLDIR}
 	cp -p gotcloud debian/tmp/${INSTALLDIR}/bin
-	rm -rf debian/tmp/${INSTALLDIR}/bin/t
+	mkdir -p debian/tmp/${INSTALLDIR}/src/
+	cp -rp src/svtoolkit debian/tmp/${INSTALLDIR}/src/
 	@echo "Converting symlinks into the actual executables to be distributed"
 	find bin -type l -exec rm -f debian/tmp/${INSTALLDIR}/{} \;
 	find bin -type l -exec cp -p {} debian/tmp/${INSTALLDIR}/bin \;

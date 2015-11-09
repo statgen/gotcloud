@@ -7,6 +7,7 @@ use Pod::Usage;
 use Cwd;
 use FindBin;
 use lib "$FindBin::Bin";
+use IO::File;
 
 my $man = 0;
 my $help = 0;
@@ -159,7 +160,7 @@ foreach my $chr (@chrs) {
 	    #    push(@nextPhases,[]);
 	    #}
 	    ## read overlapping lines to determine the phases
-	    while( defined($nextFH) && ( defined($curPos) ) && ( defined($nextPos) ) ) {
+	    while( defined($nextFH) && defined($curPos) && defined($nextPos) ) {
 		die "Marker mismatch: $curPos $curRef $curAlt - $nextPos $nextRef $nextAlt" unless ( ( $curPos == $nextPos ) && ( $curRef eq $nextRef ) && ( $curAlt eq $nextAlt ) );
 		push(@sites,[$curPos,$curRef,$curAlt]);
 		push(@curInfos,$curInfo);
@@ -238,6 +239,17 @@ sub matchPhases {
     return ($m1,$m2);
 }
 
+=item openVCF()
+
+This function opens a VCF(.gz) file and eats all the header lines.
+
+Output:
+     $fh - a filehandle to the VCF file, starting at the first line of data
+     @header - the output of parseLine() for the header line
+     @indids - the IDs of individuals
+
+=cut
+
 sub openVCF {
     my $vcf = shift;
     my $fh;
@@ -268,6 +280,16 @@ sub iterateVCF {
     my $line = $fh->getline();
     return &parseLine($line);
 }
+
+=item parseLine()
+
+Parseline takes a line from a vcf and returns ($chrom,$pos,$id,$ref,$alt,$qual,$filter,$info,$format,\@fields,\@phases).
+
+@phases (length 2N) and @fields (length N) come from the regex /^(\d)\|(\d):(\S+)$/ run against each of the genotypes (length N).
+
+It also adds "AN=(number of haplotypes);AC=(sum of haplotypes)" to the info field.
+
+=cut
 
 sub parseLine {
     my $line = shift;

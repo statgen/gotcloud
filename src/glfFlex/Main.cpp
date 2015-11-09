@@ -275,16 +275,16 @@ void ReportGenotypes(FullLikelihood & lk, glfHandler * glf, int n,
 	genotypes.catprintf("\t%s:%d:%d",labels[best2idx[best]],depth,quality);
 	++acs[allele1s[best]];
 	++acs[allele2s[best]];
+	an += 2;
 	if ( depth > 0 ) {
-	  an += 2;
 	  ++ns;
 	}
       }
       else if ( ploidies[ismale] == 1 ) {
 	genotypes.catprintf("\t%s:%d:%d",labelsH[best2idx[best]],depth,quality);
 	++acs[allele1s[best]];
+	++an;
 	if ( depth > 0 ) {
-	  ++an;
 	  ++ns;
 	}
       }

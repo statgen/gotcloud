@@ -1,6 +1,6 @@
-Input list file : ../../../bams/Sample2_File1.bam, ../../../bams/Sample2_File2.bam
-Output BAM file : SampleID2.bam
-Output log file : SampleID2.bam.log
+Input list file : <gotcloud_root>/test/recabQC/bams/Sample2_File1.bam, <gotcloud_root>/test/recabQC/bams/Sample2_File2.bam
+Output BAM file : <outdir_path>/recabQC/recabQCtest/recab/mergedBams/SampleID2.bam
+Output log file : <outdir_path>/recabQC/recabQCtest/recab/mergedBams/SampleID2.bam.log
 Verbose mode    : Off
 Total of 2 BAM files are being merged
 WARNING: Warning: dropping duplicate, but non-identical PG ID, bwa

@@ -1,8 +1,8 @@
 
 
 
-                   References : --reference [human_g1k_v37_chr20.fa],
-                                --dbsnp [dbsnp135_chr20.vcf.gz]
+                   References : --reference [<gotcloud_root>/test/chr20Ref/human_g1k_v37_chr20.fa],
+                                --dbsnp [<gotcloud_root>/test/chr20Ref/dbsnp135_chr20.vcf.gz]
       GC content file options : --winsize [100]
                   Region list : --regions [], --invertRegion,
                                 --fraction [-1.0e+00]
@@ -15,8 +15,8 @@
         Read group to process : --readGroup []
            Input file options : --noeof
                  Output files : --plot [],
-                                --stats [SampleID2.qplot.stats],
-                                --Rcode [SampleID2.qplot.R],
+                                --stats [<outdir_path>/recabQC/recabQCtest/recab/QCFiles/SampleID2.qplot.stats],
+                                --Rcode [<outdir_path>/recabQC/recabQCtest/recab/QCFiles/SampleID2.qplot.R],
                                 --xml []
                   Plot labels : --label [], --bamLabel [recal]
        Obsoleted (DO NOT USE) : --gccontent [], --create_gc
@@ -24,15 +24,15 @@
 QPLOT (Ver: 20130821) started.
 QPLOT Documentation: http://genome.sph.umich.edu/wiki/QPLOT
 
-Reference genome file [ human_g1k_v37_chr20.fa ] is used.
-GC content file [ human_g1k_v37_chr20.winsize100.gc ] is used for window size 100.
+Reference genome file [ <gotcloud_root>/test/chr20Ref/human_g1k_v37_chr20.fa ] is used.
+GC content file [ <gotcloud_root>/test/chr20Ref/human_g1k_v37_chr20.winsize100.gc ] is used for window size 100.
 The following files are to be processed...
 
-bams/Sample2.recal.bam
+<outdir_path>/recabQC/recabQCtest/recab/SampleID2.recal.bam
 
 Loading reference... DONE! Total sequence length 63025520
 Sampling whole genome at -1.000000
 DONE!
 Loading dbSNP...DONE!
 Reading GC content......DONE!
-Processing BAM/SAM file Sample2.recal.bam...
+Processing BAM/SAM file <outdir_path>/recabQC/recabQCtest/recab/SampleID2.recal.bam...

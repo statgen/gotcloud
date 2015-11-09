@@ -1,3 +1,5 @@
-loading chr20Ref/dbsnp135_chr20.vcf.gz as a VCF input..
+loading <gotcloud_root>/test/chr20Ref/dbsnp135_chr20.vcf.gz as a VCF input..
+Warning: The index file is older than the data file: <gotcloud_root>/test/chr20Ref/dbsnp135_chr20.vcf.gz.tbi
 finished loading dbSNP for 1168884 variants
+Warning: The index file is older than the data file: <gotcloud_root>/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz.tbi
 TOTAL	1117	1117	602	267	133	29	40	43	1	2

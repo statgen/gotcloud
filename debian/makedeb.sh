@@ -105,10 +105,7 @@ done
 if [ "$PFX" = "" ]; then
   export PFX=usr/local/gotcloud
 else
-  firstc=`echo $PFX | cut -c 1-1`
-  if [ "$firstc" = "/" ]; then
-    export PFX=`echo $PFX | cut -c 2-`
-  fi
+  export PFX="${PFX#/}"
 fi
 
 #   Specify version for this file.  Must specify -replace to overwrite deb file

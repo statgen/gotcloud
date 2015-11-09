@@ -1,0 +1,6 @@
+Input list file : <gotcloud_root>/test/umake/bams/NA11918.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam, <gotcloud_root>/test/umake/bams/NA11918.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam
+Output BAM file : <outdir_path>/indel/mergedBams/NA11918.bam
+Output log file : <outdir_path>/indel/mergedBams/NA11918.bam.log
+Verbose mode    : Off
+Total of 2 BAM files are being merged
+Finished writing 30767 records into the output BAM file

@@ -1,4 +1,4 @@
-Stats\BAM	aligntest/bams/Sample3.recal.bam
+Stats\BAM	<outdir_path>/bams/Sample3.recal.bam
 TotalReads(e6)	0.00
 MappingRate(%)	70.33
 MapRate_MQpass(%)	70.33

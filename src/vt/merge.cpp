@@ -202,11 +202,22 @@ class Igor : Program
                 bcf_set_n_sample(nv, no_samples);
 
                 int32_t ngt = 0;
+                std::vector<bool> seen(no_samples, false);
                 for (size_t i=0; i<current_recs.size(); ++i)
                 {
                     int32_t file_index = current_recs[i]->file_index;
                     bcf1_t *v = current_recs[i]->v;
                     bcf_hdr_t *h = current_recs[i]->h;
+
+                    //this is a hack for non unique variants
+                    if (seen[file_index])
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        seen[file_index] = true;
+                    }
 
                     int32_t *gt = NULL;
                     int32_t n = 0;

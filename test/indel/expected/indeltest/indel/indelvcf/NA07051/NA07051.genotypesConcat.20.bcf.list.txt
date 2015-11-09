@@ -1,1 +1,0 @@
-indelvcf/NA07051/NA07051.genotypes.20.20000001.40000000.bcf

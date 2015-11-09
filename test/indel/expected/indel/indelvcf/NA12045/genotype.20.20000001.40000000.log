@@ -1,0 +1,12 @@
+genotype v0.5
+
+Options: Input VCF File   <outdir_path>/indel/aux/probes.sites.20.20000001.40000000.bcf
+         Input BAM File   <outdir_path>/indel/mergedBams/NA12045.bam
+         Output VCF File  <outdir_path>/indel/indelvcf/NA12045/NA12045.genotypes.20.20000001.40000000.bcf
+         Sample ID        NA12045
+
+Stats: SNPs genotyped     0
+       Indels genotyped   386
+
+Time elapsed: <time>
+
