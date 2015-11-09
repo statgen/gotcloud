@@ -75,7 +75,8 @@ if ($fcn =~ /^([\-])*version$/) {
 my $cmd = '';
 
 if ( $fcn eq 'test') {
-    exit system("$scriptdir/generate_all_test_results.sh @ARGV");
+    my $rc = system("$scriptdir/generate_all_test_results.sh", @ARGV);
+    exit $rc>>8;
 }
 
 if ( $fcn eq 'align') {

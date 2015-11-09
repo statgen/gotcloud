@@ -5,11 +5,12 @@ set -e -u -o pipefail # Safety first!
 update=false
 cleanup=true
 verbose=false
-while [[ $# > 1 ]]; do
+while [[ $# > 0 ]]; do
     case "$1" in
         --update) update=true ;;
         --leave-a-mess) cleanup=false ;;
         --verbose) verbose=true ;;
+        *) echo "Unknown argument: $1"; exit 1;;
     esac
     shift
 done
