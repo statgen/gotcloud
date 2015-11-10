@@ -1,0 +1,6 @@
+# Please run:
+# - `git config diff.gz.textconv zcat`
+# - `git config diff.bam.textconv samtools view -h`
+
+*.gz diff=gz
+*.bam diff=bam

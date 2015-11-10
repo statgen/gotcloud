@@ -1,7 +1,7 @@
 
 Available Options
-                             Input Files : --vcf [hapmap_3.3.b37.sites.chr20.vcf.gz],
-                                           --bam [Sample1.recal.bam],
+                             Input Files : --vcf [<gotcloud_root>/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz],
+                                           --bam [<gotcloud_root>/test/align/expected/aligntest/bams/Sample1.recal.bam],
                                            --subset [], --smID []
                     VCF analysis options : --genoError [1.0e-03],
                                            --minAF [0.01],
@@ -17,7 +17,7 @@ Available Options
                                            --maxQ [40], --grid [0.05]
                  Modeling Reference Bias : --refRef [1.00], --refHet [0.50],
                                            --refAlt [0.00]
-                          Output options : --out [SampleID1.genoCheck],
+                          Output options : --out [<outdir_path>/bamQC/bamQCtest/QCFiles/SampleID1.genoCheck],
                                            --verbose
                                PhoneHome : --noPhoneHome,
                                            --phoneHomeThinning [50]

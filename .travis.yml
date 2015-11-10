@@ -1,0 +1,16 @@
+language: perl
+perl:
+  - "5.10" # Note: Perl 5.10.1 on Flux works, but Perl 5.12.5 on Travis does not. I don't know why.
+  - "5.12"
+  - "5.14"
+  - "5.16"
+install:
+  - sh -c "cd src && make -w"
+script:
+  - sh -c "cd src && make -w test"
+  - ./gotcloud test --update --verbose
+matrix:
+  allow_failures:
+    - perl: "5.10"
+    - perl: "5.12"
+sudo: false # See http://docs.travis-ci.com/user/migrating-from-legacy/

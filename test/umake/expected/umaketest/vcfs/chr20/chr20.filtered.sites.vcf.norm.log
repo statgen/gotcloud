@@ -1,8 +1,8 @@
-Analysis started on Fri Mar 15 13:41:06 2013
+Analysis started on <date>
 
-Reading Input File /gotcloud/SNP/umaketest/vcfs/chr20/chr20.filtered.sites.vcf.raw
+Reading Input File <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.raw
 Finished Reading 1117 lines
 Starting sorting values
 Writing output values
-Analysis finished on Fri Mar 15 13:41:06 2013
+Analysis finished on <date>
 

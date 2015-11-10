@@ -43,7 +43,7 @@ binary:
 	sed -e s/99.99/${PACKVER}/g < debian/changelog > debian/changelog.new
 	mv debian/changelog.new debian/changelog
 	cp debian/changelog debian/tmp/usr/share/doc/${PKG}
-	cp README    debian/tmp/usr/share/doc/${PKG}/README
+	cp README.md debian/tmp/usr/share/doc/${PKG}/README
 	gzip -9      debian/tmp/usr/share/doc/${PKG}/*
 	cp debian/copyright debian/tmp/usr/share/doc/${PKG}
 	mkdir -p debian/tmp/${INSTALLDIR}

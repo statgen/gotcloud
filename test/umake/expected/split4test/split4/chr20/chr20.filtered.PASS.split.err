@@ -1,4 +1,4 @@
 Processing chr20..
-1	20	20000121	20299968	split4/chr20/chr20.filtered.PASS.split.1.vcf.gz
-*** Redundant: 2	20	20001591	20299968	split4/chr20/chr20.filtered.PASS.split.2.vcf.gz
+1	20	20000121	20299968	<outdir_path>/split4/chr20/chr20.filtered.PASS.split.1.vcf.gz
+*** Redundant: 2	20	20001483	20299968	<outdir_path>/split4/chr20/chr20.filtered.PASS.split.2.vcf.gz
 make[1]: warning: -jN forced in submake: disabling jobserver mode.

@@ -91,6 +91,7 @@ class VcfHelper {
   static int chromName2Num(const String& chr);
   static int compareGenomicPos(const String& chr1, int pos1, const String& chr2, int pos2);
   static uint64_t str2TwoBits(const char* s, int len);
+  static bool isAutosome(const String& chr);
 
   static bool initPhred2Error(int maxPhred = 255);
   static bool initChromNamesNums();

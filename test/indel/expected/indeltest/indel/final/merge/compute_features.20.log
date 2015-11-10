@@ -1,9 +1,0 @@
-compute_features v0.5
-
-Options:     input VCF File    +
-
-
-stats: variants   : 386
-
-Time elapsed: 0.05s
-

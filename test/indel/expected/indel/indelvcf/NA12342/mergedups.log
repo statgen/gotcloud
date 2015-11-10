@@ -1,0 +1,12 @@
+mergedups v0.57
+
+options:     input VCF file        +
+         [o] output VCF file       <outdir_path>/indel/indelvcf/NA12342/NA12342.sites.bcf
+         [p] merge by              alleles
+
+
+stats: Total number of observed variants   91
+       Total number of unique variants     91
+
+Time elapsed: <time>
+

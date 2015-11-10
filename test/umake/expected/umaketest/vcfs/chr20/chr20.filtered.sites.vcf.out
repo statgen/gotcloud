@@ -1,25 +1,25 @@
-gotcloud/bin/invNorm --in vcfs/chr20/chr20.filtered.sites.vcf.raw --out vcfs/chr20/chr20.filtered.sites.vcf.norm
+<gotcloud_root>/bin/invNorm --in <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.raw --out <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.norm
 
 Available Options
-                Input options : --in [vcfs/chr20/chr20.filtered.sites.vcf.raw],
+                Input options : --in [<outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.raw],
                                 --ignore
-               Output Options : --out [vcfs/chr20/chr20.filtered.sites.vcf.norm],
+               Output Options : --out [<outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.norm],
                                 --digits [3], --rank, --verbose
    Output compression Options : --plain [ON], --bgzf, --gzip
 
 invNorm 1.1.1 -- Column-wise inverse-normal transformation of matrix
 (c) 2011 Hyun Min Kang and Goo Jun
 
-Reading positive examples from chr20Ref/1000G_omni2.5.b37.sites.chr20.PASS.vcf.gz 
-Reading positive examples from chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz 
+Reading positive examples from <gotcloud_root>/test/chr20Ref/1000G_omni2.5.b37.sites.chr20.PASS.vcf.gz 
+Reading positive examples from <gotcloud_root>/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz 
 Positive samples: 287, Negative samples: 37
 DP	MQ	NS	AN	AB	AZ	FIC	SLRT	LBS	OBS	STR	STZ	CBR	CBZ	IOR	IOZ	AOI	AOZ	LQR	MQ0	MQ10	MQ20	MQ30	QUAL
-gotcloud/bin/svm-train -s 0 -t 2 vcfs/chr20/chr20.filtered.sites.vcf.labeled.svm vcfs/chr20/chr20.filtered.sites.vcf.svm.model
+<gotcloud_root>/bin/svm-train -s 0 -t 2 <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.labeled.svm <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm.model
 *
-optimization finished, #iter = 96
-nu = 0.072267
-obj = -11.833510, rho = 0.260973
+optimization finished, #iter = 95
+nu = 0.071772
+obj = -11.741298, rho = 0.288957
 nSV = 45, nBSV = 3
 Total nSV = 45
-gotcloud/bin/svm-predict vcfs/chr20/chr20.filtered.sites.vcf.svm vcfs/chr20/chr20.filtered.sites.vcf.svm.model vcfs/chr20/chr20.filtered.sites.vcf.svm.pred
+<gotcloud_root>/bin/svm-predict <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm.model <outdir_path>/vcfs/chr20/chr20.filtered.sites.vcf.svm.pred
 Accuracy = 0% (0/1117) (classification)

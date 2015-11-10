@@ -1,6 +1,0 @@
-Input list file : test/umake/bams/NA12249.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam, test/umake/bams/NA12249.mapped.LS454.ssaha2.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam
-Output BAM file : mergedBams/NA12249.bam
-Output log file : mergedBams/NA12249.bam.log
-Verbose mode    : Off
-Total of 2 BAM files are being merged
-Finished writing 21503 records into the output BAM file

@@ -1,0 +1,1 @@
+<outdir_path>/indel/indelvcf/NA12812/NA12812.genotypes.20.20000001.40000000.bcf

@@ -30,9 +30,9 @@ Total # Reads skipped for building recab table: 97
 Total # Reads used for building recab table: 203
 # Bases observed: 7154 - #match: 7101; #mismatch: 53
 # Bases Skipped for DBSNP: 260, for BaseQual < 5: 22, ref 'N': 0
-Writing recalibration table aligntest/bams/Sample3.recal.bam.qemp
+Writing recalibration table <outdir_path>/bams/Sample3.recal.bam.qemp
 
-Writing aligntest/bams/Sample3.recal.bam
+Writing <outdir_path>/bams/Sample3.recal.bam
 Successfully marked 0 unpaired and 0 paired duplicate reads
 
 Dedup complete!

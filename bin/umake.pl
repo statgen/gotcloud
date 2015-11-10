@@ -1354,6 +1354,17 @@ foreach my $chr (@chrs) {
             }
         }
         if ( $inTarget == 1 ) {
+            if ( defined($callstart) )
+            {
+                if ( $start < $callstart)
+                {
+                    $start = $callstart;
+                }
+                if ( $callend < $end )
+                {
+                    $end = $callend;
+                }
+            }
             push(@unitStarts,$start);
             push(@unitEnds,$end);
         }
@@ -1982,7 +1993,11 @@ foreach my $chr (@chrs) {
                     push(@cmds,"$pvcf.OK: $svcfs[$j].OK\n\t".getMosixCmd($cmd, "$pvcf")."\n\t".getTouch("$pvcf")."\n");
                 }
                 else {
-                    $singleOKCmd .= $cmd."; ";
+                    if($singleOKCmd ne "")
+                    {
+                        $singleOKCmd .= " && ";
+                    }
+                    $singleOKCmd .= $cmd;
                 }
             }
             if(! $chunkOK)
@@ -2253,6 +2268,10 @@ foreach my $chr (@chrs) {
                     }
                     else {
                         if (getConf("BAM_DEPEND") eq "TRUE") { $glfCmdHdr .= " $bams[0]"; }
+                        if($glfCmdBody ne "")
+                        {
+                            $glfCmdBody .= " && ";
+                        }
                         $glfCmdBody .= "mkdir --p $smGlfPartitionDir; ";
                         $glfCmdBody .= runPileup($bams[0], $smGlf, $region, $loci, $sampleBamTypes[0], $sampleBamLocations[0])."; ";
                     }
@@ -2284,6 +2303,10 @@ foreach my $chr (@chrs) {
                         }
                         else {
                             if (getConf("BAM_DEPEND") eq "TRUE") { $glfCmdHdr .= " $bam"; }
+                            if($glfCmdBody ne "")
+                            {
+                                $glfCmdBody .= " && ";
+                            }
                             $glfCmdBody .= "mkdir --p $bamGlfDir/$allSMs[$i]/$chrchr; ";
                             $glfCmdBody .= runPileup($bam, $bamGlf, $region, $loci, $sampleBamType, $sampleBamLocation)."; ";
                         }
@@ -2294,7 +2317,11 @@ foreach my $chr (@chrs) {
                         $sampleCmd .= "\tmkdir --p $smGlfPartitionDir\n";
                     }
                     else {
-                        $glfCmdBody .= "mkdir --p $smGlfPartitionDir; ";
+                        if($glfCmdBody ne "")
+                        {
+                            $glfCmdBody .= " && ";
+                        }
+                        $glfCmdBody .= "mkdir --p $smGlfPartitionDir";
                     }
 
                     my $qualities = "0";
@@ -2312,7 +2339,11 @@ foreach my $chr (@chrs) {
                         $sampleCmd =~ s/$gotcloudRoot/\$(GOTCLOUD_ROOT)/g;
                     }
                     else {
-                        $glfCmdBody .= getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs > $smGlf.out 2>&1; ";
+                        if($glfCmdBody ne "")
+                        {
+                            $glfCmdBody .= " && ";
+                        }
+                        $glfCmdBody .= getConf("GLFMERGE")." --qualities $qualities --minDepths $minDepths --maxDepths $maxDepths --outfile $smGlf @bamGlfs > $smGlf.out 2>&1";
                     }
                 }
                 if ( $chunkOK ) {

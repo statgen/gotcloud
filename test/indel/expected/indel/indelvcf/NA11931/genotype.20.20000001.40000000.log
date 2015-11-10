@@ -1,0 +1,12 @@
+genotype v0.5
+
+Options: Input VCF File   <outdir_path>/indel/aux/probes.sites.20.20000001.40000000.bcf
+         Input BAM File   <outdir_path>/indel/mergedBams/NA11931.bam
+         Output VCF File  <outdir_path>/indel/indelvcf/NA11931/NA11931.genotypes.20.20000001.40000000.bcf
+         Sample ID        NA11931
+
+Stats: SNPs genotyped     0
+       Indels genotyped   386
+
+Time elapsed: <time>
+

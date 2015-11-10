@@ -1,0 +1,12 @@
+remove_overlap v0.57
+
+options:     input VCF file        +
+         [o] output VCF file       <outdir_path>/indel/final/merge/all.genotypes.20.bcf
+
+
+stats: Total number of observed variants    386
+       Total number of nonoverlap variants  341
+       Total number of overlap variants     45
+
+Time elapsed: <time>
+

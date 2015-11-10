@@ -1,0 +1,21 @@
+discover v0.5
+
+options: [b] input BAM File               <gotcloud_root>/test/umake/bams/NA12275.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam
+         [o] output VCF File              +
+         [s] sample ID                    NA12275
+         [r] reference FASTA File         <gotcloud_root>/test/chr20Ref/human_g1k_v37_chr20.fa
+         [m] MAPQ cutoff                  20
+         [q] base quality cutoff          13
+         [v] variant type(s)              indels
+         [e] evidence cutoff              2
+         [f] fractional evidence cutoff   0.1
+
+
+stats: no. reads              : 16384
+       no. overlapping reads  : 229
+       no. low mapq reads     : 76
+       no. passed reads       : 16308
+       no. exclude flag reads : 0
+
+Time elapsed: <time>
+

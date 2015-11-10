@@ -1,1 +1,0 @@
-indelvcf/NA12043/NA12043.genotypes.20.20000001.40000000.bcf

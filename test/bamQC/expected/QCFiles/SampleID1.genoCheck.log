@@ -1,10 +1,10 @@
-Analysis started on Wed Mar  4 11:59:52 2015
+Analysis started on <date>
 
 Opening Input Files
-Opening BAM file Sample1.recal.bam
+Opening BAM file <gotcloud_root>/test/align/expected/aligntest/bams/Sample1.recal.bam
 Reading header Records
 --selfOnly option applied : finding sample ID SampleID1 from VCF file
-Opening VCF file hapmap_3.3.b37.sites.chr20.vcf.gz
+Opening VCF file <gotcloud_root>/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz
 Total of 0 out of 1 individuals successfully matched IDs
 Skipping marker 20:67694 with multiple alternative alleles
 Skipping marker 20:311760 with multiple alternative alleles
@@ -118,12 +118,12 @@ Skipping marker 20:62164726 with multiple alternative alleles
 Skipping marker 20:62566353 with multiple alternative alleles
 Finished reading 37152 markers from VCF file
 Total of 36298 informative markers passed after AF >= 0.010000 and callRate >= 0.500000 threshold
-Reading BAM file Sample1.recal.bam
+Reading BAM file <gotcloud_root>/test/align/expected/aligntest/bams/Sample1.recal.bam
 Extracting read information in 10000 markers from BAM file
 Extracting read information in 20000 markers from BAM file
 Extracting read information in 30000 markers from BAM file
 Finished extracting 77 bases in 36298 markers from BAM file -- Avg Depth = 0.002
-Finished Reading BAM file Sample1.recal.bam and VCF file hapmap_3.3.b37.sites.chr20.vcf.gz
+Finished Reading BAM file <gotcloud_root>/test/align/expected/aligntest/bams/Sample1.recal.bam and VCF file <gotcloud_root>/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz
 
 Performing chip-free estimation of sample mixture at fixed reference bias parameters (1.000000, 0.500000, 0.000000)
 double VerifyBamID::computeMixLLK( 0.000000 | 1.000000, 0.500000, 0.000000 ) = -33.822201 for readGroup -1
@@ -218,5 +218,5 @@ Optimal per-sample fMix = 0.099875, LLK0 = 15.780800, LLK1 = 15.780800
 calculating depth distribution
 finished calculating depth distribution
 Performing with-chip estimation of sample mixture at fixed reference bias parameter (1.000000, 0.500000, 0.000000)
-Analysis finished on Wed Mar  4 12:00:09 2015
+Analysis finished on <date>
 

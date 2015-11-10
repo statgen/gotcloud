@@ -520,8 +520,8 @@ class VerifyBamID {
       }
       else if ( minIdx == (int)lks.size()-1 ) {
 	a = 0.5; fa = f(0.5);
-	b = (0.5-alphas.back())/2.; fb = f(b);
-	c = alphas.back(); fc = lks.back();
+        b = 0.5 - (0.5-alphas.back())/2.; fb = f(b);
+        c = alphas.back(); fc = lks.back();
       }
       else {
 	a = alphas[minIdx-1]; fa = lks[minIdx-1];

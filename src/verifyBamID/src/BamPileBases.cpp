@@ -69,6 +69,11 @@ BamPileBases::BamPileBases(const char* bamFile, const char* smID, bool ignoreRG)
     }
     else if ( pSamHeaderRecord->getType() == SamHeaderRecord::SQ ) {
       std::string sSN = pSamHeaderRecord->getTagValue("SN");
+      // Remove the "chr" if it is there
+      if ( sSN.compare(0, 3, "chr") == 0 )
+      {
+          sSN.erase(0, 3);
+      }
       mSN2RefID[sSN] = refID;
       ++refID;
     }
@@ -97,14 +102,27 @@ int BamPileBases::readMarker(const char* chrom, int position, bool ignoreOverlap
   CigarRoller cigarRoller;
   std::set<std::string> readNames;
   nBegins.push_back(cBases.size());
+
+  // Check for chr.
+  const char* searchChrom = chrom;
+  if(strncmp(chrom, "chr", 3) == 0)
+  {
+      searchChrom = chrom + 3;
+  }
   // check if chrom exist
-  if ( mSN2RefID.find(chrom) == mSN2RefID.end() ) {
-    // if refID is not found in SN, provide warning
-    Logger::gLogger->warning("Cannot find sequence name %s appeared in VCF file but not in the BAM file, perhaps the reference is incompatible?\nThese markers will be ignored..");
-    nEnds.push_back(cBases.size());
+  if (mSN2RefID.find(searchChrom) == mSN2RefID.end())
+  {
+      // if refID is not found in SN, provide warning
+      std::pair<std::set<std::string>::iterator,bool> ret;
+      ret = mSN2warn.insert(chrom);
+      if(ret.second == true)
+      {  // New entry, so warn.
+          Logger::gLogger->warning("Cannot find sequence name %s appeared in VCF file but not in the BAM file, perhaps the reference is incompatible?\nThese markers will be ignored..", chrom);
+      }
+      nEnds.push_back(cBases.size());
   }
   else {
-    int refID = mSN2RefID[chrom];
+    int refID = mSN2RefID[searchChrom];
 
     // **** Rouitine for reading each read
     if ( refID >= 0 ) {

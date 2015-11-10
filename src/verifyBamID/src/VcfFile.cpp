@@ -72,6 +72,23 @@ int VcfHelper::chromName2Num(const String & chr) {
   throw VcfFileException("Cannot recognize chromosome %s",chr.c_str());
 }
 
+bool VcfHelper::isAutosome(const String & chr)
+{
+    // Return true for numeric chromosome number (1-22 or chr1-chr22),
+    // false for anything else
+    int n = atoi(chr.c_str());
+    if ( n > 0 ) { return true; }
+    else {
+        String s = chr;
+        if ( s.Left(3).Compare("chr") == 0 ) {
+            n = atoi(s.SubStr(3).c_str());
+            if ( n > 0 ) { return true; }
+        }
+        return false;
+    }
+}
+
+
 int VcfHelper::compareGenomicPos(const String & chr1, int pos1, const String& chr2, int pos2) {
   //Logger::gLogger->writeLog("VcfHelper::compareGenomicPos %s:%d - %s:%d",chr1.c_str(), pos1, chr2.c_str(), pos2);
   int nchr1 = chromName2Num(chr1);
@@ -847,8 +864,13 @@ void VcfMarker::setSample(int sampleIndex, const String& sampleValue, bool parse
   }
   else {
     tmpTokens.ReplaceColumns(sampleValue,':');
-    if ( tmpTokens.Length() != asFormatKeys.Length() ) {
-      throw VcfFileException("# values = %s do not match with # fields in FORMAT field = %d at sampleIndex = %d",sampleValue.c_str(),asFormatKeys.Length(),sampleIndex);
+    while(tmpTokens.Length() < asFormatKeys.Length())
+    {
+        tmpTokens.Add(".");
+    }
+    if ( tmpTokens.Length() != asFormatKeys.Length() )
+    {
+        throw VcfFileException("# values = %s do not match with # fields in FORMAT field = %d at sampleIndex = %d",sampleValue.c_str(),asFormatKeys.Length(),sampleIndex);
     }
     
     if ( parseValues ) {
