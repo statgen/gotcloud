@@ -1320,6 +1320,17 @@ foreach my $chr (@chrs) {
             }
         }
         if ( $inTarget == 1 ) {
+            if ( defined($callstart) )
+            {
+                if ( $start < $callstart)
+                {
+                    $start = $callstart;
+                }
+                if ( $callend < $end )
+                {
+                    $end = $callend;
+                }
+            }
             push(@unitStarts,$start);
             push(@unitEnds,$end);
         }
