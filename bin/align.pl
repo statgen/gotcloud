@@ -1284,6 +1284,13 @@ if ($errs) {
         "  TYPE=".getConf('BATCH_TYPE')."\n" .
         "  OPTS=".getConf('BATCH_OPTS')."\n" .
         "  CMDS=" . join("\n    ", sort(keys %mkcmds)) . "\n";
+
+        if (not open(my $errfile, "$allMakef.err")) {
+            warn "failed to open $allMakef.err";
+        } else {
+            print STDERR <$errfile>;
+            close($errfile);
+        }
 }
 else {
     print STDERR " with no errors reported\n";
