@@ -105,20 +105,27 @@ if [[ $update = true ]]; then
     echo
     echo status:
     git status
-    echo
-    echo first 100 lines of diff stat:
-    set +e # This command may return a non-zero status
-    git diff --stat | head -n100
-    echo
-    echo first 100 lines of diff:
-    git diff -U0 --word-diff | head -n100
-    set -e
+    if [[ $verbose = true ]]; then
+        echo
+        echo first 100 lines of diff stat:
+        set +e # This command may return a non-zero status
+        git diff --stat | head -n100
+        echo
+        echo first 100 lines of diff:
+        git diff -U0 --word-diff | head -n100
+        set -e
+    fi
 fi
 
 if [[ $cleanup = true ]]; then
-    echo
-    echo cleaning up
-    rm -r "$outdir"
+    if [[ $status != 0 ]]; then
+        echo
+        echo not cleaning up because of non-zero return status
+    else
+        echo
+        echo cleaning up
+        rm -r "$outdir"
+    fi
 fi
 
 exit $status

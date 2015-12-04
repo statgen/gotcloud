@@ -67,8 +67,8 @@ if ($fcn =~ /(\S+)\./) { $fcn = $1; }
 #   Show calculations for the choice
 #-----------------------------------------------------------------
 if ($opts{totalsize}) {             # Fix totalsize if provided
-    if ($opts{totalsize} =~ /(.+)g$/i) { $opts{totalsize} = $1*1024*1024*1024 }
-    if ($opts{totalsize} =~ /(.+)t$/i) { $opts{totalsize} = $1*1024*1024*1024*1024 }
+    if ($opts{totalsize} =~ /(.+)g$/i) { $opts{totalsize} = $1*1024**3 }
+    if ($opts{totalsize} =~ /(.+)t$/i) { $opts{totalsize} = $1*1024**4 }
 }
 
 if ($fcn eq 'align') {
@@ -89,7 +89,7 @@ exit(1);
 #   Returns a string expressing number as GBs
 #--------------------------------------------------------------
 sub AsGB {
-    return sprintf('%4.2f GB', $_[0]/(1024*1024*1024));
+    return sprintf('%.6f GB', $_[0]/(1024**3));
 }
 
 #--------------------------------------------------------------
