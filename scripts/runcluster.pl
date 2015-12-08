@@ -23,6 +23,7 @@ use Getopt::Long;
 use File::Basename;
 use Cwd;
 use Cwd 'abs_path';
+use File::Temp;
 
 my ($me, $mepath, $mesuffix) = fileparse($0, '\.pl');
 (my $version = '$Revision: 1.5 $ ') =~ tr/[0-9].//cd;
@@ -261,8 +262,8 @@ sub bcommand {
     my $logEnd = '';
     if ($opts{logfile})
     {
-        $logStart = "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTART";
-        $logEnd = "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTOP rc=\$rc";
+        $logStart = "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTART for $f";
+        $logEnd = "$mepath/gclogger.pl $opts{logkey} $opts{logfile} RUNSTOP rc=\$rc for $f";
     }
 
     while (<IN>) {
@@ -347,67 +348,73 @@ sub waitforcommand {
     my $querycmd = $ClusterTypes{$opts{engine}}[3] . ' ' . $jobid;
     if ($engine eq 'slurm') { $querycmd = $ClusterTypes{$opts{engine}}[3] . ' -j ' . $jobid; }
     if ($engine eq 'pbs')   { $querycmd = $ClusterTypes{$opts{engine}}[3] . ' -f ' . $jobid; }
+
     #   The most efficient way to wait is to check for the ok/err files
     #   to appear. We try that for a while and eventually try the
     #   query for the batch system and see if the job is still there
-    while (1) {
+
+    my $scheduler_thinks_job_is_alive = 0;
+    my $scheduler_thought_job_was_alive = 0;
+    for (my $iteration = 0;; $iteration++) {
         foreach (1 .. $opts{waittries}) {
             if ($opts{verbose}) { print "Wait $_\n"; }
             sleep($opts{waitinterval});
             if (-r "$shell.err") {
                 unlink("$shell.err");
-                if ($opts{verbose}) { print "Found $shell.err\n"; }
+                if ($opts{verbose}) { print "Found $shell.err for job $jobid\n"; }
                 return 1;
             }
             if (-r "$shell.ok")  {
                 unlink("$shell.ok");
-                if ($opts{verbose}) { print "Found $shell.ok\n"; }
+                if ($opts{verbose}) { print "Found $shell.ok for job $jobid\n"; }
                 return 0;
             }
         }
 
-        #check whether the scheduler thinks that the job has completed.
-        if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
-        my $qout = "/tmp/$$.queryoutput";
-        if (system($querycmd . " 2>&1 >$qout") || (-z $qout)) {
-            unlink($qout) or warn "Could not remove $qout\n";
-            # Sleep one more time to give the file system time to catchup.
-            sleep($opts{waitinterval});
-            # Recheck for the err/ok file in case it is there now.
-            if (-r "$shell.err") {
-                unlink("$shell.err");
-                if ($opts{verbose}) { print "Found $shell.err\n"; }
-                return 1;
-            }
-            if (-r "$shell.ok")  {
-                unlink("$shell.ok");
-                if ($opts{verbose}) { print "Found $shell.ok\n"; }
-                return 0;
-            }
-            warn "Batch job '$jobid' completed without setting $shell.ok or $shell.err - something is wrong\n";
+        if (not $scheduler_thought_job_was_alive and
+            $iteration * $opts{waittries} * $opts{waitinterval} > 60*60*8)
+        {
+            warn "I've waited 8 hours for the job $jobid but the scheduler still doesn't see it";
+            return 67;
+        }
+
+        if (not $scheduler_thinks_job_is_alive and $scheduler_thought_job_was_alive) {
+            # The scheduler indicated that the job had exited already last loop.
+            # Looks like the job/NFS missed its last chance at producing .ok/.err file.
+            warn "The schdeuler has lost sight of the job $jobid, but it didn't set $shell.ok or $shell.err\n";
             return 99;
         }
-        #   Some systems remove q jobid from the queue when it completes
-        #   some keep the entry around so we must parse the query output to
-        #   guess what really happened.
-        if ($engine eq 'pbs') {
-            my $jobstate = '';
+
+        #check whether the scheduler thinks that the job has completed.
+        if ($opts{verbose}) { print "Trying query: $querycmd\n"; }
+        my $qout = File::Temp->new(TEMPLATE=>"gc-qout-$ENV{USER}-XXXXXXXX")->filename;
+        my $query_rc = system($querycmd . " 2>&1 >$qout");
+        $scheduler_thinks_job_is_alive = (0 == $query_rc) && (-s $qout);
+        if ($scheduler_thinks_job_is_alive) { $scheduler_thought_job_was_alive = 1; }
+
+        # Some systems remove q jobid from the queue when it completes
+        # some keep the entry around so we must parse the query output to
+        # guess what really happened.
+        if (($scheduler_thinks_job_is_alive) && $engine eq 'pbs') {
             if (open(WAITREAD, $qout)) {
-                while (<WAITREAD>) {
-                    if (/job_state = C/) { $jobstate = 'C'; last; }
+                # for the values that job_state can have, see `man qstat`
+                if (scalar grep { m/job_state = C/ } <WAITREAD>) {
+                    print "Found 'job_state = C' in qstat output for job [$jobid].\n";
+                    $scheduler_thinks_job_is_alive = 0;
                 }
             }
             close(WAITREAD);
-            if ($jobstate eq 'C') {
-                unlink($qout) or warn "Could not remove $qout\n";
-                warn "Batch job '$jobid' was cancelled\n";
-                return 98;
-            }
         }
-        unlink($qout) or warn "Could not remove $qout\n";
-        $opts{waittries} += 12;
-        if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
-        if ($opts{verbose}) { print "Next pass waittries=$opts{waittries}\n"; }
+
+        unlink($qout) or warn "Failed to unlink [$qout] in job [$jobid]";
+        if (not $scheduler_thinks_job_is_alive and $scheduler_thought_job_was_alive) {
+            $opts{waittries} = 5;
+            print "The scheduler indicated job [$jobid] is done. We'll check for $shell.{ok,err} one last time.\n"
+        } else {
+            $opts{waittries} += 12;
+            if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
+            if ($opts{verbose}) { print "Next pass waittries=$opts{waittries}\n"; }
+        }
     }
 }
 

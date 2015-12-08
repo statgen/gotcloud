@@ -24,11 +24,11 @@ set -o pipefail
 #%COMMAND                           # Here is command to execute
 rc=$?
 if [ "$rc" != "0" ]; then
-  $eko "$sep\n#  ERROR rc=$rc\n$sep\n"
-  touch $errfile                    # This can be detected by the submitter to know success
+  $eko "$sep\n#  ERROR rc=$rc\n$sep\nerrfile is $errfile\ndate is $(date)\n$sep"
+  touch $errfile                    # This can be detected by the submitter to know failure
 else
   echo "#  SUCCESS rc=$rc"
-  touch $okfile                     # This can be detected by the submitter to know failure
+  touch $okfile                     # This can be detected by the submitter to know success
 fi
 
 #%LOGEND
