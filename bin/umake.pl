@@ -2785,7 +2785,10 @@ sub getTouch {
 
     if(! defined ($outputFile)) { $outputFile = $okBase; $outputFile =~ s/\.OK$//;}
 
-    return("if [ -e  $outputFile ]; then touch $okBase.OK; else exit 1; fi");
+    #return("if [ -e  $outputFile ]; then touch $okBase.OK; else exit 1; fi");
+    # Give NFS several chances to catch up
+    # Note: the return status of a for loop or conditional is the return status of the last command run.
+    return("for i in 1 2 3 4 5 6; do if [ -e $outputFile ]; then touch $okBase.OK; break; else sleep 10; false; fi; done || exit 17;");
 }
 
 
