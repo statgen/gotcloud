@@ -12,12 +12,12 @@ split20: $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK
 $(OUT_DIR)/split/chr20/subset.OK: $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK
 	mkdir --p $(OUT_DIR)/split/chr20
 	bash -c "set -e -o pipefail; zcat $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz | grep -E \"[[:space:]]PASS[[:space:]]|^#\" | $(GOTCLOUD_ROOT)/bin/bgzip -c > $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz"
-	if [ -e  $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz ]; then touch $(OUT_DIR)/split/chr20/subset.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz ]; then touch $(OUT_DIR)/split/chr20/subset.OK; break; else sleep 10; false; fi; done || exit 17;
 
 $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK: $(OUT_DIR)/split/chr20/subset.OK
 	mkdir --p $(OUT_DIR)/split/chr20
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.snpcall.Makefile.cluster,$(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist local 'perl $(GOTCLOUD_ROOT)/scripts/vcfSplit.pl --in $(OUT_DIR)/split/chr20/chr20.filtered.PASS.vcf.gz --out $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split --nunit 10000 --noverlap 1000 2> $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.err'
-	if [ -e  $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist ]; then touch $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist ]; then touch $(OUT_DIR)/split/chr20/chr20.filtered.PASS.split.vcflist.OK; break; else sleep 10; false; fi; done || exit 17;
 
 svm20: $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK
 
@@ -28,7 +28,7 @@ $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK: $(OUT_DIR)/vcfs/chr20/chr20.hard
 	perl $(GOTCLOUD_ROOT)/scripts/vcf-summary --vcf $(OUT_DIR)/vcfs/chr20/chr20.filtered.sites.vcf --ref $(GOTCLOUD_ROOT)/test/chr20Ref/human_g1k_v37_chr20.fa --dbsnp $(GOTCLOUD_ROOT)/test/chr20Ref/dbsnp135_chr20.vcf.gz --FNRvcf $(GOTCLOUD_ROOT)/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz --chr 20 --tabix $(GOTCLOUD_ROOT)/bin/tabix > $(OUT_DIR)/vcfs/chr20/chr20.filtered.sites.vcf.summary 2> $(OUT_DIR)/vcfs/chr20/chr20.filtered.sites.vcf.summary.log
 	$(GOTCLOUD_ROOT)/bin/bgzip -f $(OUT_DIR)/vcfs/chr20/chr20.filtered.sites.vcf
 	$(GOTCLOUD_ROOT)/bin/tabix -f -pvcf $(OUT_DIR)/vcfs/chr20/chr20.filtered.sites.vcf.gz
-	if [ -e  $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz ]; then touch $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz ]; then touch $(OUT_DIR)/vcfs/chr20/chr20.filtered.vcf.gz.OK; break; else sleep 10; false; fi; done || exit 17;
 
 
 pvcf20: $(OUT_DIR)/cpt/pvcfs/chr20/all.OK
@@ -39,7 +39,7 @@ $(OUT_DIR)/cpt/pvcfs/chr20/all.OK: $(OUT_DIR)/cpt/pvcfs/chr20/NA12272.mapped.ILL
 $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf.OK: $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.OK
 	cut -f 1-8 $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf > $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf
 	mkdir --p $(OUT_DIR)/pvcfs/chr20/20000001.25000000
-	if [ -e  $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf.OK; break; else sleep 10; false; fi; done || exit 17;
 
 $(OUT_DIR)/cpt/pvcfs/chr20/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.OK: $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf.OK
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.snpcall.Makefile.cluster,$(OUT_DIR)/cpt/pvcfs/chr20/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.OK local '$(GOTCLOUD_ROOT)/bin/vcfPileup -i $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.sites.vcf -v $(OUT_DIR)/pvcfs/chr20/20000001.25000000/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20.20000001.25000000.vcf.gz -b $(GOTCLOUD_ROOT)/test/umake/bams/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam > $(OUT_DIR)/pvcfs/chr20/20000001.25000000/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20.20000001.25000000.vcf.gz.log 2> $(OUT_DIR)/pvcfs/chr20/20000001.25000000/NA12272.mapped.ILLUMINA.bwa.CEU.low_coverage.20101123.chrom20.20000001.20300000.bam.20.20000001.25000000.vcf.gz.err'
@@ -309,11 +309,11 @@ $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz.OK: $(OUT_DIR)/vcfs/chr20/200000
 	bash -c "set -e -o pipefail; perl $(GOTCLOUD_ROOT)/scripts/vcfPaste.pl $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.sites.vcf $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf | $(GOTCLOUD_ROOT)/bin/bgzip -c > $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz"
 	$(GOTCLOUD_ROOT)/bin/tabix -f -pvcf $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz
 	perl $(GOTCLOUD_ROOT)/scripts/vcf-summary --vcf $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.sites.vcf --ref $(GOTCLOUD_ROOT)/test/chr20Ref/human_g1k_v37_chr20.fa --dbsnp $(GOTCLOUD_ROOT)/test/chr20Ref/dbsnp135_chr20.vcf.gz --FNRvcf $(GOTCLOUD_ROOT)/test/chr20Ref/hapmap_3.3.b37.sites.chr20.vcf.gz --chr 20 --tabix $(GOTCLOUD_ROOT)/bin/tabix > $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.sites.vcf.summary 2> $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.sites.vcf.summary.log
-	if [ -e  $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz ]; then touch $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz ]; then touch $(OUT_DIR)/vcfs/chr20/chr20.hardfiltered.vcf.gz.OK; break; else sleep 10; false; fi; done || exit 17;
 
 $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf.OK: $(OUT_DIR)/cpt/pvcfs/chr20/all.OK $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.OK
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.snpcall.Makefile.cluster,$(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf local '$(GOTCLOUD_ROOT)/bin/infoCollector --anchor $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf --prefix $(OUT_DIR)/pvcfs/chr20/20000001.25000000/ --suffix .20.20000001.25000000.vcf.gz --outvcf $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf --list $(GOTCLOUD_ROOT)/test/umake/umake_test.index --skipList 2 2> $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf.err'
-	if [ -e  $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.stats.vcf.OK; break; else sleep 10; false; fi; done || exit 17;
 
 
 vcf20: $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf.OK
@@ -321,12 +321,12 @@ vcf20: $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf.OK
 $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf.OK: $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.OK
 	perl $(GOTCLOUD_ROOT)/scripts/vcfCat.pl $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf > $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf
 	cut -f 1-8 $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf > $(OUT_DIR)/vcfs/chr20/chr20.merged.sites.vcf
-	if [ -e  $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/chr20.merged.vcf.OK; break; else sleep 10; false; fi; done || exit 17;
 
 $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.OK: $(OUT_DIR)/cpt/glfs/chr20/all.OK
 	mkdir --p $(OUT_DIR)/vcfs/chr20/20000001.25000000
 	$(GOTCLOUD_ROOT)/scripts/runcluster.pl -bashdir $(OUT_DIR)/jobfiles -log $(OUT_DIR)/umake_test.snpcall.Makefile.cluster,$(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf local '$(GOTCLOUD_ROOT)/bin/glfFlex --minMapQuality 0 --minDepth 1 --maxDepth 10000000 --uniformTsTv --smartFilter --ped $(OUT_DIR)/vcfs/chr20/20000001.25000000/glfIndex.ped -b $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf    > $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.log 2> $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.err'
-	if [ -e  $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.OK; else exit 1; fi
+	for i in 1 2 3 4 5 6; do if [ -e $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf ]; then touch $(OUT_DIR)/vcfs/chr20/20000001.25000000/chr20.20000001.25000000.vcf.OK; break; else sleep 10; false; fi; done || exit 17;
 
 glf20: $(OUT_DIR)/cpt/glfs/chr20/all.OK
 

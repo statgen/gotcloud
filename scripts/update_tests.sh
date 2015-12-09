@@ -79,6 +79,9 @@ rm -r aligntest
 cp -r $outdir/align/aligntest .
 
 rm aligntest/Makefiles/align{All,_Sample{1,2,3}}.Makefile.log
+for qemp_file in aligntest/bams/*.qemp; do
+    sort -o "$qemp_file" "$qemp_file"
+done
 
 
 # Copy bamQC results
@@ -92,7 +95,12 @@ cd QCFiles
 # Use ls instead of find to avoid "./" in $filename
 ls *.genoCheck.depth* *.genoCheck.self* *.qplot.stats | while read filename; do
     linkname=../../../align/expected/aligntest/QCFiles/$(echo $filename | sed s_SampleID_Sample_)
-    diff -I .recal.bam $filename $linkname # TODO do this after removing run-specific information
+    # TODO do this after removing run-specific information
+    if ! diff -I .recal.bam $filename $linkname > /dev/null; then
+        echo; echo In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam
+        echo So, we\'re giving up.
+        exit 86
+    fi
     rm $filename
     ln -s $linkname $filename
 done
@@ -106,10 +114,18 @@ cp -r $outdir/recabQC/recabQCtest/recab .
 cp $outdir/recabQC/recabQCtest/gotcloud.recabQC.Makefile .
 
 cd recab/
+for qemp_file in *.qemp; do
+    sort -o "$qemp_file" "$qemp_file"
+done
 ls SampleID*.recal.bam{,.OK,.bai,.bai.OK,.metrics,.qemp} | while read filename; do
     linkname=../../../align/expected/aligntest/bams/$(echo $filename | sed s_SampleID_Sample_)
     linkname=${linkname/.OK/.done}
-    echo $filename | grep -q 'bam\(.bai\)\?$' || diff -I .recal.bam $filename $linkname # TODO do this after removing run-specific information
+    # TODO do this after removing run-specific information
+    if ! (echo $filename | grep -q 'bam\(.bai\)\?$' || diff -I .recal.bam $filename $linkname > /dev/null ); then
+        echo; echo In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam
+        echo So, we\'re giving up.
+        exit 87
+    fi
     rm $filename
     ln -s $linkname $filename
 done
@@ -118,7 +134,12 @@ cd QCFiles/
 # TODO link *.qplot.{stats,R}
 ls *.genoCheck.depth* *.genoCheck.self* | while read filename; do
     linkname=../../../../align/expected/aligntest/QCFiles/$(echo $filename | sed s_SampleID_Sample_)
-    diff -I .recal.bam $filename $linkname # TODO do this after removing run-specific information
+    # TODO do this after removing run-specific information
+    if ! diff -I .recal.bam $filename $linkname > /dev/null; then
+        echo; echo In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam
+        echo So, we\'re giving up.
+        exit 88
+    fi
     rm $filename
     ln -s $linkname $filename
 done
