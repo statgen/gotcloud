@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 #  Lines beginning with #%keyword will be replaced by runcluster to create batch shell script
 
