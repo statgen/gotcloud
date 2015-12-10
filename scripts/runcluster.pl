@@ -361,27 +361,21 @@ sub waitforcommand {
             sleep($opts{waitinterval});
             if (-r "$shell.err") {
                 unlink("$shell.err");
-                if ($opts{verbose}) { print "Found $shell.err for job $jobid\n"; }
+                warn "$jobid " .(localtime). ": Found $shell.err\n";
                 return 1;
             }
             if (-r "$shell.ok")  {
                 unlink("$shell.ok");
-                if ($opts{verbose}) { print "Found $shell.ok for job $jobid\n"; }
+                warn "$jobid " .(localtime). ": Found $shell.ok\n";
                 return 0;
             }
         }
 
-        if (not $scheduler_thought_job_was_alive and
-            $iteration * $opts{waittries} * $opts{waitinterval} > 60*60*8)
-        {
-            warn "I've waited 8 hours for the job $jobid but the scheduler still doesn't see it";
-            return 67;
-        }
-
+        # If the job had quit already last time through the loop, we're done.
         if (not $scheduler_thinks_job_is_alive and $scheduler_thought_job_was_alive) {
             # The scheduler indicated that the job had exited already last loop.
             # Looks like the job/NFS missed its last chance at producing .ok/.err file.
-            warn "The schdeuler has lost sight of the job $jobid, but it didn't set $shell.ok or $shell.err\n";
+            warn "$jobid " .(localtime). ": The schdeuler has lost sight of the job, but it didn't set $shell.ok or $shell.err\n";
             return 99;
         }
 
@@ -390,8 +384,16 @@ sub waitforcommand {
         my $qout = File::Temp->new(TEMPLATE=>"gc-qout-$ENV{USER}-XXXXXXXX")->filename;
         my $query_rc = system($querycmd . " 2>&1 >$qout");
         $scheduler_thinks_job_is_alive = (0 == $query_rc) && (-s $qout);
-        if ($scheduler_thinks_job_is_alive) { $scheduler_thought_job_was_alive = 1; }
-
+        if ($query_rc != 0) {
+            warn "$jobid " .(localtime). ": qstat returned the status $query_rc for job [$jobid]\n";
+            if (-s $qout) {
+                warn "and qstat produced this output: [[[\n";
+                open(F, $qout) || warn "failed to open for job [$jobid]\n";
+                warn while (<F>);
+                close(F);
+                warn "]]]\n";
+            }
+        }
         # Some systems remove q jobid from the queue when it completes
         # some keep the entry around so we must parse the query output to
         # guess what really happened.
@@ -399,17 +401,27 @@ sub waitforcommand {
             if (open(WAITREAD, $qout)) {
                 # for the values that job_state can have, see `man qstat`
                 if (scalar grep { m/job_state = C/ } <WAITREAD>) {
-                    print "Found 'job_state = C' in qstat output for job [$jobid].\n";
+                    warn "$jobid " .(localtime). ": Found 'job_state = C' in qstat output for job [$jobid].\n";
                     $scheduler_thinks_job_is_alive = 0;
                 }
             }
             close(WAITREAD);
         }
+        unlink($qout) or warn "Failed to unlink [$qout] for job [$jobid]";
 
-        unlink($qout) or warn "Failed to unlink [$qout] in job [$jobid]";
+        if ($scheduler_thinks_job_is_alive) { $scheduler_thought_job_was_alive = 1; }
+
+        # We're not gonna wait all day for the job to start.
+        if (not $scheduler_thought_job_was_alive and
+            $iteration * $opts{waittries} * $opts{waitinterval} > 60*60*8)
+        {
+            warn "I've waited 8 hours for the job $jobid but the scheduler still hasn't seen it";
+            return 67;
+        }
+
         if (not $scheduler_thinks_job_is_alive and $scheduler_thought_job_was_alive) {
             $opts{waittries} = 5;
-            print "The scheduler indicated job [$jobid] is done. We'll check for $shell.{ok,err} one last time.\n"
+            warn "$jobid " .(localtime). ": The scheduler indicated job [$jobid] is done. We'll check for $shell.{ok,err} one last time.\n"
         } else {
             $opts{waittries} += 12;
             if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
