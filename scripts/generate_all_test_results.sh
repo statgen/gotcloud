@@ -128,4 +128,12 @@ if [[ $cleanup = true ]]; then
     fi
 fi
 
+if [[ $status = 0 ]]; then
+    echo
+    echo \'gotcloud test\' succeeded\!
+else
+    echo
+    echo \'gotcloud test\' failed with status $status.
+fi    
+
 exit $status
