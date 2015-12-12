@@ -420,8 +420,8 @@ sub waitforcommand {
         }
 
         if (not $scheduler_thinks_job_is_alive and $scheduler_thought_job_was_alive) {
-            $opts{waittries} = 5;
-            warn "$jobid " .(localtime). ": The scheduler indicated job [$jobid] is done. We'll check for $shell.{ok,err} one last time.\n"
+            $opts{waittries} = $opts{maxwaittries};
+            warn "$jobid " .(localtime). ": The scheduler indicated job [$jobid] is done. We'll check for $shell.{ok,err} $opts{waittries} more times.\n"
         } else {
             $opts{waittries} += 12;
             if ($opts{waittries} > $opts{maxwaittries}) { $opts{waittries} = $opts{maxwaittries}; }
