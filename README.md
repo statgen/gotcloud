@@ -17,8 +17,11 @@ To test GotCloud, run:
 
     gotcloud test
 
-Results are self-checked and if errors should occur, the output will say so.
-To preserve output files for inspection, run:
+Results are self-checked.  If errors occur, the output will say so.  If all tests complete successfully, the output will be deleted.
+
+The output directory will be listed near the top of the output.
+
+To preserve the output files for inspection even when gotcloud runs without errors, run:
 
     gotcloud test --leave-a-mess
 
