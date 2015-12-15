@@ -3,30 +3,30 @@ set -euo pipefail # Safety first!
 
 # Find relevant directories
 # =========================
-gotcloud_root=$(dirname $(dirname $(readlink -e $0)))
-gotcloud_root=${gotcloud_root%/} # Remove trailing slash
-echo gotcloud_root: $gotcloud_root/
-samtools=$gotcloud_root/bin/samtools
-tabix=$gotcloud_root/bin/tabix
-bgzip=$gotcloud_root/bin/bgzip
+gotcloud_root="$(dirname "$(dirname "$(readlink -e "$0")")")"
+gotcloud_root="${gotcloud_root%/}" # Remove trailing slash
+echo "gotcloud_root: $gotcloud_root/"
+samtools="$gotcloud_root/bin/samtools"
+tabix="$gotcloud_root/bin/tabix"
+bgzip="$gotcloud_root/bin/bgzip"
 
 set +u
 [[ -z "$1" ]] && echo You must supply a directory of test results, gotten from \`gotcloud test\`. && exit 1
 set -u
 
-outdir=$1
-outdir=${outdir%/}
-echo outdir: $outdir/
+outdir="$1"
+outdir="${outdir%/}"
+echo "outdir: $outdir/"
 
 
 # Copy umake results
 # ============
-cd $gotcloud_root/test/umake/expected/
+cd "$gotcloud_root/test/umake/expected/"
 
 # Copy umaketest
 rm -r beagletest thundertest split4test beagle4test umaketest
 mkdir beagletest thundertest split4test beagle4test
-cp -r $outdir/umaketest/umaketest ./
+cp -r "$outdir/umaketest/umaketest" ./
 
 # Move some directories from umaketest to their proper directories
 mv umaketest/{beagle,umake_test.beagle.{conf,Makefile}} beagletest/
@@ -66,17 +66,17 @@ done
 
 # Copy indel results
 # ==================
-cd $gotcloud_root/test/indel
+cd "$gotcloud_root/test/indel"
 rm -r expected
 mkdir expected
-cp -r $outdir/indel/indeltest/{indel,gotcloud.indel.Makefile} expected/
+cp -r "$outdir"/indel/indeltest/{indel,gotcloud.indel.Makefile} expected/
 
 
 # Copy align results
 # ==================
-cd $gotcloud_root/test/align/expected/
+cd "$gotcloud_root/test/align/expected/"
 rm -r aligntest
-cp -r $outdir/align/aligntest .
+cp -r "$outdir/align/aligntest" .
 
 rm aligntest/Makefiles/align{All,_Sample{1,2,3}}.Makefile.log
 for qemp_file in aligntest/bams/*.qemp; do
@@ -86,104 +86,104 @@ done
 
 # Copy bamQC results
 # ==================
-cd $gotcloud_root/test/bamQC/expected/
+cd "$gotcloud_root/test/bamQC/expected/"
 rm -r QCFiles
-cp -r $outdir/bamQC/bamQCtest/QCFiles .
-cp $outdir/bamQC/bamQCtest/gotcloud.bamQC.Makefile .
+cp -r "$outdir/bamQC/bamQCtest/QCFiles" .
+cp "$outdir"/bamQC/bamQCtest/gotcloud.bamQC.Makefile .
 
 cd QCFiles
 # Use ls instead of find to avoid "./" in $filename
-ls *.genoCheck.depth* *.genoCheck.self* *.qplot.stats | while read filename; do
-    linkname=../../../align/expected/aligntest/QCFiles/$(echo $filename | sed s_SampleID_Sample_)
+for filename in *.genoCheck.depth* *.genoCheck.self* *.qplot.stats; do
+    linkname="../../../align/expected/aligntest/QCFiles/${filename//SampleID/Sample}"
     # TODO do this after removing run-specific information
-    if ! diff -I .recal.bam $filename $linkname > /dev/null; then
-        echo; echo In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam
-        echo So, we\'re giving up.
+    if ! diff -I .recal.bam "$filename" "$linkname" > /dev/null; then
+        echo; echo "In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam"
+        echo "So, we're giving up."
         exit 86
     fi
-    rm $filename
-    ln -s $linkname $filename
+    rm "$filename"
+    ln -s "$linkname" "$filename"
 done
 
 
 # Copy recabQC results
 # ====================
-cd $gotcloud_root/test/recabQC/expected/
+cd "$gotcloud_root/test/recabQC/expected/"
 rm -r recab
-cp -r $outdir/recabQC/recabQCtest/recab .
-cp $outdir/recabQC/recabQCtest/gotcloud.recabQC.Makefile .
+cp -r "$outdir/recabQC/recabQCtest/recab" .
+cp "$outdir/recabQC/recabQCtest/gotcloud.recabQC.Makefile" .
 
 cd recab/
 for qemp_file in *.qemp; do
     sort -o "$qemp_file" "$qemp_file"
 done
-ls SampleID*.recal.bam{,.OK,.bai,.bai.OK,.metrics,.qemp} | while read filename; do
-    linkname=../../../align/expected/aligntest/bams/$(echo $filename | sed s_SampleID_Sample_)
-    linkname=${linkname/.OK/.done}
+for filename in SampleID*.recal.bam{,.OK,.bai,.bai.OK,.metrics,.qemp}; do
+    linkname="../../../align/expected/aligntest/bams/${filename//SampleID/Sample}"
+    linkname="${linkname/.OK/.done}"
     # TODO do this after removing run-specific information
-    if ! (echo $filename | grep -q 'bam\(.bai\)\?$' || diff -I .recal.bam $filename $linkname > /dev/null ); then
-        echo; echo In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam
-        echo So, we\'re giving up.
+    if ! (echo "$filename" | grep -q 'bam\(.bai\)\?$' || diff -I .recal.bam "$filename" "$linkname" > /dev/null ); then
+        echo; echo "In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam"
+        echo "So, we're giving up."
         exit 87
     fi
-    rm $filename
-    ln -s $linkname $filename
+    rm "$filename"
+    ln -s "$linkname" "$filename"
 done
 
 cd QCFiles/
 # TODO link *.qplot.{stats,R}
-ls *.genoCheck.depth* *.genoCheck.self* | while read filename; do
-    linkname=../../../../align/expected/aligntest/QCFiles/$(echo $filename | sed s_SampleID_Sample_)
+for filename in *.genoCheck.depth* *.genoCheck.self*; do
+    linkname="../../../../align/expected/aligntest/QCFiles/${filename//SampleID/Sample}"
     # TODO do this after removing run-specific information
-    if ! diff -I .recal.bam $filename $linkname > /dev/null; then
-        echo; echo In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam
-        echo So, we\'re giving up.
+    if ! diff -I .recal.bam "$filename" "$linkname" > /dev/null; then
+        echo; echo "In $PWD, $filename and $linkname are different, even ignoring lines with .recal.bam"
+        echo "So, we're giving up."
         exit 88
     fi
-    rm $filename
-    ln -s $linkname $filename
+    rm "$filename"
+    ln -s "$linkname" "$filename"
 done
 
 
 # Remove run-specific information
 # ===============================
-cd $gotcloud_root/test
-sponge_write() { tmp=$(mktemp); cat > $tmp; mv $tmp $1; }
+cd "$gotcloud_root/test"
+sponge_write() { tmp="$(mktemp)"; cat > "$tmp"; mv "$tmp" "$1"; }
 
-find . -type f | while read filename; do
+find . -type f | while read -r filename; do
     sed -i -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+\(/umaketest/umaketest\|/umaketest\|/indel/indeltest\|/indel\|/align/aligntest\|/align\)\?#<outdir_path>#g' \
-        -e "s#${gotcloud_root}#<gotcloud_root>#g" $filename
+        -e "s#${gotcloud_root}#<gotcloud_root>#g" "$filename"
 done
-find umake/expected/umaketest/ bamQC/expected/ recabQC/expected/ -type f | while read filename; do
+find umake/expected/umaketest/ bamQC/expected/ recabQC/expected/ -type f | while read -r filename; do
     sed -i -e 's#^Analysis \([a-z]\+\) on [a-zA-Z ]\{7\} [0-9: ]\{16\}$#Analysis \1 on <date>#g' \
-        -e 's_^##filedate=[0-9]\{8\}$_##filedate=<date>_' $filename
+        -e 's_^##filedate=[0-9]\{8\}$_##filedate=<date>_' "$filename"
 done
-find umake/expected/beagle{4,}test/ indel/expected/ -type f | while read filename; do
+find umake/expected/beagle{4,}test/ indel/expected/ -type f | while read -r filename; do
     sed -i -e 's_^\(.*[Tt]ime.*:\s\+\).\{5,30\}$_\1<time>_' \
-        -e 's_java -Xmx[0-9]\+m _java -Xmx<number>m _' $filename
+        -e 's_java -Xmx[0-9]\+m _java -Xmx<number>m _' "$filename"
 done
 # Note: indel/expected/indel/mergedBams/*bam and indel/expected/indel/final/*gz will break if re-encoded
-find umake/expected/ indel/expected/ -name '*.gz' -type f | while read filename; do # avoid symlinks
-    zcat $filename |
+find umake/expected/ indel/expected/ -name '*.gz' -type f | while read -r filename; do # avoid symlinks
+    zcat "$filename" |
     sed -e 's_^##filedate=[0-9]\{8\}$_##filedate=<date>_' \
         -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+\(/umaketest\|/indel/indeltest\|/indel\)#<outdir_path>#g' |
-    $bgzip | sponge_write $filename
+    "$bgzip" | sponge_write "$filename"
     # Re-index where necessary
     if [[ -e "$filename.tbi" ]]; then
-        rm $filename.tbi
-        $tabix $filename
+        rm "$filename.tbi"
+        "$tabix" "$filename"
     fi
 done
-find align/expected/ indel/expected/indel/{aux,final,indelvcf} recabQC/expected/ -name '*.bam' -type f | while read filename; do
-    tmp=$(mktemp)
-    $samtools view -h $filename |
+find align/expected/ indel/expected/indel/{aux,final,indelvcf} recabQC/expected/ -name '*.bam' -type f | while read -r filename; do
+    tmp="$(mktemp)"
+    "$samtools" view -h "$filename" |
     sed -e 's#/tmp/gotcloud-tests-[-a-zA-Z0-9]\+\(/umaketest/umaketest\|/umaketest\|/indel/indeltest\|/indel\|/align/aligntest\|/align\)\?#<outdir_path>#g' \
         -e "s#${gotcloud_root}#<gotcloud_root>#g" |
-    $samtools view -b - | sponge_write $filename
+    "$samtools" view -b - | sponge_write "$filename"
     # Re-index
     if [[ -e "$filename.bai" ]]; then
-        rm $filename.bai
-        $samtools index $filename
+        rm "$filename.bai"
+        "$samtools" index "$filename"
     fi
 done
 echo FINISHED
