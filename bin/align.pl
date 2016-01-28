@@ -551,12 +551,14 @@ foreach my $key (keys %deprecatedWarn)
 if (getConf('MAP_TYPE') eq 'BWA')
 {
     # Validate BWA_THREADS & BWA_QUAL.
-    my $option = "-[oeidlkmMOERqB] +[0-9]+|-[LNIY]|-n +[0-9]*.?[0-9]+";
-    if(getConf("BWA_QUAL") !~ /^((${option}) +)*-q +[0-9]+( +(${option}))*$/)
+#    my $option = "-[oeidlkmMOERqB] +[0-9]+|-[LNIY]|-n +[0-9]*.?[0-9]+";
+#    if(getConf("BWA_QUAL") !~ /^((${option}) +)*-q +[0-9]+( +(${option}))*$/)
+    if(getConf("BWA_QUAL") !~ /^(.* )*-q +[0-9]+( .*)*$/)
     {
-        die "ERROR: BWA_QUAL is invalid.  Be sure you specified '-q #threads', ".getConf("BWA_QUAL")."\n";
+        die "ERROR: BWA_QUAL is invalid.  Be sure you specified '-q trimQual', ".getConf("BWA_QUAL")."\n";
     }
-    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+#    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+    if(getConf("BWA_THREADS") !~ /^(.* )*-t +[0-9]+( .*)*$/)
     {
         die "ERROR: BWA_THREADS is invalid.  Be sure you specified '-t #threads', ".getConf("BWA_THREADS")."\n";
     }
@@ -564,8 +566,7 @@ if (getConf('MAP_TYPE') eq 'BWA')
 elsif(getConf('MAP_TYPE') eq 'BWA_MEM')
 {
     # Validate BWA_THREADS
-    my $option = "-[kwdcABOELUvT] +[0-9]+|-[SPpaC]|-r +[0-9]*.?[0-9]+";
-    if(getConf("BWA_THREADS") !~ /^((${option}) +)*-t +[0-9]+( +(${option}))*$/)
+    if(getConf("BWA_THREADS") !~ /^(.* )*-t +[0-9]+( .*)*$/)
     {
         die "ERROR: BWA_THREADS is invalid.  Be sure you specified '-t #threads', ".getConf("BWA_THREADS")."\n";
     }
@@ -1448,8 +1449,14 @@ sub mapBwa {
         }
         $allSteps .= "\n";
         $allSteps .= "\tmkdir -p \$(\@D)\n";
+        my $bwaMemOpts = " " . getConf("BWA_MEM_OPTS");
+        if($bwaMemOpts eq ' ')
+        {
+            $bwaMemOpts = "";
+        }
         # BWA_MEM command.
         my $bwacmd = "(" . getConf('BWA_EXE') . " mem " . getConf("BWA_THREADS") .
+                     "$bwaMemOpts" .
                      " -M $rgCommand " . getConf('REF') . " $absFastq1 $absFastq2 | " .
                      getConf('SAMTOOLS_EXE') . " view -uhS - | " .
                      getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
