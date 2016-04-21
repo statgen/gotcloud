@@ -1940,7 +1940,7 @@ foreach my $chr (@chrs) {
                 my $pvcf = "$remotePrefix$pvcfParent/$bamFn.$chr.$unitStarts[$j].$unitEnds[$j].vcf.gz";
                 
                 # construct the appropriate command
-                my $cmd;
+                my $cmd = "";
                 my $vcfInBam = $bam;
                 # check input file location
                 my $srrHandle;
@@ -1949,6 +1949,8 @@ foreach my $chr (@chrs) {
                 {
                     ($srrHandle = $bam) =~ s/csra:\/\///;
                     $samtoolsType = "SAMTOOLS_FOR_STREAM";
+                    ## add robust execution for the initial streaming with sam-dump or samtools-libcurl
+                    $cmd .= getConf("ROBUST_EXECUTE")." ";
                 } elsif ($sampleBamLocation eq "local")
                 {
                     $srrHandle = $bam;
@@ -1961,13 +1963,13 @@ foreach my $chr (@chrs) {
                 if($sampleBamType eq "cram")
                 {
                     # Cram has to be converted to bam and streamed to vcfPileup
-                    $cmd = "REF_PATH=".getConf("MD5_DIR")." ".getConf($samtoolsType)." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                    $cmd .= "REF_PATH=".getConf("MD5_DIR")." ".getConf($samtoolsType)." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                     $vcfInBam = "-.ubam";
                 }
                 # stream BAM through samtools if they exist remotely
                 elsif($sampleBamType eq "bam")
                 {
-                    $cmd = getConf($samtoolsType)." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
+                    $cmd .= getConf($samtoolsType)." view -uh $bam $chr:$unitStarts[$j]-$unitEnds[$j] | ";
                     $vcfInBam = "-.ubam";
                 }
                 # stream remote csra through sam-dump
@@ -1979,10 +1981,10 @@ foreach my $chr (@chrs) {
                       downloadSamdump();
                     }
                     ## reference to SRA: local is a file path, remote is a SRR number
-                    $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $chr:$unitStarts[$j]-$unitEnds[$j] $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view -bS - | ";
+                    $cmd .= getConf("SAM_DUMP_BIN")." --header --aligned-region $chr:$unitStarts[$j]-$unitEnds[$j] $srrHandle | ".getConf("SAMTOOLS_FOR_OTHERS")." view -bS - | ";
                     $vcfInBam = "-.ubam";
                 } else {
-                    die "Cannot determing file type of input file:\n\t $bam";
+                    die "Cannot determine file type of input file:\n\t $bam";
                 }
 
                 
@@ -2273,7 +2275,7 @@ foreach my $chr (@chrs) {
                             $glfCmdBody .= " && ";
                         }
                         $glfCmdBody .= "mkdir --p $smGlfPartitionDir; ";
-                        $glfCmdBody .= runPileup($bams[0], $smGlf, $region, $loci, $sampleBamTypes[0], $sampleBamLocations[0])."; ";
+                        $glfCmdBody .= runPileup($bams[0], $smGlf, $region, $loci, $sampleBamTypes[0], $sampleBamLocations[0]);
                     }
                 }
                 else
@@ -2751,12 +2753,15 @@ sub runPileup
     my $cmd = "";
     my $srrHandle; # $srrHandle: pass file path to sam-dump if local, otherwise pass SRR number
     my $samtoolsType; # use samtools-libcurl for streaming remote BAM/CRAM files
+    
     if ($bamLocation eq "local") {
         $srrHandle = $bamIn;
         $samtoolsType = "SAMTOOLS_FOR_OTHERS";
     } elsif ($bamLocation eq "remote") {
         ($srrHandle = $bamIn) =~ s/csra:\/\///;
         $samtoolsType = "SAMTOOLS_FOR_STREAM";
+        ## add robust execution for the streaming portion (samtools-libcurl or sam-dump)
+        $cmd = getConf("ROBUST_EXECUTE")." ";
     } else {
         die "Cannot determine the location type of input file:\n\t $bamIn"
     }
@@ -2765,7 +2770,7 @@ sub runPileup
     if($bamType eq "cram")
     {
         # prefix the command with the location of the md5 directory and use samtools with bam file path
-        $cmd = "REF_PATH=".getConf("MD5_DIR")." ";
+        $cmd = "REF_PATH=".getConf("MD5_DIR")." ".$cmd;
     } elsif ($bamType eq "csra")
     {
         # check if SAM_DUMP_BIN exists and is executable: download if not
@@ -2774,7 +2779,7 @@ sub runPileup
             downloadSamdump();
         }
         # prefix the command with sam-dump, and using streaming input for samtools
-        $cmd = getConf("SAM_DUMP_BIN")." --primary --header --aligned-region $region $srrHandle | ";
+        $cmd .= getConf("SAM_DUMP_BIN")." --header --aligned-region $region $srrHandle | ";
         $bamIn = "-";
         $region = "";
     } elsif ($bamType eq "bam") {
