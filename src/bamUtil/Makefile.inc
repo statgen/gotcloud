@@ -4,13 +4,6 @@
 #Update version as necessary
 VERSION=1.0.14
 
-CXX11_AVAIL ?= 1
-
-CPP0X=$(shell if [ X$(CCVERSION) \> X4.3.0 ] ; then echo " -std=c++0x" ; fi)
-
-ifeq ($(CXX11_AVAIL), 0)
-CPP0X=
-endif
 
 CURRENT_PATH := $(dir $(lastword $(MAKEFILE_LIST)))
 LIB_PATH_GENERAL ?=../libStatGen
@@ -21,7 +14,10 @@ ACTUAL_PATH := $(if $(filter-out /%,$(LIB_PATH_BAM_UTIL)), \
         $(addprefix $(CURRENT_PATH), $(LIB_PATH_BAM_UTIL)), \
         $(LIB_PATH_BAM_UTIL))
 INCLUDE_MAKE := $(ACTUAL_PATH)/Makefiles/$(PARENT_MAKE)
-include $(INCLUDE_MAKE)
+
+ifneq ($(MAKECMDGOALS),cloneLib)
+-include $(INCLUDE_MAKE)
+endif
 
 .phony: cloneLib
 
