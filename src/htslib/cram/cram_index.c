@@ -268,7 +268,7 @@ int cram_index_load(cram_fd *fd, const char *fn, const char *fn_idx) {
 	    idx_stack[(idx_stack_ptr = 0)] = idx;
 	}
 
-	while (!(e.start >= idx->start && e.end <= idx->end)) {
+	while (!(e.start >= idx->start && e.end <= idx->end) || idx->end == 0) {
 	    idx = idx_stack[--idx_stack_ptr];
 	}
 
@@ -348,11 +348,16 @@ cram_index *cram_index_query(cram_fd *fd, int refid, int pos,
     if (refid+1 < 0 || refid+1 >= fd->index_sz)
 	return NULL;
 
-    i = 0, j = fd->index[refid+1].nslice-1;
-
     if (!from)
 	from = &fd->index[refid+1];
 
+    // Ref with nothing aligned against it.
+    if (!from->e)
+	return NULL;
+
+    // This sequence is covered by the index, so binary search to find
+    // the optimal starting block.
+    i = 0, j = fd->index[refid+1].nslice-1;
     for (k = j/2; k != i; k = (j-i)/2 + i) {
 	if (from->e[k].refid > refid) {
 	    j = k;
@@ -375,7 +380,7 @@ cram_index *cram_index_query(cram_fd *fd, int refid, int pos,
 	}
     }
     // i==j or i==j-1. Check if j is better.
-    if (from->e[j].start < pos && from->e[j].refid == refid)
+    if (j >= 0 && from->e[j].start < pos && from->e[j].refid == refid)
 	i = j;
 
     /* The above found *a* bin overlapping, but not necessarily the first */
@@ -405,7 +410,8 @@ cram_index *cram_index_query(cram_fd *fd, int refid, int pos,
  * whole containers when they don't overlap the specified cram_range.
  *
  * Returns 0 on success
- *        -1 on failure
+ *        -1 on general failure
+ *        -2 on no-data (empty chromosome)
  */
 int cram_seek_to_refpos(cram_fd *fd, cram_range *r) {
     cram_index *e;
@@ -416,8 +422,8 @@ int cram_seek_to_refpos(cram_fd *fd, cram_range *r) {
 	    if (0 != cram_seek(fd, e->offset - fd->first_container, SEEK_CUR))
 		return -1;
     } else {
-	fprintf(stderr, "Unknown reference ID. Missing from index?\n");
-	return -1;
+	// Absent from index, but this most likely means it simply has no data.
+	return -2;
     }
 
     if (fd->ctr) {
@@ -518,13 +524,13 @@ int cram_index_build(cram_fd *fd, const char *fn_base, const char *fn_idx) {
 
         if (fd->err) {
             perror("Cram container read");
-            return 1;
+            return -1;
         }
 
         hpos = htell(fd->fp);
 
         if (!(c->comp_hdr_block = cram_read_block(fd)))
-            return 1;
+            return -1;
         assert(c->comp_hdr_block->content_type == COMPRESSION_HEADER);
 
         c->comp_hdr = cram_decode_compression_header(fd, c->comp_hdr_block);
@@ -572,5 +578,5 @@ int cram_index_build(cram_fd *fd, const char *fn_base, const char *fn_idx) {
     }
 	
 
-    return zfclose(fp);
+    return (zfclose(fp) >= 0)? 0 : -1;
 }

@@ -101,6 +101,9 @@ cram_block *cram_encode_compression_header(cram_fd *fd, cram_container *c,
 	}
     }
 
+    if (h->preservation_map)
+	kh_destroy(map, h->preservation_map);
+
     /* Create in-memory preservation map */
     /* FIXME: should create this when we create the container */
     {
@@ -139,7 +142,7 @@ cram_block *cram_encode_compression_header(cram_fd *fd, cram_container *c,
 
 	    k = kh_put(map, h->preservation_map, "AP", &r);
 	    if (-1 == r) return NULL;
-	    kh_val(h->preservation_map, k).i = c->pos_sorted;
+	    kh_val(h->preservation_map, k).i = h->AP_delta;
 
 	    if (fd->no_ref || fd->embed_ref) {
 		// Reference Required == No
@@ -732,7 +735,7 @@ static int cram_encode_slice_read(cram_fd *fd,
     i32 = fd->cram_flag_swap[cr->flags & 0xfff];
     r |= h->codecs[DS_BF]->encode(s, h->codecs[DS_BF], (char *)&i32, 1);
 
-    i32 = cr->cram_flags;
+    i32 = cr->cram_flags & CRAM_FLAG_MASK;
     r |= h->codecs[DS_CF]->encode(s, h->codecs[DS_CF], (char *)&i32, 1);
 
     if (CRAM_MAJOR_VERS(fd->version) != 1 && s->hdr->ref_seq_id == -2)
@@ -1594,6 +1597,7 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
 	
 	h->mapped_qs_included = 0;   // fixme
 	h->unmapped_qs_included = 0; // fixme
+	h->AP_delta = c->pos_sorted;
 	// h->...  fixme
 	memcpy(h->substitution_matrix, CRAM_SUBST_MATRIX, 20);
 
@@ -2492,7 +2496,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
     if (cr->len <= 0 && CRAM_MAJOR_VERS(fd->version) >= 3)
 	cr->cram_flags |= CRAM_FLAG_NO_SEQ;
-    //cram_stats_add(c->stats[DS_CF], cr->cram_flags);
+    //cram_stats_add(c->stats[DS_CF], cr->cram_flags & CRAM_FLAG_MASK);
 
     c->num_bases   += cr->len;
     cr->apos        = bam_pos(b)+1;
@@ -2584,7 +2588,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
     /* Copy and parse */
     if (!(cr->flags & BAM_FUNMAP)) {
-	int32_t *cig_to, *cig_from;
+	uint32_t *cig_to, *cig_from;
 	int apos = cr->apos-1, spos = 0;
 
 	cr->cigar       = s->ncigar;
@@ -2596,14 +2600,14 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 		return -1;
 	}
 
-	cig_to = (int32_t *)s->cigar;
-	cig_from = (int32_t *)bam_cigar(b);
+	cig_to = (uint32_t *)s->cigar;
+	cig_from = (uint32_t *)bam_cigar(b);
 
 	cr->feature = 0;
 	cr->nfeature = 0;
 	for (i = 0; i < cr->ncigar; i++) {
 	    enum cigar_op cig_op = cig_from[i] & BAM_CIGAR_MASK;
-	    int cig_len = cig_from[i] >> BAM_CIGAR_SHIFT;
+	    uint32_t cig_len = cig_from[i] >> BAM_CIGAR_SHIFT;
 	    cig_to[i] = cig_from[i];
 
 	    /* Can also generate events from here for CRAM diffs */
@@ -2755,7 +2759,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	    return -1;
 	}
 	fake_qual = spos;
-	cr->aend = MIN(apos, c->ref_end);
+	cr->aend = fd->no_ref ? apos : MIN(apos, c->ref_end);
 	cram_stats_add(c->stats[DS_FN], cr->nfeature);
     } else {
 	// Unmapped
@@ -2856,6 +2860,9 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
 
 	    // p vs this: tlen, matepos, flags
+	    if (p->ref_id != cr->ref_id)
+		goto detached;
+
 	    if (p->tlen != -sign*(aright-aleft+1))
 		goto detached;
 
@@ -2891,10 +2898,12 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	    	((p->flags & BAM_FMREVERSE) == BAM_FMREVERSE) * CRAM_M_REVERSE;
 
 	    // Decrement statistics aggregated earlier
-	    cram_stats_del(c->stats[DS_NP], p->mate_pos);
-	    cram_stats_del(c->stats[DS_MF], p->mate_flags);
-	    cram_stats_del(c->stats[DS_TS], p->tlen);
-	    cram_stats_del(c->stats[DS_NS], p->mate_ref_id);
+	    if (p->cram_flags & CRAM_FLAG_STATS_ADDED) {
+		cram_stats_del(c->stats[DS_NP], p->mate_pos);
+		cram_stats_del(c->stats[DS_MF], p->mate_flags);
+		cram_stats_del(c->stats[DS_TS], p->tlen);
+		cram_stats_del(c->stats[DS_NS], p->mate_ref_id);
+	    }
 
 	    /* Similarly we could correct the p-> values too, but these will no
 	     * longer have any code that refers back to them as the new 'p'
@@ -2908,13 +2917,17 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
 	    // Clear detached from cr flags
 	    cr->cram_flags &= ~CRAM_FLAG_DETACHED;
-	    cram_stats_add(c->stats[DS_CF], cr->cram_flags);
+	    cram_stats_add(c->stats[DS_CF], cr->cram_flags & CRAM_FLAG_MASK);
 
 	    // Clear detached from p flags and set downstream
-	    cram_stats_del(c->stats[DS_CF], p->cram_flags);
+	    if (p->cram_flags & CRAM_FLAG_STATS_ADDED) {
+		cram_stats_del(c->stats[DS_CF], p->cram_flags & CRAM_FLAG_MASK);
+		p->cram_flags &= ~CRAM_FLAG_STATS_ADDED;
+	    }
+
 	    p->cram_flags  &= ~CRAM_FLAG_DETACHED;
 	    p->cram_flags  |=  CRAM_FLAG_MATE_DOWNSTREAM;
-	    cram_stats_add(c->stats[DS_CF], p->cram_flags);
+	    cram_stats_add(c->stats[DS_CF], p->cram_flags & CRAM_FLAG_MASK);
 
 	    p->mate_line = rnum - (kh_val(s->pair[sec], k) + 1);
 	    cram_stats_add(c->stats[DS_NF], p->mate_line);
@@ -2940,8 +2953,10 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	    cram_stats_add(c->stats[DS_TS], cr->tlen);
 
 	    cr->cram_flags |= CRAM_FLAG_DETACHED;
-	    cram_stats_add(c->stats[DS_CF], cr->cram_flags);
+	    cram_stats_add(c->stats[DS_CF], cr->cram_flags & CRAM_FLAG_MASK);
 	    cram_stats_add(c->stats[DS_NS], bam_mate_ref(b));
+
+	    cr->cram_flags |= CRAM_FLAG_STATS_ADDED;
 	}
     }
 
@@ -3049,7 +3064,6 @@ int cram_put_bam_seq(cram_fd *fd, bam_seq_t *b) {
 		if (!c->refs_used)
 		    return -1;
 	    } else if (c->refs_used && c->refs_used[bam_ref(b)]) {
-		fprintf(stderr, "Unsorted mode enabled\n");
 		pthread_mutex_lock(&fd->ref_lock);
 		fd->unsorted = 1;
 		pthread_mutex_unlock(&fd->ref_lock);
