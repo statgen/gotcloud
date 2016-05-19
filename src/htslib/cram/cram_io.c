@@ -63,6 +63,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/stat.h>
 #include <math.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "cram/cram.h"
 #include "cram/os.h"
@@ -1249,6 +1250,15 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
     size_t comp_size = 0;
     int strat;
 
+    if (b->method != RAW) {
+        // Maybe already compressed if s->block[0] was compressed and
+        // we have e.g. s->block[DS_BA] set to s->block[0] due to only
+        // one base type present and hence using E_HUFFMAN on block 0.
+        // A second explicit attempt to compress the same block then
+        // occurs.
+        return 0;
+    }
+
     if (method == -1) {
 	method = 1<<GZIP;
 	if (fd->use_bz2)
@@ -1747,14 +1757,17 @@ static refs_t *refs_create(void) {
  * Returns a BGZF handle on success;
  *         NULL on failure.
  */
-static BGZF *bgzf_open_ref(char *fn, char *mode) {
+static BGZF *bgzf_open_ref(char *fn, char *mode, int is_md5) {
     BGZF *fp;
-    char fai_file[PATH_MAX];
 
-    snprintf(fai_file, PATH_MAX, "%s.fai", fn);
-    if (access(fai_file, R_OK) != 0)
-	if (fai_build(fn) != 0)
-	    return NULL;
+    if (!is_md5) {
+	char fai_file[PATH_MAX];
+
+	snprintf(fai_file, PATH_MAX, "%s.fai", fn);
+	if (access(fai_file, R_OK) != 0)
+	    if (fai_build(fn) != 0)
+		return NULL;
+    }
 
     if (!(fp = bgzf_open(fn, mode))) {
 	perror(fn);
@@ -1812,7 +1825,7 @@ static refs_t *refs_load_fai(refs_t *r_orig, char *fn, int is_err) {
     if (fn_l > 4 && strcmp(&fn[fn_l-4], ".fai") == 0)
 	r->fn[fn_l-4] = 0;
 
-    if (!(r->fp = bgzf_open_ref(r->fn, "r")))
+    if (!(r->fp = bgzf_open_ref(r->fn, "r", 0)))
 	goto err;
 
     /* Parse .fai file and load meta-data */
@@ -1869,6 +1882,7 @@ static refs_t *refs_load_fai(refs_t *r_orig, char *fn, int is_err) {
 	e->count = 0;
 	e->seq = NULL;
 	e->mf = NULL;
+	e->is_md5 = 0;
 
 	k = kh_put(refs, r->h_meta, e->name, &n);
 	if (-1 == n)  {
@@ -2162,6 +2176,19 @@ static const char *get_cache_basedir(const char **extra) {
 }
 
 /*
+ * Return an integer representation of pthread_self().
+ */
+static unsigned get_int_threadid() {
+    pthread_t pt = pthread_self();
+    unsigned char *s = (unsigned char *) &pt;
+    size_t i;
+    unsigned h = 0;
+    for (i = 0; i < sizeof(pthread_t); i++)
+	h = (h << 5) - h + s[i];
+    return h;
+}
+
+/*
  * Queries the M5 string from the header and attempts to populate the
  * reference from this using the REF_PATH environment.
  *
@@ -2172,12 +2199,16 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
     char *ref_path = getenv("REF_PATH");
     SAM_hdr_type *ty;
     SAM_hdr_tag *tag;
-    char path[PATH_MAX], path_tmp[PATH_MAX], cache[PATH_MAX];
+    char path[PATH_MAX], path_tmp[PATH_MAX];
+    char cache[PATH_MAX], cache_root[PATH_MAX];
     char *local_cache = getenv("REF_CACHE");
     mFILE *mf;
+    int local_path = 0;
 
     if (fd->verbose)
 	fprintf(stderr, "cram_populate_ref on fd %p, id %d\n", fd, id);
+
+    cache_root[0] = '\0';
 
     if (!ref_path || *ref_path == '\0') {
 	/*
@@ -2188,6 +2219,7 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	if (!local_cache || *local_cache == '\0') {
 	    const char *extra;
 	    const char *base = get_cache_basedir(&extra);
+	    snprintf(cache_root, PATH_MAX, "%s%s/hts-ref", base, extra);
 	    snprintf(cache,PATH_MAX, "%s%s/hts-ref/%%2s/%%2s/%%s", base, extra);
 	    local_cache = cache;
 	    if (fd->verbose)
@@ -2209,10 +2241,25 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 
     /* Use cache if available */
     if (local_cache && *local_cache) {
+	expand_cache_path(path, local_cache, tag->str+3);
+	local_path = 1;
+    }
+
+#ifndef HAVE_MMAP
+    char *path2;
+    /* Search local files in REF_PATH; we can open them and return as above */
+    if (!local_path && (path2 = find_path(tag->str+3, ref_path))) {
+	strncpy(path, path2, PATH_MAX);
+	free(path2);
+	if (is_file(path)) // incase it's too long
+	    local_path = 1;
+    }
+#endif
+
+    /* Found via REF_CACHE or local REF_PATH file */
+    if (local_path) {
 	struct stat sb;
 	BGZF *fp;
-
-	expand_cache_path(path, local_cache, tag->str+3);
 
 	if (0 == stat(path, &sb) && (fp = bgzf_open(path, "r"))) {
 	    r->length = sb.st_size;
@@ -2225,6 +2272,7 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 		    return -1;
 	    fd->refs->fp = fp;
 	    fd->refs->fn = r->fn;
+	    r->is_md5 = 1;
 
 	    // Fall back to cram_get_ref() where it'll do the actual
 	    // reading of the file.
@@ -2232,7 +2280,8 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	}
     }
 
-    /* Otherwise search */
+
+    /* Otherwise search full REF_PATH; slower as loads entire file */
     if ((mf = open_path_mfile(tag->str+3, ref_path, NULL))) {
 	size_t sz;
 	r->seq = mfsteal(mf, &sz);
@@ -2244,6 +2293,7 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	    r->mf = mf;
 	}
 	r->length = sz;
+	r->is_md5 = 1;
     } else {
 	refs_t *refs;
 	char *fn;
@@ -2287,18 +2337,27 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 
     /* Populate the local disk cache if required */
     if (local_cache && *local_cache) {
+	int pid = (int) getpid();
+	unsigned thrid = get_int_threadid();
 	FILE *fp;
-	int i;
+
+	if (*cache_root && !is_directory(cache_root) && hts_verbose >= 1)
+	    fprintf(stderr,
+"Creating reference cache directory %s\n"
+"This may become large; see the samtools(1) manual page REF_CACHE discussion\n",
+		    cache_root);
 
 	expand_cache_path(path, local_cache, tag->str+3);
 	if (fd->verbose)
-	    fprintf(stderr, "Path='%s'\n", path);
+	    fprintf(stderr, "Writing cache file '%s'\n", path);
 	mkdir_prefix(path, 01777);
 
-	i = 0;
 	do {
-	    sprintf(path_tmp, "%s.tmp_%d", path, /*getpid(),*/ i);
-	    i++;
+	    // Attempt to further uniquify the temporary filename
+	    unsigned t = ((unsigned) time(NULL)) ^ ((unsigned) clock());
+	    thrid++; // Ensure filename changes even if time/clock haven't
+
+	    sprintf(path_tmp, "%s.tmp_%d_%u_%u", path, pid, thrid, t);
 	    fp = fopen(path_tmp, "wx");
 	} while (fp == NULL && errno == EEXIST);
 	if (!fp) {
@@ -2306,6 +2365,28 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 
 	    // Not fatal - we have the data already so keep going.
 	    return 0;
+	}
+
+	// Check md5sum
+	hts_md5_context *md5;
+	char unsigned md5_buf1[16];
+	char md5_buf2[33];
+
+	if (!(md5 = hts_md5_init())) {
+	    unlink(path_tmp);
+	    fclose(fp);
+	    return -1;
+	}
+	hts_md5_update(md5, r->seq, r->length);
+	hts_md5_final(md5_buf1, md5);
+	hts_md5_destroy(md5);
+	hts_md5_hex(md5_buf2, md5_buf1);
+
+	if (strncmp(tag->str+3, md5_buf2, 32) != 0) {
+	    fprintf(stderr, "[E::%s] mismatching md5sum for downloaded reference.\n", __func__);
+	    unlink(path_tmp);
+	    fclose(fp);
+	    return -1;
 	}
 
 	if (r->length != fwrite(r->seq, 1, r->length, fp)) {
@@ -2450,7 +2531,7 @@ static char *load_ref_portion(BGZF *fp, ref_entry *e, int start, int end) {
  * Returns ref_entry on success;
  *         NULL on failure
  */
-ref_entry *cram_ref_load(refs_t *r, int id) {
+ref_entry *cram_ref_load(refs_t *r, int id, int is_md5) {
     ref_entry *e = r->ref_id[id];
     int start = 1, end = e->length;
     char *seq;
@@ -2483,7 +2564,7 @@ ref_entry *cram_ref_load(refs_t *r, int id) {
 	    if (bgzf_close(r->fp) != 0)
 		return NULL;
 	r->fn = e->fn;
-	if (!(r->fp = bgzf_open_ref(r->fn, "r")))
+	if (!(r->fp = bgzf_open_ref(r->fn, "r", is_md5)))
 	    return NULL;
     }
 
@@ -2637,7 +2718,7 @@ char *cram_get_ref(cram_fd *fd, int id, int start, int end) {
 		cram_ref_incr_locked(fd->refs, id);
 	    } else {
 		ref_entry *e;
-		if (!(e = cram_ref_load(fd->refs, id))) {
+		if (!(e = cram_ref_load(fd->refs, id, r->is_md5))) {
 		    pthread_mutex_unlock(&fd->refs->lock);
 		    pthread_mutex_unlock(&fd->ref_lock);
 		    return NULL;
@@ -2695,7 +2776,7 @@ char *cram_get_ref(cram_fd *fd, int id, int start, int end) {
 	    if (bgzf_close(fd->refs->fp) != 0)
 		return NULL;
 	fd->refs->fn = r->fn;
-	if (!(fd->refs->fp = bgzf_open_ref(fd->refs->fn, "r"))) {
+	if (!(fd->refs->fp = bgzf_open_ref(fd->refs->fn, "r", r->is_md5))) {
 	    pthread_mutex_unlock(&fd->refs->lock);
 	    pthread_mutex_unlock(&fd->ref_lock);
 	    return NULL;
@@ -4255,7 +4336,7 @@ int cram_close(cram_fd *fd) {
 	    return -1;
     }
 
-    if (fd->pool) {
+    if (fd->pool && fd->eof >= 0) {
 	t_pool_flush(fd->pool);
 
 	if (0 != cram_flush_result(fd))
@@ -4376,8 +4457,10 @@ int cram_set_option(cram_fd *fd, enum hts_fmt_option opt, ...) {
 int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
     refs_t *refs;
 
-    if (!fd)
+    if (!fd) {
+	errno = EBADF;
 	return -1;
+    }
 
     switch (opt) {
     case CRAM_OPT_DECODE_MD:
@@ -4457,6 +4540,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 	      (major == 3 &&  minor == 0))) {
 	    fprintf(stderr, "Unknown version string; "
 		    "use 1.0, 2.0, 2.1 or 3.0\n");
+	    errno = EINVAL;
 	    return -1;
 	}
 	fd->version = major*256 + minor;
@@ -4512,6 +4596,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 
     default:
 	fprintf(stderr, "Unknown CRAM option code %d\n", opt);
+	errno = EINVAL;
 	return -1;
     }
 

@@ -29,6 +29,8 @@ DEALINGS IN THE SOFTWARE.  */
 #include <stddef.h>
 #include <stdint.h>
 
+#include "hts_defs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -279,7 +281,7 @@ char *hts_format_description(const htsFormat *format);
 /*!
   @abstract       Open a SAM/BAM/CRAM/VCF/BCF/etc file
   @param fn       The file name or "-" for stdin/stdout
-  @param mode     Mode matching /[rwa][bcuz0-9]+/
+  @param mode     Mode matching / [rwa][bceguxz0-9]* /
   @discussion
       With 'r' opens for reading; any further format mode letters are ignored
       as the format is detected by checking the first few bytes or BGZF blocks
@@ -291,6 +293,9 @@ char *hts_format_description(const htsFormat *format);
         u  uncompressed
         z  bgzf compressed
         [0-9]  zlib compression level
+      and with non-format option letters (for any of 'r'/'w'/'a'):
+        e  close the file on exec(2) (opens with O_CLOEXEC, where supported)
+        x  create the file exclusively (opens with O_EXCL, where supported)
       Note that there is a distinction between 'u' and '0': the first yields
       plain uncompressed output whereas the latter outputs uncompressed data
       wrapped in the zlib format.
@@ -305,17 +310,18 @@ htsFile *hts_open(const char *fn, const char *mode);
 /*!
   @abstract       Open a SAM/BAM/CRAM/VCF/BCF/etc file
   @param fn       The file name or "-" for stdin/stdout
-  @param mode     Mode matching /[rwa][bcuz0-9]+/
+  @param mode     Open mode, as per hts_open()
   @param fmt      Optional format specific parameters
   @discussion
       See hts_open() for description of fn and mode.
+      // TODO Update documentation for s/opts/fmt/
       Opts contains a format string (sam, bam, cram, vcf, bcf) which will,
       if defined, override mode.  Opts also contains a linked list of hts_opt
       structures to apply to the open file handle.  These can contain things
       like pointers to the reference or information on compression levels,
       block sizes, etc.
 */
-htsFile *hts_open_format(const char *fn, const char *mode, htsFormat *fmt);
+htsFile *hts_open_format(const char *fn, const char *mode, const htsFormat *fmt);
 
 /*!
   @abstract       Open an existing stream as a SAM/BAM/CRAM/VCF/BCF/etc file
@@ -444,7 +450,7 @@ typedef struct {
     @param fmt  One of the HTS_FMT_* index formats
     @return  0 if successful, or negative if an error occurred.
 */
-int hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt);
+int hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt) HTS_RESULT_USED;
 
 /// Save an index to a specific file
 /** @param idx    Index to be written
@@ -453,7 +459,7 @@ int hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt);
     @param fmt    One of the HTS_FMT_* index formats
     @return  0 if successful, or negative if an error occurred.
 */
-int hts_idx_save_as(const hts_idx_t *idx, const char *fn, const char *fnidx, int fmt);
+int hts_idx_save_as(const hts_idx_t *idx, const char *fn, const char *fnidx, int fmt) HTS_RESULT_USED;
 
 /// Load an index file
 /** @param fn   BAM/BCF/etc filename, to which .bai/.csi/etc will be added or
@@ -476,18 +482,22 @@ hts_idx_t *hts_idx_load2(const char *fn, const char *fnidx);
     int hts_idx_get_stat(const hts_idx_t* idx, int tid, uint64_t* mapped, uint64_t* unmapped);
     uint64_t hts_idx_get_n_no_coor(const hts_idx_t* idx);
 
+
+#define HTS_PARSE_THOUSANDS_SEP 1  ///< Ignore ',' separators within numbers
+
 /// Parse a numeric string
-/** The number may be expressed in scientific notation, and may contain commas
-    in the integer part (before any decimal point or E notation).
-    @param str  String to be parsed
-    @param end  If non-NULL, set on return to point to the first character
-                in @a str after those forming the parsed number
+/** The number may be expressed in scientific notation, and optionally may
+    contain commas in the integer part (before any decimal point or E notation).
+    @param str     String to be parsed
+    @param strend  If non-NULL, set on return to point to the first character
+                   in @a str after those forming the parsed number
+    @param flags   Or'ed-together combination of HTS_PARSE_* flags
     @return  Converted value of the parsed number.
 
-    When @a end is NULL, a warning will be printed (if hts_verbose is 2
+    When @a strend is NULL, a warning will be printed (if hts_verbose is 2
     or more) if there are any trailing characters after the number.
 */
-long long hts_parse_decimal(const char *str, char **end);
+long long hts_parse_decimal(const char *str, char **strend, int flags);
 
 /// Parse a "CHR:START-END"-style region string
 /** @param str  String to be parsed
@@ -506,7 +516,7 @@ const char *hts_parse_reg(const char *str, int *beg, int *end);
     typedef hts_itr_t *hts_itr_query_func(const hts_idx_t *idx, int tid, int beg, int end, hts_readrec_func *readrec);
 
     hts_itr_t *hts_itr_querys(const hts_idx_t *idx, const char *reg, hts_name2id_f getid, void *hdr, hts_itr_query_func *itr_query, hts_readrec_func *readrec);
-    int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data);
+    int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data) HTS_RESULT_USED;
     const char **hts_idx_seqnames(const hts_idx_t *idx, int *n, hts_id2name_f getid, void *hdr); // free only the array, not the values
 
     /**
