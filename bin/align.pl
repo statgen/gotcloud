@@ -1460,7 +1460,7 @@ sub mapBwa {
                      " -M $rgCommand " . getConf('REF') . " $absFastq1 $absFastq2 | " .
                      getConf('SAMTOOLS_EXE') . " view -uhS - | " .
                      getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
-                     " - \$(basename \$(basename " . "\$\@))) 2> \$(basename \$\@).log";
+                     " - -o \$(basename \$\@) -T \$(basename \$(basename \$\@))) 2> \$(basename \$\@).log";
         $allSteps .= logCatchFailure("bwa-mem", $bwacmd, "\$(basename \$\@).log");
         $allSteps .= doneTarget("", $rmStr);
     }
@@ -1499,7 +1499,7 @@ sub mapBwa {
         my $cmd = "(" . getConf('BWA_EXE') . " $samsesampe $rgCommand " . getConf('REF') .
             " \$(basename \$^) $absFastq1 $absFastq2 | " . getConf('SAMTOOLS_EXE') . " view -uhS - | " .
             getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
-            " - \$(basename \$(basename " . "\$\@))) 2> $log";
+            " - -o \$(basename \$\@) -T \$(basename \$(basename \$\@))) 2> $log";
         $allSteps .= logCatchFailure("$samsesampe", $cmd, $log);
 
         $allSteps .= doneTarget(1, $rmStr);
@@ -1554,7 +1554,7 @@ sub mapMosaik {
 
     my $sortPrefix = "\$(basename \$(basename \$\@))";
     my $sortcmd = getConf('SAMTOOLS_SORT_EXE') . " sort -m " . getConf('SORT_MAX_MEM') .
-        " \$(basename \$^) $sortPrefix 2> $sortPrefix.log";
+        " \$(basename \$^) -o ${sortPrefix}.bam -T $sortPrefix 2> $sortPrefix.log";
     $allSteps .= "\t$sortcmd\n";
     $allSteps .= logCatchFailure('sort', "(grep -q -i -e abort -e error -e failed $sortPrefix.log; [ \$\$? -eq 1 ])", "$sortPrefix.log");
     $allSteps .= doneTarget();
