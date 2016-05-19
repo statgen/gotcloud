@@ -1,7 +1,7 @@
 /*  phase.c -- phase subcommand.
 
     Copyright (C) 2011 Broad Institute.
-    Copyright (C) 2013, 2014 Genome Research Ltd.
+    Copyright (C) 2013-2016 Genome Research Ltd.
 
     Author: Heng Li <lh3@sanger.ac.uk>
 
@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -30,7 +32,10 @@ DEALINGS IN THE SOFTWARE.  */
 #include <math.h>
 #include <zlib.h>
 #include "htslib/sam.h"
+#include "htslib/kstring.h"
 #include "errmod.h"
+#include "sam_opts.h"
+#include "samtools.h"
 
 #include "htslib/kseq.h"
 KSTREAM_INIT(gzFile, gzread, 16384)
@@ -52,6 +57,7 @@ typedef struct {
     samFile* fp;
     bam_hdr_t* fp_hdr;
     char *pre;
+    char *out_name[3];
     samFile* out[3];
     bam_hdr_t* out_hdr[3];
     // alignment queue
@@ -332,7 +338,7 @@ static int clean_seqs(int vpos, nseq_t *hash)
     return ret;
 }
 
-static void dump_aln(phaseg_t *g, int min_pos, const nseq_t *hash)
+static int dump_aln(phaseg_t *g, int min_pos, const nseq_t *hash)
 {
     int i, is_flip, drop_ambi;
     drop_ambi = g->flag & FLAG_DROP_AMBI;
@@ -360,12 +366,16 @@ static void dump_aln(phaseg_t *g, int min_pos, const nseq_t *hash)
             if (which < 2 && is_flip) which = 1 - which; // increase the randomness
         }
         if (which == 3) which = (drand48() < 0.5);
-        sam_write1(g->out[which], g->out_hdr[which], b);
+        if (sam_write1(g->out[which], g->out_hdr[which], b) < 0) {
+            print_error_errno("phase", "error writing to '%s'", g->out_name[which]);
+            return -1;
+        }
         bam_destroy1(b);
         g->b[i] = 0;
     }
     memmove(g->b, g->b + i, (g->n - i) * sizeof(void*));
     g->n -= i;
+    return 0;
 }
 
 static int phase(phaseg_t *g, const char *chr, int vpos, uint64_t *cns, nseq_t *hash)
@@ -392,7 +402,7 @@ static int phase(phaseg_t *g, const char *chr, int vpos, uint64_t *cns, nseq_t *
                 else f->phased = 1, f->phase = f->seq[0] - 1;
             }
         }
-        dump_aln(g, min_pos, hash);
+        if (dump_aln(g, min_pos, hash) < 0) return -1;
         ++g->vpos_shift;
         return 1;
     }
@@ -450,7 +460,7 @@ static int phase(phaseg_t *g, const char *chr, int vpos, uint64_t *cns, nseq_t *
     printf("//\n");
     fflush(stdout);
     g->vpos_shift += vpos;
-    dump_aln(g, min_pos, hash);
+    if (dump_aln(g, min_pos, hash) < 0) return -1;
     return vpos;
 }
 
@@ -535,9 +545,29 @@ static int gl2cns(float q[16])
     return (min_ij>>2&3) == (min_ij&3)? 0 : 1<<18 | (min_ij>>2&3)<<16 | (min_ij&3) | (int)(min2 - min + .499) << 2;
 }
 
+static int start_output(phaseg_t *g, int c, const char *middle, const htsFormat *fmt)
+{
+    kstring_t s = { 0, 0, NULL };
+    ksprintf(&s, "%s.%s.%s", g->pre, middle, hts_format_file_extension(fmt));
+    g->out_name[c] = ks_release(&s);
+    g->out[c] = sam_open_format(g->out_name[c], "wb", fmt);
+    if (! g->out[c]) {
+        print_error_errno("phase", "Failed to open output file '%s'", g->out_name[c]);
+        return -1;
+    }
+
+    g->out_hdr[c] = bam_hdr_dup(g->fp_hdr);
+    if (sam_hdr_write(g->out[c], g->out_hdr[c]) < 0) {
+        print_error_errno("phase", "Failed to write header for '%s'", g->out_name[c]);
+        return -1;
+    }
+
+    return 0;
+}
+
 int main_phase(int argc, char *argv[])
 {
-    int c, tid, pos, vpos = 0, n, lasttid = -1, max_vpos = 0;
+    int c, tid, pos, vpos = 0, n, lasttid = -1, max_vpos = 0, usage = 0;
     const bam_pileup1_t *plp;
     bam_plp_t iter;
     nseq_t *seqs;
@@ -548,10 +578,18 @@ int main_phase(int argc, char *argv[])
     errmod_t *em;
     uint16_t *bases;
 
+    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
+    static const struct option lopts[] = {
+        SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
+        { NULL, 0, NULL, 0 }
+    };
+
+    // FIXME Leaks galore in the case of error returns
+
     memset(&g, 0, sizeof(phaseg_t));
     g.flag = FLAG_FIX_CHIMERA;
     g.min_varLOD = 37; g.k = 13; g.min_baseQ = 13; g.max_depth = 256;
-    while ((c = getopt(argc, argv, "Q:eFq:k:b:l:D:A:")) >= 0) {
+    while ((c = getopt_long(argc, argv, "Q:eFq:k:b:l:D:A:", lopts, NULL)) >= 0) {
         switch (c) {
             case 'D': g.max_depth = atoi(optarg); break;
             case 'q': g.min_varLOD = atoi(optarg); break;
@@ -562,9 +600,13 @@ int main_phase(int argc, char *argv[])
             case 'A': g.flag |= FLAG_DROP_AMBI; break;
             case 'b': g.pre = strdup(optarg); break;
             case 'l': fn_list = strdup(optarg); break;
+            default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
+                      /* else fall-through */
+            case '?': usage=1; break;
         }
+        if (usage) break;
     }
-    if (argc == optind) {
+    if (usage || argc == optind) {
         fprintf(stderr, "\n");
         fprintf(stderr, "Usage:   samtools phase [options] <in.bam>\n\n");
         fprintf(stderr, "Options: -k INT    block length [%d]\n", g.k);
@@ -577,12 +619,20 @@ int main_phase(int argc, char *argv[])
         fprintf(stderr, "         -A        drop reads with ambiguous phase\n");
 //      fprintf(stderr, "         -e        do not discover SNPs (effective with -l)\n");
         fprintf(stderr, "\n");
+
+        sam_global_opt_help(stderr, "-....");
+
         return 1;
     }
-    g.fp = sam_open(argv[optind], "r");
+    g.fp = sam_open_format(argv[optind], "r", &ga.in);
+    if (!g.fp) {
+        print_error_errno("phase", "Couldn't open '%s'", argv[optind]);
+        return 1;
+    }
     g.fp_hdr = sam_hdr_read(g.fp);
     if (g.fp_hdr == NULL) {
-        fprintf(stderr, "Failed to read header for '%s'\n", argv[optind]);
+        fprintf(stderr, "[%s] Failed to read header for '%s'\n",
+                __func__, argv[optind]);
         return 1;
     }
     if (fn_list) { // read the list of sites to phase
@@ -590,15 +640,13 @@ int main_phase(int argc, char *argv[])
         free(fn_list);
     } else g.flag &= ~FLAG_LIST_EXCL;
     if (g.pre) { // open BAMs to write
-        char *s = (char*)malloc(strlen(g.pre) + 20);
-        strcpy(s, g.pre); strcat(s, ".0.bam"); g.out[0] = sam_open(s, "wb");
-        strcpy(s, g.pre); strcat(s, ".1.bam"); g.out[1] = sam_open(s, "wb");
-        strcpy(s, g.pre); strcat(s, ".chimera.bam"); g.out[2] = sam_open(s, "wb");
-        for (c = 0; c <= 2; ++c) {
-            g.out_hdr[c] = bam_hdr_dup(g.fp_hdr);
-            sam_hdr_write(g.out[c], g.out_hdr[c]);
-        }
-        free(s);
+        if (ga.out.format == unknown_format)
+            ga.out.format = bam; // default via "wb".
+
+        // Open each output file g.out[0..2], dupping and writing the header
+        if (start_output(&g, 0, "0", &ga.out) < 0 ||
+            start_output(&g, 1, "1", &ga.out) < 0 ||
+            start_output(&g, 2, "chimera", &ga.out) < 0) return 1;
     }
 
     iter = bam_plp_init(readaln, &g);
@@ -628,7 +676,10 @@ int main_phase(int argc, char *argv[])
             g.vpos_shift = 0;
             if (lasttid >= 0) {
                 seqs = shrink_hash(seqs);
-                phase(&g, g.fp_hdr->target_name[lasttid], vpos, cns, seqs);
+                if (phase(&g, g.fp_hdr->target_name[lasttid],
+                          vpos, cns, seqs) < 0) {
+                    return 1;
+                }
                 update_vpos(0x7fffffff, seqs);
             }
             lasttid = tid;
@@ -697,14 +748,20 @@ int main_phase(int argc, char *argv[])
         }
         if (dophase) {
             seqs = shrink_hash(seqs);
-            phase(&g, g.fp_hdr->target_name[tid], vpos, cns, seqs);
+            if (phase(&g, g.fp_hdr->target_name[tid], vpos, cns, seqs) < 0) {
+                return 1;
+            }
             update_vpos(vpos, seqs);
             cns[0] = cns[vpos];
             vpos = 0;
         }
         ++vpos;
     }
-    if (tid >= 0) phase(&g, g.fp_hdr->target_name[tid], vpos, cns, seqs);
+    if (tid >= 0) {
+        if (phase(&g, g.fp_hdr->target_name[tid], vpos, cns, seqs) < 0) {
+            return 1;
+        }
+    }
     bam_hdr_destroy(g.fp_hdr);
     bam_plp_destroy(iter);
     sam_close(g.fp);
@@ -714,11 +771,19 @@ int main_phase(int argc, char *argv[])
     errmod_destroy(em);
     free(bases);
     if (g.pre) {
+        int res = 0;
         for (c = 0; c <= 2; ++c) {
-            sam_close(g.out[c]);
+            if (sam_close(g.out[c]) < 0) {
+                fprintf(stderr, "[%s] error on closing '%s'\n",
+                        __func__, g.out_name[c]);
+                res = 1;
+            }
             bam_hdr_destroy(g.out_hdr[c]);
+            free(g.out_name[c]);
         }
         free(g.pre); free(g.b);
+        if (res) return 1;
     }
+    sam_global_args_free(&ga);
     return 0;
 }

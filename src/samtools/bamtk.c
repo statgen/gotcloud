@@ -1,6 +1,6 @@
 /*  bamtk.c -- main samtools command front-end.
 
-    Copyright (C) 2008-2015 Genome Research Ltd.
+    Copyright (C) 2008-2016 Genome Research Ltd.
 
     Author: Heng Li <lh3@sanger.ac.uk>
 
@@ -21,6 +21,8 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
+
+#include <config.h>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -57,7 +59,8 @@ int main_bamshuf(int argc, char *argv[]);
 int main_stats(int argc, char *argv[]);
 int main_flags(int argc, char *argv[]);
 int main_split(int argc, char *argv[]);
-
+int main_quickcheck(int argc, char *argv[]);
+int main_addreplacerg(int argc, char *argv[]);
 int faidx_main(int argc, char *argv[]);
 int dict_main(int argc, char *argv[]);
 
@@ -66,24 +69,31 @@ const char *samtools_version()
     return SAMTOOLS_VERSION;
 }
 
-void print_error(const char *format, ...)
+static void vprint_error_core(const char *subcommand, const char *format, va_list args, const char *extra)
+{
+    fflush(stdout);
+    if (subcommand && *subcommand) fprintf(stderr, "samtools %s: ", subcommand);
+    else fprintf(stderr, "samtools: ");
+    vfprintf(stderr, format, args);
+    if (extra) fprintf(stderr, ": %s\n", extra);
+    else fprintf(stderr, "\n");
+    fflush(stderr);
+}
+
+void print_error(const char *subcommand, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    fprintf(stderr, "samtools: ");
-    vfprintf(stderr, format, args);
-    fprintf(stderr, "\n");
+    vprint_error_core(subcommand, format, args, NULL);
     va_end(args);
 }
 
-void print_error_errno(const char *format, ...)
+void print_error_errno(const char *subcommand, const char *format, ...)
 {
     int err = errno;
     va_list args;
     va_start(args, format);
-    fprintf(stderr, "samtools: ");
-    vfprintf(stderr, format, args);
-    fprintf(stderr, ": %s\n", strerror(err));
+    vprint_error_core(subcommand, format, args, strerror(err));
     va_end(args);
 }
 
@@ -96,42 +106,49 @@ static void usage(FILE *fp)
 "Program: samtools (Tools for alignments in the SAM format)\n"
 "Version: %s (using htslib %s)\n\n", samtools_version(), hts_version());
     fprintf(fp,
-"Usage:   samtools <command> [options]\n\n"
+"Usage:   samtools <command> [options]\n"
+"\n"
 "Commands:\n"
-"  -- indexing\n"
-"         dict        create a sequence dictionary file\n"
-"         faidx       index/extract FASTA\n"
-"         index       index alignment\n"
-"  -- editing\n"
-"         calmd       recalculate MD/NM tags and '=' bases\n"
-"         fixmate     fix mate information\n"
-"         reheader    replace BAM header\n"
-"         rmdup       remove PCR duplicates\n"
-"         targetcut   cut fosmid regions (for fosmid pool only)\n"
-"  -- file operations\n"
-"         bamshuf     shuffle and group alignments by name\n"
-"         cat         concatenate BAMs\n"
-"         merge       merge sorted alignments\n"
-"         mpileup     multi-way pileup\n"
-"         sort        sort alignment file\n"
-"         split       splits a file by read group\n"
-"         bam2fq      converts a BAM to a FASTQ\n"
-"  -- stats\n"
-"         bedcov      read depth per BED region\n"
-"         depth       compute the depth\n"
-"         flagstat    simple stats\n"
-"         idxstats    BAM index stats\n"
-"         phase       phase heterozygotes\n"
-"         stats       generate stats (former bamcheck)\n"
-"  -- viewing\n"
-"         flags       explain BAM flags\n"
-"         tview       text alignment viewer\n"
-"         view        SAM<->BAM<->CRAM conversion\n"
-//"         depad       convert padded BAM to unpadded BAM\n" // not stable
+"  -- Indexing\n"
+"     dict           create a sequence dictionary file\n"
+"     faidx          index/extract FASTA\n"
+"     index          index alignment\n"
+"\n"
+"  -- Editing\n"
+"     calmd          recalculate MD/NM tags and '=' bases\n"
+"     fixmate        fix mate information\n"
+"     reheader       replace BAM header\n"
+"     rmdup          remove PCR duplicates\n"
+"     targetcut      cut fosmid regions (for fosmid pool only)\n"
+"     addreplacerg   adds or replaces RG tags\n"
+"\n"
+"  -- File operations\n"
+"     collate        shuffle and group alignments by name\n"
+"     cat            concatenate BAMs\n"
+"     merge          merge sorted alignments\n"
+"     mpileup        multi-way pileup\n"
+"     sort           sort alignment file\n"
+"     split          splits a file by read group\n"
+"     quickcheck     quickly check if SAM/BAM/CRAM file appears intact\n"
+"     fastq          converts a BAM to a FASTQ\n"
+"     fasta          converts a BAM to a FASTA\n"
+"\n"
+"  -- Statistics\n"
+"     bedcov         read depth per BED region\n"
+"     depth          compute the depth\n"
+"     flagstat       simple stats\n"
+"     idxstats       BAM index stats\n"
+"     phase          phase heterozygotes\n"
+"     stats          generate stats (former bamcheck)\n"
+"\n"
+"  -- Viewing\n"
+"     flags          explain BAM flags\n"
+"     tview          text alignment viewer\n"
+"     view           SAM<->BAM<->CRAM conversion\n"
+"     depad          convert padded BAM to unpadded BAM\n"
 "\n");
 #ifdef _WIN32
     fprintf(fp,
-"\n"
 "Note: The Windows version of SAMtools is mainly designed for read-only\n"
 "      operations, such as viewing the alignments and generating the pileup.\n"
 "      Binary files generated by the Windows version may be buggy.\n\n");
@@ -176,26 +193,29 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "targetcut") == 0) ret = main_cut_target(argc-1, argv+1);
     else if (strcmp(argv[1], "phase") == 0)     ret = main_phase(argc-1, argv+1);
     else if (strcmp(argv[1], "depth") == 0)     ret = main_depth(argc-1, argv+1);
-    else if (strcmp(argv[1], "bam2fq") == 0)    ret = main_bam2fq(argc-1, argv+1);
+    else if (strcmp(argv[1], "bam2fq") == 0 ||
+             strcmp(argv[1], "fastq") == 0 ||
+             strcmp(argv[1], "fasta") == 0)     ret = main_bam2fq(argc-1, argv+1);
     else if (strcmp(argv[1], "pad2unpad") == 0) ret = main_pad2unpad(argc-1, argv+1);
     else if (strcmp(argv[1], "depad") == 0)     ret = main_pad2unpad(argc-1, argv+1);
     else if (strcmp(argv[1], "bedcov") == 0)    ret = main_bedcov(argc-1, argv+1);
     else if (strcmp(argv[1], "bamshuf") == 0)   ret = main_bamshuf(argc-1, argv+1);
+    else if (strcmp(argv[1], "collate") == 0)   ret = main_bamshuf(argc-1, argv+1);
     else if (strcmp(argv[1], "stats") == 0)     ret = main_stats(argc-1, argv+1);
     else if (strcmp(argv[1], "flags") == 0)     ret = main_flags(argc-1, argv+1);
     else if (strcmp(argv[1], "split") == 0)     ret = main_split(argc-1, argv+1);
+    else if (strcmp(argv[1], "quickcheck") == 0)  ret = main_quickcheck(argc-1, argv+1);
+    else if (strcmp(argv[1], "addreplacerg") == 0) ret = main_addreplacerg(argc-1, argv+1);
     else if (strcmp(argv[1], "pileup") == 0) {
         fprintf(stderr, "[main] The `pileup' command has been removed. Please use `mpileup' instead.\n");
         return 1;
     }
-#if _CURSES_LIB != 0
     else if (strcmp(argv[1], "tview") == 0)   ret = bam_tview_main(argc-1, argv+1);
-#endif
     else if (strcmp(argv[1], "--version") == 0) {
         printf(
 "samtools %s\n"
 "Using htslib %s\n"
-"Copyright (C) 2015 Genome Research Ltd.\n",
+"Copyright (C) 2016 Genome Research Ltd.\n",
                samtools_version(), hts_version());
     }
     else if (strcmp(argv[1], "--version-only") == 0) {

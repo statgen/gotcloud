@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#include <config.h>
+
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
@@ -32,6 +34,8 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/sam.h"
 #include "htslib/kstring.h"
 #include "kprobaln.h"
+#include "sam_opts.h"
+#include "samtools.h"
 
 #define USE_EQUAL 1
 #define DROP_TAG  2
@@ -329,19 +333,41 @@ int bam_prob_realn(bam1_t *b, const char *ref)
     return bam_prob_realn_core(b, ref, INT_MAX, 1);
 }
 
+int calmd_usage() {
+    fprintf(stderr,
+"Usage: samtools calmd [-eubrAES] <aln.bam> <ref.fasta>\n"
+"Options:\n"
+"  -e       change identical bases to '='\n"
+"  -u       uncompressed BAM output (for piping)\n"
+"  -b       compressed BAM output\n"
+"  -S       ignored (input format is auto-detected)\n"
+"  -A       modify the quality string\n"
+"  -r       compute the BQ tag (without -A) or cap baseQ by BAQ (with -A)\n"
+"  -E       extended BAQ for better sensitivity but lower specificity\n");
+
+    sam_global_opt_help(stderr, "-....");
+    return 1;
+}
+
 int bam_fillmd(int argc, char *argv[])
 {
     int c, flt_flag, tid = -2, ret, len, is_bam_out, is_uncompressed, max_nm, is_realn, capQ, baq_flag;
-    samFile *fp, *fpout = 0;
-    bam_hdr_t *header;
-    faidx_t *fai;
-    char *ref = 0, mode_w[8];
-    bam1_t *b;
+    samFile *fp = NULL, *fpout = NULL;
+    bam_hdr_t *header = NULL;
+    faidx_t *fai = NULL;
+    char *ref = NULL, mode_w[8], *ref_file;
+    bam1_t *b = NULL;
+    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
+
+    static const struct option lopts[] = {
+        SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
+        { NULL, 0, NULL, 0 }
+    };
 
     flt_flag = UPDATE_NM | UPDATE_MD;
     is_bam_out = is_uncompressed = is_realn = max_nm = capQ = baq_flag = 0;
     strcpy(mode_w, "w");
-    while ((c = getopt(argc, argv, "EqreuNhbSC:n:Ad")) >= 0) {
+    while ((c = getopt_long(argc, argv, "EqreuNhbSC:n:Ad", lopts, NULL)) >= 0) {
         switch (c) {
         case 'r': is_realn = 1; break;
         case 'e': flt_flag |= USE_EQUAL; break;
@@ -356,48 +382,63 @@ int bam_fillmd(int argc, char *argv[])
         case 'C': capQ = atoi(optarg); break;
         case 'A': baq_flag |= 1; break;
         case 'E': baq_flag |= 2; break;
-        default: fprintf(stderr, "[bam_fillmd] unrecognized option '-%c'\n", c); return 1;
+        default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
+            fprintf(stderr, "[bam_fillmd] unrecognized option '-%c'\n\n", c);
+            /* else fall-through */
+        case '?': return calmd_usage();
         }
     }
     if (is_bam_out) strcat(mode_w, "b");
     else strcat(mode_w, "h");
     if (is_uncompressed) strcat(mode_w, "0");
-    if (optind + 1 >= argc) {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "Usage:   samtools calmd [-eubrS] <aln.bam> <ref.fasta>\n\n");
-        fprintf(stderr, "Options: -e       change identical bases to '='\n");
-        fprintf(stderr, "         -u       uncompressed BAM output (for piping)\n");
-        fprintf(stderr, "         -b       compressed BAM output\n");
-        fprintf(stderr, "         -S       ignored (input format is auto-detected)\n");
-        fprintf(stderr, "         -A       modify the quality string\n");
-        fprintf(stderr, "         -r       compute the BQ tag (without -A) or cap baseQ by BAQ (with -A)\n");
-        fprintf(stderr, "         -E       extended BAQ for better sensitivity but lower specificity\n\n");
+    if (optind + (ga.reference == NULL) >= argc)
+        return calmd_usage();
+    fp = sam_open_format(argv[optind], "r", &ga.in);
+    if (fp == NULL) {
+        print_error_errno("calmd", "Failed to open input file '%s'", argv[optind]);
         return 1;
     }
-    fp = sam_open(argv[optind], "r");
-    if (fp == 0) return 1;
 
     header = sam_hdr_read(fp);
     if (header == NULL || header->n_targets == 0) {
         fprintf(stderr, "[bam_fillmd] input SAM does not have header. Abort!\n");
-        return 1;
+        goto fail;
     }
 
-    fpout = sam_open("-", mode_w);
-    sam_hdr_write(fpout, header);
+    fpout = sam_open_format("-", mode_w, &ga.out);
+    if (fpout == NULL) {
+        print_error_errno("calmd", "Failed to open output");
+        goto fail;
+    }
+    if (sam_hdr_write(fpout, header) < 0) {
+        print_error_errno("calmd", "Failed to write sam header");
+        goto fail;
+    }
 
-    fai = fai_load(argv[optind+1]);
+    ref_file = argc > optind + 1 ? argv[optind+1] : ga.reference;
+    fai = fai_load(ref_file);
+
+    if (!fai) {
+        print_error_errno("calmd", "Failed to open reference file '%s'", ref_file);
+        goto fail;
+    }
 
     b = bam_init1();
+    if (!b) {
+        fprintf(stderr, "[bam_fillmd] Failed to allocate bam struct\n");
+        goto fail;
+    }
     while ((ret = sam_read1(fp, header, b)) >= 0) {
         if (b->core.tid >= 0) {
             if (tid != b->core.tid) {
                 free(ref);
                 ref = fai_fetch(fai, header->target_name[b->core.tid], &len);
                 tid = b->core.tid;
-                if (ref == 0)
+                if (ref == 0) { // FIXME: Should this always be fatal?
                     fprintf(stderr, "[bam_fillmd] fail to find sequence '%s' in the reference.\n",
                             header->target_name[tid]);
+                    if (is_realn || capQ > 10) goto fail; // Would otherwise crash
+                }
             }
             if (is_realn) bam_prob_realn_core(b, ref, len, baq_flag);
             if (capQ > 10) {
@@ -406,7 +447,14 @@ int bam_fillmd(int argc, char *argv[])
             }
             if (ref) bam_fillmd1_core(b, ref, len, flt_flag, max_nm);
         }
-        sam_write1(fpout, header, b);
+        if (sam_write1(fpout, header, b) < 0) {
+            print_error_errno("calmd", "failed to write to output file");
+            goto fail;
+        }
+    }
+    if (ret < -1) {
+        fprintf(stderr, "[bam_fillmd] Error reading input.\n");
+        goto fail;
     }
     bam_destroy1(b);
     bam_hdr_destroy(header);
@@ -414,6 +462,18 @@ int bam_fillmd(int argc, char *argv[])
     free(ref);
     fai_destroy(fai);
     sam_close(fp);
-    sam_close(fpout);
+    if (sam_close(fpout) < 0) {
+        fprintf(stderr, "[bam_fillmd] error when closing output file\n");
+        return 1;
+    }
     return 0;
+
+ fail:
+    free(ref);
+    if (b) bam_destroy1(b);
+    if (header) bam_hdr_destroy(header);
+    if (fai) fai_destroy(fai);
+    if (fp) sam_close(fp);
+    if (fpout) sam_close(fpout);
+    return 1;
 }

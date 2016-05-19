@@ -1,11 +1,19 @@
 *.o
 *.dSYM
-*~
+*.exe
 /version.h
+
+aclocal.m4
+autom4te.cache
+config.cache
+config.h
+config.log
+config.mk
+config.status
+configure
 
 lib*.a
 
-/bgzip
 /misc/ace2sam
 /misc/maq2sam-long
 /misc/maq2sam-short
@@ -16,5 +24,3 @@ lib*.a
 /test/vcf-miniview
 
 /TAGS
-
-core

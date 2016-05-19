@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#include <config.h>
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +41,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <htslib/khash_str2int.h>
 #include "sam_header.h"
 #include "samtools.h"
+#include "sam_opts.h"
 
 static inline int printw(int c, FILE *fp)
 {
@@ -124,6 +127,7 @@ typedef struct {
     void *bed, *rghash;
     int argc;
     char **argv;
+    sam_global_args ga;
 } mplp_conf_t;
 
 typedef struct {
@@ -180,8 +184,7 @@ static int mplp_get_ref(mplp_aux_t *ma, int tid,  char **ref, int *ref_len) {
     }
 
     // New, so migrate to old and load new
-    if (r->ref[1])
-        free(r->ref[1]);
+    free(r->ref[1]);
     r->ref[1]     = r->ref[0];
     r->ref_id[1]  = r->ref_id[0];
     r->ref_len[1] = r->ref_len[0];
@@ -190,10 +193,10 @@ static int mplp_get_ref(mplp_aux_t *ma, int tid,  char **ref, int *ref_len) {
     r->ref[0] = faidx_fetch_seq(ma->conf->fai,
                                 ma->h->target_name[r->ref_id[0]],
                                 0,
-                                0x7fffffff,
+                                INT_MAX,
                                 &r->ref_len[0]);
 
-    if (!r->ref) {
+    if (!r->ref[0]) {
         r->ref[0] = NULL;
         r->ref_id[0] = -1;
         r->ref_len[0] = 0;
@@ -341,7 +344,7 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
     for (i = 0; i < n; ++i) {
         bam_hdr_t *h_tmp;
         data[i] = calloc(1, sizeof(mplp_aux_t));
-        data[i]->fp = sam_open(fn[i], "rb");
+        data[i]->fp = sam_open_format(fn[i], "rb", &conf->ga.in);
         if ( !data[i]->fp )
         {
             fprintf(stderr, "[%s] failed to open %s: %s\n", __func__, fn[i], strerror(errno));
@@ -443,7 +446,7 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
             bcf_hdr_append(bcf_hdr, str.s);
         }
         free(str.s);
-        bcf_hdr_append(bcf_hdr,"##ALT=<ID=X,Description=\"Represents allele(s) other than observed.\">");
+        bcf_hdr_append(bcf_hdr,"##ALT=<ID=*,Description=\"Represents allele(s) other than observed.\">");
         bcf_hdr_append(bcf_hdr,"##INFO=<ID=INDEL,Number=0,Type=Flag,Description=\"Indicates that the variant is an INDEL.\">");
         bcf_hdr_append(bcf_hdr,"##INFO=<ID=IDV,Number=1,Type=Integer,Description=\"Maximum number of reads supporting an indel\">");
         bcf_hdr_append(bcf_hdr,"##INFO=<ID=IMF,Number=1,Type=Float,Description=\"Maximum fraction of reads supporting an indel\">");
@@ -476,6 +479,18 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
             bcf_hdr_append(bcf_hdr,"##FORMAT=<ID=DP4,Number=4,Type=Integer,Description=\"Number of high-quality ref-fwd, ref-reverse, alt-fwd and alt-reverse bases\">");
         if ( conf->fmt_flag&B2B_FMT_SP )
             bcf_hdr_append(bcf_hdr,"##FORMAT=<ID=SP,Number=1,Type=Integer,Description=\"Phred-scaled strand bias P-value\">");
+        if ( conf->fmt_flag&B2B_FMT_AD )
+            bcf_hdr_append(bcf_hdr,"##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Allelic depths\">");
+        if ( conf->fmt_flag&B2B_FMT_ADF )
+            bcf_hdr_append(bcf_hdr,"##FORMAT=<ID=ADF,Number=R,Type=Integer,Description=\"Allelic depths on the forward strand\">");
+        if ( conf->fmt_flag&B2B_FMT_ADR )
+            bcf_hdr_append(bcf_hdr,"##FORMAT=<ID=ADR,Number=R,Type=Integer,Description=\"Allelic depths on the reverse strand\">");
+        if ( conf->fmt_flag&B2B_INFO_AD )
+            bcf_hdr_append(bcf_hdr,"##INFO=<ID=AD,Number=R,Type=Integer,Description=\"Total allelic depths\">");
+        if ( conf->fmt_flag&B2B_INFO_ADF )
+            bcf_hdr_append(bcf_hdr,"##INFO=<ID=ADF,Number=R,Type=Integer,Description=\"Total allelic depths on the forward strand\">");
+        if ( conf->fmt_flag&B2B_INFO_ADR )
+            bcf_hdr_append(bcf_hdr,"##INFO=<ID=ADR,Number=R,Type=Integer,Description=\"Total allelic depths on the reverse strand\">");
 
         for (i=0; i<sm->n; i++)
             bcf_hdr_add_sample(bcf_hdr, sm->smpl[i]);
@@ -500,12 +515,16 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
             assert( sizeof(float)==sizeof(int32_t) );
             bc.DP4 = malloc(sm->n * sizeof(int32_t) * 4);
             bc.fmt_arr = malloc(sm->n * sizeof(float)); // all fmt_flag fields
-            if ( conf->fmt_flag&(B2B_INFO_DPR|B2B_FMT_DPR) )
+            if ( conf->fmt_flag&(B2B_INFO_DPR|B2B_FMT_DPR|B2B_INFO_AD|B2B_INFO_ADF|B2B_INFO_ADR|B2B_FMT_AD|B2B_FMT_ADF|B2B_FMT_ADR) )
             {
                 // first B2B_MAX_ALLELES fields for total numbers, the rest per-sample
-                bc.DPR = malloc((sm->n+1)*B2B_MAX_ALLELES*sizeof(int32_t));
+                bc.ADR = (int32_t*) malloc((sm->n+1)*B2B_MAX_ALLELES*sizeof(int32_t));
+                bc.ADF = (int32_t*) malloc((sm->n+1)*B2B_MAX_ALLELES*sizeof(int32_t));
                 for (i=0; i<sm->n; i++)
-                    bcr[i].DPR = bc.DPR + (i+1)*B2B_MAX_ALLELES;
+                {
+                    bcr[i].ADR = bc.ADR + (i+1)*B2B_MAX_ALLELES;
+                    bcr[i].ADF = bc.ADF + (i+1)*B2B_MAX_ALLELES;
+                }
             }
         }
     }
@@ -613,8 +632,13 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
                     }
                     if (conf->flag & MPLP_PRINT_POS) {
                         putc('\t', pileup_fp);
+                        int last = 0;
                         for (j = 0; j < n_plp[i]; ++j) {
-                            if (j > 0) putc(',', pileup_fp);
+                            const bam_pileup1_t *p = plp[i] + j;
+                            int c = bam_get_qual(p->b)[p->qpos];
+                            if ( c < conf->min_baseQ ) continue;
+
+                            if (last++) putc(',', pileup_fp);
                             fprintf(pileup_fp, "%d", plp[i][j].qpos + 1); // FIXME: printf() is very slow...
                         }
                     }
@@ -634,7 +658,8 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
         bcf_call_destroy(bca);
         free(bc.PL);
         free(bc.DP4);
-        free(bc.DPR);
+        free(bc.ADR);
+        free(bc.ADF);
         free(bc.fmt_arr);
         free(bcr);
     }
@@ -651,8 +676,8 @@ static int mpileup(mplp_conf_t *conf, int n, char **fn)
         free(data[i]);
     }
     free(data); free(plp); free(n_plp);
-    if (mp_ref.ref[0]) free(mp_ref.ref[0]);
-    if (mp_ref.ref[1]) free(mp_ref.ref[1]);
+    free(mp_ref.ref[0]);
+    free(mp_ref.ref[1]);
     return ret;
 }
 
@@ -721,11 +746,17 @@ int parse_format_flag(const char *str)
     for(i=0; i<n_tags; i++)
     {
         if ( !strcasecmp(tags[i],"DP") ) flag |= B2B_FMT_DP;
-        else if ( !strcasecmp(tags[i],"DV") ) flag |= B2B_FMT_DV;
+        else if ( !strcasecmp(tags[i],"DV") ) { flag |= B2B_FMT_DV; fprintf(stderr, "[warning] tag DV functional, but deprecated. Please switch to `AD` in future.\n"); }
         else if ( !strcasecmp(tags[i],"SP") ) flag |= B2B_FMT_SP;
-        else if ( !strcasecmp(tags[i],"DP4") ) flag |= B2B_FMT_DP4;
-        else if ( !strcasecmp(tags[i],"DPR") ) flag |= B2B_FMT_DPR;
-        else if ( !strcasecmp(tags[i],"INFO/DPR") ) flag |= B2B_INFO_DPR;
+        else if ( !strcasecmp(tags[i],"DP4") ) { flag |= B2B_FMT_DP4; fprintf(stderr, "[warning] tag DP4 functional, but deprecated. Please switch to `ADF` and `ADR` in future.\n"); }
+        else if ( !strcasecmp(tags[i],"DPR") ) { flag |= B2B_FMT_DPR; fprintf(stderr, "[warning] tag DPR functional, but deprecated. Please switch to `AD` in future.\n"); }
+        else if ( !strcasecmp(tags[i],"INFO/DPR") ) { flag |= B2B_INFO_DPR; fprintf(stderr, "[warning] tag INFO/DPR functional, but deprecated. Please switch to `INFO/AD` in future.\n"); }
+        else if ( !strcasecmp(tags[i],"AD") ) flag |= B2B_FMT_AD;
+        else if ( !strcasecmp(tags[i],"ADF") ) flag |= B2B_FMT_ADF;
+        else if ( !strcasecmp(tags[i],"ADR") ) flag |= B2B_FMT_ADR;
+        else if ( !strcasecmp(tags[i],"INFO/AD") ) flag |= B2B_INFO_AD;
+        else if ( !strcasecmp(tags[i],"INFO/ADF") ) flag |= B2B_INFO_ADF;
+        else if ( !strcasecmp(tags[i],"INFO/ADR") ) flag |= B2B_INFO_ADR;
         else
         {
             fprintf(stderr,"Could not parse tag \"%s\" in \"%s\"\n", tags[i], str);
@@ -756,7 +787,7 @@ static void print_usage(FILE *fp, const mplp_conf_t *mplp)
 "  -b, --bam-list FILE     list of input BAM filenames, one per line\n"
 "  -B, --no-BAQ            disable BAQ (per-Base Alignment Quality)\n"
 "  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]\n"
-"  -d, --max-depth INT     max per-BAM depth; avoids excessive memory usage [%d]\n", mplp->max_depth);
+"  -d, --max-depth INT     max per-file depth; avoids excessive memory usage [%d]\n", mplp->max_depth);
     fprintf(fp,
 "  -E, --redo-BAQ          recalculate BAQ on the fly, ignore existing BQs\n"
 "  -f, --fasta-ref FILE    faidx indexed reference sequence file\n"
@@ -785,7 +816,8 @@ static void print_usage(FILE *fp, const mplp_conf_t *mplp)
 "  -s, --output-MQ         output mapping quality\n"
 "\n"
 "Output options for genotype likelihoods (when -g/-v is used):\n"
-"  -t, --output-tags LIST  optional tags to output: DP,DPR,DV,DP4,INFO/DPR,SP []\n"
+"  -t, --output-tags LIST  optional tags to output:\n"
+"               DP,AD,ADF,ADR,SP,INFO/AD,INFO/ADF,INFO/ADR []\n"
 "  -u, --uncompressed      generate uncompressed VCF/BCF output\n"
 "\n"
 "SNP/INDEL genotype likelihoods options (effective with -g/-v):\n"
@@ -796,14 +828,16 @@ static void print_usage(FILE *fp, const mplp_conf_t *mplp)
 "  -h, --tandem-qual INT   coefficient for homopolymer errors [%d]\n", mplp->tandemQ);
     fprintf(fp,
 "  -I, --skip-indels       do not perform indel calling\n"
-"  -L, --max-idepth INT    maximum per-sample depth for INDEL calling [%d]\n", mplp->max_indel_depth);
+"  -L, --max-idepth INT    maximum per-file depth for INDEL calling [%d]\n", mplp->max_indel_depth);
     fprintf(fp,
 "  -m, --min-ireads INT    minimum number gapped reads for indel candidates [%d]\n", mplp->min_support);
     fprintf(fp,
 "  -o, --open-prob INT     Phred-scaled gap open seq error probability [%d]\n", mplp->openQ);
     fprintf(fp,
 "  -p, --per-sample-mF     apply -m and -F per-sample for increased sensitivity\n"
-"  -P, --platforms STR     comma separated list of platforms for indels [all]\n"
+"  -P, --platforms STR     comma separated list of platforms for indels [all]\n");
+    sam_global_opt_help(fp, "-.--.");
+    fprintf(fp,
 "\n"
 "Notes: Assuming diploid individuals.\n");
 
@@ -828,8 +862,11 @@ int bam_mpileup(int argc, char *argv[])
     mplp.argc = argc; mplp.argv = argv;
     mplp.rflag_filter = BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP;
     mplp.output_fname = NULL;
+    sam_global_args_init(&mplp.ga);
+
     static const struct option lopts[] =
     {
+        SAM_OPT_GLOBAL_OPTIONS('-', 0, '-', '-', 0),
         {"rf", required_argument, NULL, 1},   // require flag
         {"ff", required_argument, NULL, 2},   // filter flag
         {"incl-flags", required_argument, NULL, 1},
@@ -904,7 +941,7 @@ int bam_mpileup(int argc, char *argv[])
                   //  with few BED intervals and big BAMs. Todo: devise a heuristic to determine
                   //  best strategy, that is streaming or jumping.
                   mplp.bed = bed_read(optarg);
-                  if (!mplp.bed) { print_error_errno("Could not read file \"%s\"", optarg); return 1; }
+                  if (!mplp.bed) { print_error_errno("mpileup", "Could not read file \"%s\"", optarg); return 1; }
                   break;
         case 'P': mplp.pl_list = strdup(optarg); break;
         case 'p': mplp.flag |= MPLP_PER_SAMPLE; break;
@@ -952,10 +989,19 @@ int bam_mpileup(int argc, char *argv[])
             break;
         case 't': mplp.fmt_flag |= parse_format_flag(optarg); break;
         default:
-            fprintf(stderr,"Invalid option: '%c'\n", c);
+            if (parse_sam_global_opt(c, optarg, lopts, &mplp.ga) == 0) break;
+            /* else fall-through */
+        case '?':
+            print_usage(stderr, &mplp);
             return 1;
         }
     }
+    if (!mplp.fai && mplp.ga.reference) {
+        mplp.fai_fname = mplp.ga.reference;
+        mplp.fai = fai_load(mplp.fai_fname);
+        if (mplp.fai == NULL) return 1;
+    }
+
     if ( !(mplp.flag&MPLP_REALN) && mplp.flag&MPLP_REDO_BAQ )
     {
         fprintf(stderr,"Error: The -B option cannot be combined with -E\n");
