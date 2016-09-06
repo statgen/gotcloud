@@ -488,7 +488,7 @@ if ( $numSteps == 0 ) {
 #--------------------------------------------------------------
 #   Check required settings
 #--------------------------------------------------------------
-# Check to see if the old REF is set instead of the new one.
+# Check to see if the old configuration variable is set instead of the new one.
 my %deprecatedDie = (
     FA_REF => "REF",
     DBSNP_PREFIX => "DBSNP_VCF",
@@ -502,6 +502,19 @@ foreach my $key (keys %deprecatedDie)
     if(getConf("$key"))
     {
         warn "ERROR: '$key' is deprecated and has been replaced by '$deprecatedDie{$key}', please update your configuration file and rerun\n";
+        $failReqFile = "1";
+    }
+}
+
+# Check for deprecated configuration variables, but allow them if the new variable has the same value.
+my %gentleDeprecatedDie = (
+    BAMUTIL => "BAM_EXE",
+);
+foreach my $key (keys %gentleDeprecatedDie)
+{
+    if(getConf("$key") and getConf("$key") ne getConf("$gentleDeprecatedDie{$key}"))
+    {
+        warn "ERROR: You've set '$key' in your config, but it has a different value than '$gentleDeprecatedDie{$key}'. '$key' is being deprecated, so please delete it from your config and set '$gentleDeprecatedDie{$key}' instead.";
         $failReqFile = "1";
     }
 }
@@ -683,7 +696,7 @@ my @reqExes;
 # required executables for each step.
 my %reqExeHash = (
                   'RUN_INDEX' => [qw(SAMTOOLS_FOR_OTHERS)],
-                  'RUN_PILEUP' => [qw(GLFMERGE SAMTOOLS_FOR_OTHERS SAMTOOLS_FOR_PILEUP BAMUTIL)],
+                  'RUN_PILEUP' => [qw(GLFMERGE SAMTOOLS_FOR_OTHERS SAMTOOLS_FOR_PILEUP BAM_EXE)],
                   'RUN_GLFMULTIPLES' => [qw(GLFFLEX VCFMERGE)],
                   'RUN_FILTER' => [qw(INFOCOLLECTOR VCFCOOKER VCFPASTE BGZIP TABIX VCFSUMMARY VCFMERGE)],
                   'RUN_VCFPILEUP' => [qw(VCFPILEUP)],
@@ -2651,7 +2664,7 @@ sub runPileup
         $md5Dir = "REF_PATH=".getConf("MD5_DIR")." ";
     }
 
-    return("($md5Dir".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAMUTIL",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
+    return("($md5Dir".getConf("SAMTOOLS_FOR_OTHERS")." view ".getConf("SAMTOOLS_VIEW_FILTER")." -uh $bamIn $region |$baq ".getConf("BAM_EXE",1)." clipOverlap --in -.ubam --out -.ubam ".getConf("BAMUTIL_THINNING")." | ".getConf("SAMTOOLS_FOR_PILEUP")." pileup -f $ref $loci -g - > $glfOut) 2> $glfOut.log");
 }
 
 #--------------------------------------------------------------
