@@ -1,6 +1,8 @@
 # Please run:
 # - `git config diff.gz.textconv zcat`
 # - `git config diff.bam.textconv samtools view -h`
+# - `git config diff.bcf.textconv $PWD/src/htslib/htsfile -c`
 
 *.gz diff=gz
 *.bam diff=bam
+*.bcf diff=bcf
