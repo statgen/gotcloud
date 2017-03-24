@@ -155,7 +155,7 @@ double stdnormal_cdf(double u)
   };
   register double y, z;
 
-  if (isnan(u))
+  if (std::isnan(u))
     return NAN;
   if (!finite(u))
     return (u < 0 ? 0.0 : 1.0);
@@ -222,7 +222,7 @@ double stdnormal_inv(double p)
 
   register double q, t, u;
 
-  if (isnan(p) || p > 1.0 || p < 0.0)
+  if (std::isnan(p) || p > 1.0 || p < 0.0)
     return NAN;
   if (p == 0.0)
     return DBL_MIN;
